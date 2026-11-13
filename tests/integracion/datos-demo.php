@@ -71,4 +71,24 @@ foreach ( $personas as [ $dni, $nombres, $apellidos, $area, $marcas ] ) {
 	}
 }
 
+// Días anteriores: perfiles "creados" hace 10 días, Rosa sin salida ayer y una solicitud de Carlos.
+$wpdb->query( $wpdb->prepare( 'UPDATE ' . Tablas::nombre( 'trabajadores' ) . ' SET creado_en = %s', gmdate( 'Y-m-d H:i:s', time() - 10 * DAY_IN_SECONDS ) ) ); // phpcs:ignore
+$ayer = ( new DateTimeImmutable( $hoy ) )->modify( '-1 day' )->format( 'Y-m-d' );
+$ids  = $wpdb->get_col( 'SELECT id FROM ' . Tablas::nombre( 'trabajadores' ) . ' ORDER BY id' ); // phpcs:ignore
+
+foreach ( $ids as $i => $tid ) {
+	if ( 4 === $i ) {
+		continue; // Milagros no marcó ayer: aparece como posible falta.
+	}
+
+	$entrada = 0 === $i ? '08:55' : '08:58';
+	\Pekokis\Asistencia\WordPress\Correcciones::marcaManual( (int) $tid, $ayer, $entrada, \Pekokis\Asistencia\Nucleo\Accion::ENTRADA, null, 'Demo' );
+
+	if ( 0 !== $i ) { // Rosa queda sin salida.
+		\Pekokis\Asistencia\WordPress\Correcciones::marcaManual( (int) $tid, $ayer, '19:31', \Pekokis\Asistencia\Nucleo\Accion::FIN_JORNADA, null, 'Demo' );
+	}
+}
+
+\Pekokis\Asistencia\WordPress\Correcciones::solicitar( (int) $ids[0], $ayer, '19:30', \Pekokis\Asistencia\Nucleo\Accion::FIN_JORNADA, null, 'Me fui apurada y no marqué la salida' );
+
 WP_CLI::success( 'Datos de demostración cargados para ' . $hoy . '.' );

@@ -2,6 +2,8 @@
 
 namespace Pekokis\Asistencia\Nucleo;
 
+use DateTimeZone;
+
 /**
  * Reglas de transición entre estados. El estado sale siempre de la última marca
  * efectiva del día laboral: el día termina en la última salida registrada.
@@ -31,6 +33,36 @@ final class MaquinaEstados {
 			Estado::REFRIGERIO, Estado::FUERA_TEMPORAL => array( Accion::REGRESO ),
 			Estado::TRABAJANDO                         => array( Accion::SALIDA_REFRIGERIO, Accion::SALIDA_TEMPORAL, Accion::FIN_JORNADA ),
 		};
+	}
+
+	/**
+	 * Revisa que una secuencia de marcas tenga sentido (se usa antes de aprobar
+	 * una corrección o una marca manual): empieza con entrada, alterna y cada
+	 * salida lleva motivo.
+	 *
+	 * @param Marca[] $marcas
+	 * @return string|null Mensaje del primer problema, o null si está bien.
+	 */
+	public static function problemaEnSecuencia( array $marcas, ?DateTimeZone $zona = null ): ?string {
+		$estado = Estado::FUERA;
+
+		foreach ( self::ordenar( $marcas ) as $marca ) {
+			if ( ! self::permite( $estado, $marca->tipo ) ) {
+				$hora = $marca->marcadoUtc->setTimezone( $zona ?? new DateTimeZone( 'America/Lima' ) )->format( 'H:i' );
+
+				return TipoMarca::ENTRADA === $marca->tipo
+					? 'Quedarían dos entradas seguidas (a las ' . $hora . ' no habría una salida antes).'
+					: 'Quedaría una salida sin entrada antes (la de las ' . $hora . ').';
+			}
+
+			if ( TipoMarca::SALIDA === $marca->tipo && null === $marca->motivo ) {
+				return 'Una salida no tiene motivo.';
+			}
+
+			$estado = $marca->estadoResultante();
+		}
+
+		return null;
 	}
 
 	/**

@@ -55,6 +55,11 @@ final class PantallaHoy {
 			wp_die( 'No tienes permiso para ver esta página.' );
 		}
 
+		if ( isset( $_GET['vista'] ) && 'dia' === $_GET['vista'] ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			PantallaDia::pintar();
+			return;
+		}
+
 		$ahora   = new DateTimeImmutable( 'now', new DateTimeZone( 'UTC' ) );
 		$zona    = Ajustes::zona();
 		$dia     = Ajustes::diaLaboral()->de( $ahora );
@@ -105,7 +110,7 @@ final class PantallaHoy {
 				<?php foreach ( $filas as [ 't' => $t, 'r' => $r ] ) : ?>
 					<?php [ $etiqueta, $color ] = self::SITUACIONES[ $r->situacion ]; ?>
 					<tr>
-						<td><strong><?php echo esc_html( $t['apellidos'] . ', ' . $t['nombres'] ); ?></strong><br><span class="description"><?php echo esc_html( $t['area'] ); ?></span></td>
+						<td><strong><a href="<?php echo esc_url( PantallaDia::url( (int) $t['id'], $dia ) ); ?>"><?php echo esc_html( $t['apellidos'] . ', ' . $t['nombres'] ); ?></a></strong><br><span class="description"><?php echo esc_html( $t['area'] ); ?></span></td>
 						<td><span style="color:<?php echo esc_attr( $color ); ?>;font-weight:600"><?php echo esc_html( $etiqueta ); ?></span></td>
 						<td><?php echo esc_html( $hora( $r->primeraEntrada ) ); ?><?php echo $r->minutosTardanza ? ' <span style="color:#b26200">(+' . (int) $r->minutosTardanza . ' min)</span>' : ''; ?></td>
 						<td><?php echo Estado::FUERA !== $r->estado || $r->desde ? esc_html( $hora( $r->desde ) ) : '—'; ?></td>
@@ -125,6 +130,7 @@ final class PantallaHoy {
 			</table>
 
 			<?php self::revisiones( $alcance, $zona ); ?>
+			<?php PantallaDia::bandejas( $alcance, $dia ); ?>
 		</div>
 		<?php
 	}

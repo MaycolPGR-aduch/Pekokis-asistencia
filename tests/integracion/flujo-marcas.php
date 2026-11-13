@@ -185,6 +185,85 @@ $resumen = \Pekokis\Asistencia\Nucleo\ResumenDia::calcular(
 );
 $comprobar( 'el panel del día la ve fuera por motivo personal', 'fuera' === $resumen->situacion && 'personal' === $resumen->motivoActual?->clave, $resumen->situacion );
 
+// ---- 3d. Correcciones: "olvidé marcar", marca manual y anulación.
+WP_CLI::line( '3d. Correcciones' );
+$zonaLima = \Pekokis\Asistencia\WordPress\Ajustes::zona();
+$ayer     = ( new DateTimeImmutable( $hoy ) )->modify( '-1 day' )->format( 'Y-m-d' );
+// El perfil "existe" desde hace 10 días, para que haya días anteriores que revisar.
+$wpdb->update( Tablas::nombre( 'trabajadores' ), array( 'creado_en' => gmdate( 'Y-m-d H:i:s', time() - 10 * DAY_IN_SECONDS ) ), array( 'id' => $id ) );
+
+[ , $id7 ] = $identificar();
+[ $st, $r ] = $api( 'POST', 'correcciones', array( 'ticket' => $id7['ticket'], 'fecha' => $ayer, 'hora' => '25:00', 'accion' => 'entrada', 'justificacion' => 'x' ) );
+$comprobar( 'hora inválida se rechaza', 422 === $st, wp_json_encode( $r ) );
+[ $st, $r ] = $api( 'POST', 'correcciones', array( 'ticket' => $id7['ticket'], 'fecha' => $ayer, 'hora' => '09:00', 'accion' => 'entrada', 'justificacion' => 'Se me descargó el celular' ) );
+$comprobar( 'el trabajador pide agregar la entrada de ayer', 200 === $st, wp_json_encode( $r ) );
+$sol = \Pekokis\Asistencia\WordPress\Correcciones::pendientes( null );
+$comprobar( 'queda pendiente para el jefe', 1 === count( $sol ) );
+$comprobar( 'rechazar sin nota no se permite', is_wp_error( \Pekokis\Asistencia\WordPress\Correcciones::rechazar( (int) $sol[0]['id'], '' ) ) );
+$comprobar( 'el jefe la aprueba', true === \Pekokis\Asistencia\WordPress\Correcciones::aprobar( (int) $sol[0]['id'], 'Ok' ) );
+
+$tipos = static fn( string $d ) => array_column( array_filter( \Pekokis\Asistencia\WordPress\Seguimiento::pendientes( null, $hoy ), static fn( $p ) => $p['dia'] === $d && (int) $p['trabajador']['id'] === $id ), 'tipo' );
+$comprobar( 'ayer aparece "sin marca de salida"', array( 'incompleto' ) === $tipos( $ayer ), wp_json_encode( $tipos( $ayer ) ) );
+[ , $id8 ] = $identificar();
+$comprobar( 'la app avisa que ayer no marcó salida', isset( $id8['ayer']['fecha'] ) && $ayer === $id8['ayer']['fecha'] );
+
+[ $st ] = $api( 'POST', 'correcciones', array( 'ticket' => $id8['ticket'], 'fecha' => $ayer, 'hora' => '10:00', 'accion' => 'entrada', 'justificacion' => 'Otra entrada' ) );
+$mal = \Pekokis\Asistencia\WordPress\Correcciones::pendientes( null );
+$res = \Pekokis\Asistencia\WordPress\Correcciones::aprobar( (int) $mal[0]['id'], '' );
+$comprobar( 'no se aprueba una segunda entrada seguida', is_wp_error( $res ) && str_contains( $res->get_error_message(), 'dos entradas seguidas' ), is_wp_error( $res ) ? $res->get_error_message() : 'se aprobó' );
+$comprobar( 'se rechaza con nota', true === \Pekokis\Asistencia\WordPress\Correcciones::rechazar( (int) $mal[0]['id'], 'Ya tenía entrada' ) );
+
+$fin = \Pekokis\Asistencia\WordPress\Correcciones::marcaManual( $id, $ayer, '19:30', \Pekokis\Asistencia\Nucleo\Accion::FIN_JORNADA, null, 'Olvidó marcar la salida' );
+$comprobar( 'el jefe registra la salida manual', is_int( $fin ), is_wp_error( $fin ) ? $fin->get_error_message() : '' );
+$comprobar( 'ayer ya no está pendiente', array() === $tipos( $ayer ) );
+$doble = \Pekokis\Asistencia\WordPress\Correcciones::marcaManual( $id, $ayer, '13:00', \Pekokis\Asistencia\Nucleo\Accion::SALIDA_REFRIGERIO, null, 'Refrigerio' );
+$comprobar( 'una salida que deja dos salidas seguidas se rechaza', is_wp_error( $doble ) );
+$futuro = \Pekokis\Asistencia\WordPress\Correcciones::marcaManual( $id, ( new DateTimeImmutable( $hoy ) )->modify( '+1 day' )->format( 'Y-m-d' ), '09:00', \Pekokis\Asistencia\Nucleo\Accion::ENTRADA, null, 'x' );
+$comprobar( 'no se registran horas futuras', is_wp_error( $futuro ) );
+
+$entradaAyer = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT id FROM ' . Tablas::nombre( 'marcas' ) . " WHERE trabajador_id = %d AND dia_laboral = %s AND tipo = 'entrada'", $id, $ayer ) ); // phpcs:ignore
+$comprobar( 'anular la entrada dejaría la salida sola: se rechaza', is_wp_error( \Pekokis\Asistencia\WordPress\Correcciones::anular( $entradaAyer, 'Error' ) ) );
+$comprobar( 'anular la salida manual sí se puede', true === \Pekokis\Asistencia\WordPress\Correcciones::anular( $fin, 'Hora equivocada' ) );
+$comprobar( 'la marca anulada sigue en la tabla', 1 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Tablas::nombre( 'marcas' ) . ' WHERE id = %d', $fin ) ) ); // phpcs:ignore
+$comprobar( 'y ayer vuelve a estar sin salida', array( 'incompleto' ) === $tipos( $ayer ) );
+$fin2 = \Pekokis\Asistencia\WordPress\Correcciones::marcaManual( $id, $ayer, '19:35', \Pekokis\Asistencia\Nucleo\Accion::FIN_JORNADA, null, 'Hora correcta' );
+$comprobar( 'se registra la salida con la hora correcta', is_int( $fin2 ) );
+
+// ---- 3e. Export y respaldo.
+WP_CLI::line( '3e. Export y respaldo' );
+$mesAyer = substr( $ayer, 0, 7 );
+$xls     = \Pekokis\Asistencia\WordPress\Exportes::registroMensual( $mesAyer, 'Prueba' );
+$comprobar( 'el Excel se genera', str_starts_with( $xls['contenido'], 'PK' ) && 64 === strlen( $xls['hash'] ) );
+
+if ( class_exists( 'ZipArchive' ) ) {
+	$tmp = wp_tempnam( 'pka.xlsx' );
+	file_put_contents( $tmp, $xls['contenido'] ); // phpcs:ignore
+	$zip = new ZipArchive();
+	$zip->open( $tmp );
+	$textos = (string) $zip->getFromName( 'xl/sharedStrings.xml' );
+	for ( $i = 1; $i <= 3; $i++ ) {
+		$textos .= (string) $zip->getFromName( 'xl/worksheets/sheet' . $i . '.xml' );
+	}
+	$zip->close();
+	wp_delete_file( $tmp );
+	$comprobar( 'trae empleador, RUC, la marca anulada y la integridad', str_contains( $textos, 'FUSION ART SAC' ) && str_contains( $textos, '20523257146' ) && str_contains( $textos, 'Anulada: Hora equivocada' ) && str_contains( $textos, 'Íntegra' ) );
+	$comprobar( 'el registro de ayer muestra ingreso 09:00 y salida 19:35', str_contains( $textos, '09:00' ) && str_contains( $textos, '19:35' ) );
+}
+
+$correo = null;
+add_filter(
+	'pre_wp_mail',
+	static function ( $nulo, $atts ) use ( &$correo ) {
+		$correo = array( 'para' => $atts['to'], 'asunto' => $atts['subject'], 'adjunto' => file_exists( $atts['attachments'][0] ) ? filesize( $atts['attachments'][0] ) : 0 );
+		return true;
+	},
+	10,
+	2
+);
+$envio = \Pekokis\Asistencia\WordPress\Respaldo::enviar( $mesAyer, 'Prueba' );
+$comprobar( 'el respaldo se envía por correo con el Excel adjunto', true === $envio && $correo && $correo['adjunto'] > 1000, wp_json_encode( $correo ) );
+$comprobar( 'y el archivo temporal se borra', ! glob( wp_upload_dir()['basedir'] . '/pka-respaldos/*.xlsx' ) );
+
 // ---- 4. Cese.
 WP_CLI::line( '4. Cese' );
 $comprobar( 'cese sin motivo se rechaza', is_wp_error( Trabajadores::cesar( $id, gmdate( 'Y-m-d' ), '' ) ) );
@@ -195,7 +274,7 @@ $comprobar( 'ya no puede identificarse', 401 === $st, (string) $st );
 // ---- 5. Integridad.
 WP_CLI::line( '5. Integridad' );
 $marcas = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Tablas::nombre( 'marcas' ) ); // phpcs:ignore
-$comprobar( '6 marcas guardadas', 6 === $marcas, (string) $marcas );
+$comprobar( '9 marcas guardadas (6 de hoy, 3 de ayer con una anulada)', 9 === $marcas, (string) $marcas );
 $comprobar( 'cadena de marcas íntegra', null === InsercionEncadenada::verificar( 'marcas' ) );
 $comprobar( 'cadena de auditoría íntegra', null === InsercionEncadenada::verificar( 'auditoria' ) );
 $acciones = $wpdb->get_col( 'SELECT accion FROM ' . Tablas::nombre( 'auditoria' ) . ' ORDER BY id' ); // phpcs:ignore

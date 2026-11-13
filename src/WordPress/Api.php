@@ -9,6 +9,7 @@ use Pekokis\Asistencia\Nucleo\Estado;
 use Pekokis\Asistencia\Nucleo\MaquinaEstados;
 use Pekokis\Asistencia\Nucleo\Motivo;
 use Pekokis\Asistencia\Nucleo\SolicitudMarca;
+use Pekokis\Asistencia\Nucleo\TotalesDia;
 use Pekokis\Asistencia\Nucleo\ValidadorMarca;
 use WP_Error;
 use WP_REST_Request;
@@ -43,6 +44,7 @@ final class Api {
 		register_rest_route( self::ESPACIO, '/identificar', array( 'methods' => 'POST', 'callback' => array( self::class, 'identificar' ), 'permission_callback' => $publica ) );
 		register_rest_route( self::ESPACIO, '/marcas', array( 'methods' => 'POST', 'callback' => array( self::class, 'marcar' ), 'permission_callback' => $publica ) );
 		register_rest_route( self::ESPACIO, '/presencia', array( 'methods' => 'GET', 'callback' => array( self::class, 'presencia' ), 'permission_callback' => $publica ) );
+		register_rest_route( self::ESPACIO, '/correcciones', array( 'methods' => 'POST', 'callback' => array( self::class, 'solicitarCorreccion' ), 'permission_callback' => $publica ) );
 		register_rest_route( self::ESPACIO, '/presencia/codigo', array( 'methods' => 'POST', 'callback' => array( self::class, 'presenciaCodigo' ), 'permission_callback' => $publica ) );
 		register_rest_route( self::ESPACIO, '/pantalla/codigo', array( 'methods' => 'GET', 'callback' => array( self::class, 'pantallaCodigo' ), 'permission_callback' => $publica ) );
 		register_rest_route(
@@ -338,6 +340,9 @@ final class Api {
 				'desde'    => $ultima && Estado::FUERA !== $estado ? Marcas::horaLocal( $ultima->marcadoUtc ) : null,
 			),
 			'acciones' => $acciones,
+			'fecha'    => $dia,
+			'ayer'     => self::pendienteAnterior( $trabajadorId, $dia ),
+			'olvido'   => self::opcionesCorreccion(),
 			'hoy'      => array_map(
 				static fn( $m ): array => array(
 					'hora'  => Marcas::horaLocal( $m->marcadoUtc ),
@@ -348,27 +353,86 @@ final class Api {
 		);
 	}
 
-	private static function motivoDe( Accion $accion, mixed $clave ): ?Motivo {
-		$categoria = $accion->categoria();
+	/** El trabajador avisa que olvidó marcar; queda pendiente para su jefe. */
+	public static function solicitarCorreccion( WP_REST_Request $peticion ): WP_REST_Response|WP_Error {
+		$clave  = (string) $peticion->get_param( 'ticket' );
+		$ticket = Temporales::leer( 'ticket', $clave );
 
-		if ( null === $categoria ) {
+		if ( null === $ticket ) {
+			return new WP_Error( 'pka_ticket', 'Pasaron más de 2 minutos. Vuelve a poner tu huella.', array( 'status' => 401 ) );
+		}
+
+		$accion = Accion::tryFrom( (string) $peticion->get_param( 'accion' ) );
+
+		if ( null === $accion ) {
+			return new WP_Error( 'pka_accion', 'Elige qué marca olvidaste.', array( 'status' => 400 ) );
+		}
+
+		$resultado = Correcciones::solicitar(
+			(int) $ticket['trabajador_id'],
+			(string) $peticion->get_param( 'fecha' ),
+			(string) $peticion->get_param( 'hora' ),
+			$accion,
+			(string) $peticion->get_param( 'motivo' ),
+			(string) $peticion->get_param( 'justificacion' )
+		);
+
+		if ( $resultado instanceof WP_Error ) {
+			$resultado->add_data( array( 'status' => 422 ) );
+
+			return $resultado;
+		}
+
+		Temporales::borrar( 'ticket', $clave );
+
+		return self::respuesta( array( 'ok' => true, 'mensaje' => 'Solicitud enviada. Tu jefe la revisará.' ) );
+	}
+
+	private static function motivoDe( Accion $accion, mixed $clave ): ?Motivo {
+		// Si falta o no corresponde, el validador responde "Elige el motivo de la salida".
+		return Motivos::paraAccion( $accion, $clave );
+	}
+
+	/**
+	 * Aviso si el día laboral anterior quedó sin salida y no hay una solicitud pendiente.
+	 *
+	 * @return array<string, string>|null
+	 */
+	private static function pendienteAnterior( int $trabajadorId, string $hoy ): ?array {
+		global $wpdb;
+
+		$ayer   = ( new DateTimeImmutable( $hoy ) )->modify( '-1 day' )->format( 'Y-m-d' );
+		$marcas = Marcas::delDia( $trabajadorId, $ayer );
+
+		if ( ! $marcas || ! TotalesDia::calcular( $marcas )->incompleto ) {
 			return null;
 		}
 
-		$opciones = Motivos::deCategoria( $categoria );
+		$c = Tablas::nombre( 'correcciones' );
 
-		// Refrigerio y fin de jornada tienen un solo motivo: no hace falta elegirlo.
-		if ( 1 === count( $opciones ) && ( null === $clave || '' === $clave ) ) {
-			return $opciones[0];
+		if ( $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$c} WHERE trabajador_id = %d AND estado = 'pendiente'", $trabajadorId ) ) ) { // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			return null;
 		}
 
-		foreach ( $opciones as $motivo ) {
-			if ( $motivo->clave === $clave ) {
-				return $motivo;
-			}
+		return array( 'fecha' => $ayer, 'mensaje' => 'Ayer no marcaste tu salida. Avísalo con "Olvidé marcar".' );
+	}
+
+	/** @return array<int, array<string, mixed>> Todas las acciones posibles, para el formulario "Olvidé marcar". */
+	private static function opcionesCorreccion(): array {
+		$opciones = array();
+
+		foreach ( array( Accion::ENTRADA, Accion::SALIDA_REFRIGERIO, Accion::SALIDA_TEMPORAL, Accion::FIN_JORNADA ) as $accion ) {
+			$opciones[] = array(
+				'clave'    => $accion->value,
+				'etiqueta' => Accion::ENTRADA === $accion ? 'Entrada o regreso' : $accion->etiqueta(),
+				'motivos'  => null === $accion->categoria() ? array() : array_map(
+					static fn( Motivo $m ): array => array( 'clave' => $m->clave, 'nombre' => $m->nombre ),
+					Motivos::deCategoria( $accion->categoria() )
+				),
+			);
 		}
 
-		return null; // El validador responde "Elige el motivo de la salida".
+		return $opciones;
 	}
 
 	private static function bloqueado(): ?WP_Error {

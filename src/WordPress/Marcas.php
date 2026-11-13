@@ -35,6 +35,77 @@ final class Marcas {
 		return $marcas;
 	}
 
+	/**
+	 * Marcas efectivas de un rango de días laborales, agrupadas, en una sola consulta.
+	 *
+	 * @param int[]|null $trabajadores null = todos.
+	 * @return array<int, array<string, Marca[]>> trabajador_id => dia => marcas
+	 */
+	public static function delRango( ?array $trabajadores, string $desde, string $hasta ): array {
+		global $wpdb;
+
+		if ( is_array( $trabajadores ) && ! $trabajadores ) {
+			return array();
+		}
+
+		$m    = Tablas::nombre( 'marcas' );
+		$c    = Tablas::nombre( 'correcciones' );
+		$solo = is_array( $trabajadores ) ? 'AND m.trabajador_id IN (' . implode( ',', array_map( 'intval', $trabajadores ) ) . ')' : '';
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$filas = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT m.id, m.trabajador_id, m.dia_laboral, m.tipo, m.motivo_clave, m.marcado_utc FROM {$m} m
+				WHERE m.dia_laboral BETWEEN %s AND %s {$solo}
+				AND NOT EXISTS (
+					SELECT 1 FROM {$c} c WHERE c.marca_id = m.id AND c.estado = 'aprobada' AND c.accion IN ('anular', 'reemplazar')
+				)
+				ORDER BY m.marcado_utc, m.id",
+				$desde,
+				$hasta
+			),
+			ARRAY_A
+		);
+
+		$agrupadas = array();
+
+		foreach ( $filas as $fila ) {
+			$agrupadas[ (int) $fila['trabajador_id'] ][ $fila['dia_laboral'] ][] = new Marca(
+				TipoMarca::from( $fila['tipo'] ),
+				new DateTimeImmutable( $fila['marcado_utc'], new DateTimeZone( 'UTC' ) ),
+				Motivos::porClave( $fila['motivo_clave'] ),
+				(int) $fila['id']
+			);
+		}
+
+		return $agrupadas;
+	}
+
+	/**
+	 * Todas las filas de un día, incluidas las anuladas (con la columna "anulada"), para el detalle.
+	 *
+	 * @return array<int, array<string, mixed>>
+	 */
+	public static function filasConAnuladas( int $trabajadorId, string $dia ): array {
+		global $wpdb;
+
+		$m = Tablas::nombre( 'marcas' );
+		$c = Tablas::nombre( 'correcciones' );
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		return $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT m.*, (
+					SELECT c.justificacion FROM {$c} c WHERE c.marca_id = m.id AND c.estado = 'aprobada' AND c.accion IN ('anular', 'reemplazar') LIMIT 1
+				) AS anulada
+				FROM {$m} m WHERE m.trabajador_id = %d AND m.dia_laboral = %s ORDER BY m.marcado_utc, m.id",
+				$trabajadorId,
+				$dia
+			),
+			ARRAY_A
+		);
+	}
+
 	/** @return array<int, array<string, mixed>> */
 	public static function filasDelDia( int $trabajadorId, string $dia ): array {
 		global $wpdb;

@@ -42,5 +42,6 @@ if ( file_exists( PKA_DIR . 'vendor/autoload.php' ) ) {
 register_theme_directory( PKA_DIR . 'temas' );
 
 register_activation_hook( PKA_FILE, array( \Pekokis\Asistencia\WordPress\Instalador::class, 'activar' ) );
+register_deactivation_hook( PKA_FILE, array( \Pekokis\Asistencia\WordPress\Respaldo::class, 'desprogramar' ) );
 
 add_action( 'plugins_loaded', array( \Pekokis\Asistencia\WordPress\Plugin::class, 'iniciar' ) );

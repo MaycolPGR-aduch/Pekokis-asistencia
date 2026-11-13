@@ -27,6 +27,8 @@ final class Ajustes {
 			// Tomados del Libro de Reclamaciones; RR.HH. puede corregirlos.
 			'razon_social'    => 'FUSION ART SAC',
 			'ruc'             => '20523257146',
+			// Destino del respaldo mensual; vacío = correo del administrador.
+			'correo_rrhh'     => '',
 		);
 	}
 

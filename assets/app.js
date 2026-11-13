@@ -278,12 +278,107 @@
 
 		pintar(
 			el( 'h1', {}, [ 'Hola, ', el( 'em', { texto: datos.nombre } ) ] ),
+			datos.ayer ? aviso( 'error', datos.ayer.mensaje ) : null,
 			tarjeta,
 			mensaje || null,
 			botones,
 			listaHoy( datos.hoy ),
+			el( 'button', { class: 'secundario', type: 'button', texto: 'Olvidé marcar', alHacerClic: function () {
+				vistaOlvido( datos );
+			} } ),
 			el( 'button', { class: 'secundario', type: 'button', texto: 'Salir', alHacerClic: function () {
 				vistaInicio();
+			} } )
+		);
+	}
+
+	/** Solicitud de corrección: queda pendiente hasta que el jefe la apruebe. */
+	function vistaOlvido( datos ) {
+		var ayer = new Date( datos.fecha + 'T12:00:00' );
+		ayer.setDate( ayer.getDate() - 1 );
+		var fechaAyer = ayer.toISOString().slice( 0, 10 );
+
+		var fecha = el( 'select', { id: 'olvido-fecha' }, [
+			el( 'option', { value: datos.fecha, texto: 'Hoy' } ),
+			el( 'option', { value: fechaAyer, texto: 'Ayer' } ),
+		] );
+		if ( datos.ayer ) {
+			fecha.value = fechaAyer;
+		}
+
+		var tipo = el( 'select', { id: 'olvido-tipo' }, datos.olvido.map( function ( o ) {
+			return el( 'option', { value: o.clave, texto: o.etiqueta } );
+		} ) );
+		var motivo = el( 'select', { id: 'olvido-motivo' } );
+		var filaMotivo = el( 'div', {}, [ el( 'label', { for: 'olvido-motivo', texto: 'Motivo' } ), motivo ] );
+		var hora = el( 'input', { type: 'time', id: 'olvido-hora', required: 'required' } );
+		var detalle = el( 'textarea', { id: 'olvido-detalle', rows: '3', maxlength: '300', required: 'required' } );
+		var estado = el( 'div', {} );
+		var enviar = el( 'button', { class: 'principal', type: 'button', texto: 'Enviar a mi jefe' } );
+
+		function actualizarMotivos() {
+			var opcion = datos.olvido.filter( function ( o ) {
+				return o.clave === tipo.value;
+			} )[ 0 ];
+			motivo.replaceChildren.apply( motivo, opcion.motivos.map( function ( m ) {
+				return el( 'option', { value: m.clave, texto: m.nombre } );
+			} ) );
+			filaMotivo.hidden = opcion.motivos.length < 2;
+		}
+
+		tipo.addEventListener( 'change', actualizarMotivos );
+		if ( datos.ayer ) {
+			tipo.value = 'fin_jornada';
+		}
+		actualizarMotivos();
+
+		enviar.addEventListener( 'click', function () {
+			if ( ! sesion ) {
+				vistaInicio();
+				return;
+			}
+			enviar.disabled = true;
+			api( 'correcciones', {
+				ticket: sesion.ticket,
+				fecha: fecha.value,
+				hora: hora.value,
+				accion: tipo.value,
+				motivo: motivo.value || '',
+				justificacion: detalle.value,
+			} ).then( function ( r ) {
+				limpiarSesion();
+				pintar(
+					el( 'div', { class: 'hecho' }, [ el( 'div', { class: 'icono', 'aria-hidden': 'true', texto: '✔' } ) ] ),
+					el( 'h1', { texto: 'Solicitud enviada' } ),
+					aviso( 'ok', r.mensaje ),
+					el( 'button', { class: 'secundario', type: 'button', texto: 'Listo', alHacerClic: function () {
+						vistaInicio();
+					} } )
+				);
+			} ).catch( function ( error ) {
+				if ( 'pka_ticket' === error.codigo ) {
+					vistaInicio( aviso( 'error', error.message ) );
+					return;
+				}
+				enviar.disabled = false;
+				estado.replaceChildren( aviso( 'error', error.message ) );
+			} );
+		} );
+
+		pintar(
+			el( 'h1', {}, [ '¿Qué ', el( 'em', { texto: 'olvidaste' } ), '?' ] ),
+			el( 'p', { class: 'ayuda', texto: 'Tu jefe revisará la solicitud. La marca solo cuenta cuando la aprueba.' } ),
+			el( 'div', { class: 'formulario' }, [
+				el( 'div', {}, [ el( 'label', { for: 'olvido-fecha', texto: 'Día' } ), fecha ] ),
+				el( 'div', {}, [ el( 'label', { for: 'olvido-tipo', texto: 'Marca' } ), tipo ] ),
+				filaMotivo,
+				el( 'div', {}, [ el( 'label', { for: 'olvido-hora', texto: 'Hora' } ), hora ] ),
+				el( 'div', {}, [ el( 'label', { for: 'olvido-detalle', texto: '¿Qué pasó?' } ), detalle ] ),
+			] ),
+			enviar,
+			estado,
+			el( 'button', { class: 'secundario', type: 'button', texto: 'Volver', alHacerClic: function () {
+				vistaEstado( datos );
 			} } )
 		);
 	}

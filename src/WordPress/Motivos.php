@@ -2,6 +2,7 @@
 
 namespace Pekokis\Asistencia\WordPress;
 
+use Pekokis\Asistencia\Nucleo\Accion;
 use Pekokis\Asistencia\Nucleo\CategoriaMotivo;
 use Pekokis\Asistencia\Nucleo\Motivo;
 
@@ -49,6 +50,32 @@ final class Motivos {
 
 	public static function porClave( ?string $clave ): ?Motivo {
 		return null === $clave ? null : ( self::todos()[ $clave ] ?? null );
+	}
+
+	/**
+	 * Motivo elegido para una acción. Refrigerio y fin de jornada tienen uno solo:
+	 * si no se indicó, se usa ese. Devuelve null si no corresponde o no es válido.
+	 */
+	public static function paraAccion( Accion $accion, mixed $clave ): ?Motivo {
+		$categoria = $accion->categoria();
+
+		if ( null === $categoria ) {
+			return null;
+		}
+
+		$opciones = self::deCategoria( $categoria );
+
+		if ( 1 === count( $opciones ) && ( null === $clave || '' === $clave ) ) {
+			return $opciones[0];
+		}
+
+		foreach ( $opciones as $motivo ) {
+			if ( $motivo->clave === $clave ) {
+				return $motivo;
+			}
+		}
+
+		return null;
 	}
 
 	/** @return Motivo[] Motivos activos de una categoría, en orden. */

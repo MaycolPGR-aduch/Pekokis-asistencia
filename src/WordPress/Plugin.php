@@ -16,6 +16,7 @@ final class Plugin {
 		Endurecimiento::registrar();
 		Rutas::registrar();
 		Api::registrar();
+		Respaldo::registrar();
 
 		if ( is_admin() ) {
 			Admin\Menu::registrar();

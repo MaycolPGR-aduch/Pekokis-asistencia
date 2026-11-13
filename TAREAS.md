@@ -3,7 +3,7 @@
 Este archivo lleva lo hecho, lo pendiente y la bitácora del proyecto. Se actualiza cada vez que avanzamos.
 El detalle técnico de cada punto está en [docs/plan-tecnico.md](docs/plan-tecnico.md).
 
-**Estado actual:** MVP en marcha. En el WordPress local ya funcionan los perfiles, las passkeys, las marcas, la pantalla QR, el panel del día y la revisión de marcas: 74 pruebas del núcleo y 47 de punta a punta. Lo siguiente: "olvidé marcar" con marca manual del jefe, cierre del día, export mensual y luego el sitio en Hostinger para probar en celulares.
+**Estado actual:** el MVP funcional está completo en el WordPress local: perfiles, passkeys, marcas, pantalla QR, panel del día, revisión, correcciones, export mensual y respaldo. Lo cubren 81 pruebas del núcleo y 70 de punta a punta. Lo siguiente: montar el sitio en Hostinger para probar con celulares reales, y lo que queda de calidad (visor de auditoría, manifest/PWA, aviso de IP nueva).
 
 **Estrategia:** primero un MVP con las fases 0 y 1 del plan (registro de asistencia funcionando y conforme a la norma). Después, mejoras por etapas según lo que opine gerencia.
 
@@ -64,20 +64,30 @@ Leyenda: `[x]` hecho · `[ ]` pendiente · `[~]` en curso
   - se actualiza cada minuto;
   - el jefe ve solo a su equipo y RR.HH. ve a todos.
 - [x] Revisión de marcas: aprobar o rechazar emergencias y salidas personales o de salud. Para rechazar hay que escribir una nota; queda en la auditoría
-- [ ] Solicitud "olvidé marcar" y su aprobación
-- [ ] Marca manual del jefe con motivo
+- [x] Solicitud "olvidé marcar":
+  - el trabajador la pide desde la app (hoy o ayer, hora, marca y qué pasó), y la app le avisa si ayer quedó sin salida;
+  - el jefe la aprueba o la rechaza con nota en "Hoy".
+- [x] Marca manual del jefe y anulación de marcas, desde el detalle del día de cada trabajador:
+  - antes de aplicar, se revisa que el día quede lógico (no dos entradas seguidas, no salidas sin entrada);
+  - no se aceptan horas futuras ni de hace más de un mes;
+  - la marca anulada queda en la tabla, tachada.
 - [ ] Visor de auditoría
-- [ ] Cierre del día por cron: días incompletos y faltas a revisar
+- [x] ~~Cierre del día por cron~~ → se reemplazó por "Días anteriores por revisar" en Hoy (últimos 7 días, sin salida o laborables sin marcas). Se calcula al momento, así que nunca queda desactualizado cuando se aprueba una corrección
 
 ### 6. Exportes y respaldo
-- [ ] Export mensual del registro de asistencia (Excel + hash)
-- [ ] Respaldo mensual fuera de Hostinger (correo a RR.HH. y Google Drive)
+- [x] Export mensual del registro (Asistencia → Exportar), en Excel con tres hojas:
+  - "Registro": empleador, RUC, ingreso y salida por día, refrigerio, salidas y tiempo en el taller;
+  - "Marcas": todas, incluidas las anuladas, con prueba, origen, revisión y hash;
+  - "Integridad": estado de la cadena y último hash.
+
+  Cada descarga queda en la auditoría con el SHA-256 del archivo.
+- [~] Respaldo mensual: el día 1 a las 06:00 se envía por correo el Excel del mes anterior (destino configurable), y también se puede enviar a mano. En Hostinger hace falta que el correo del sitio funcione (SMTP) y el cron real. Falta Google Drive vía Make
 
 ### 7. Calidad y puesta en marcha
 - [x] Pruebas automáticas:
-  - 74 del núcleo (`composer test`);
-  - 47 de todo el flujo contra el WordPress local, con un autenticador simulado (`tests/integracion/flujo-marcas.php`);
-  - `tests/integracion/datos-demo.php` carga 5 trabajadores de ejemplo para ver el panel.
+  - 81 del núcleo (`composer test`);
+  - 70 de todo el flujo contra el WordPress local, con un autenticador simulado (`tests/integracion/flujo-marcas.php`);
+  - `tests/integracion/datos-demo.php` carga 5 trabajadores de ejemplo, con casos de hoy y de ayer, para ver el panel.
 - [ ] Pruebas en celulares reales: Android (Chrome) e iPhone (Safari)
 - [ ] Aviso de datos personales para los trabajadores (revisado por el abogado)
 - [ ] Piloto: una semana con 3 o 4 trabajadores y una semana con todos, en paralelo con el método actual
@@ -165,6 +175,13 @@ Vienen de la sección 16 del plan; se resuelven con gerencia y el contador.
   - La pantalla rota el código cada 30 s.
   - **Bug encontrado:** Ajustes daba error fatal porque `checked()` no acepta enums de PHP. Corregido.
 - Pendiente de decidir: la tardanza se cuenta desde las 9:00 cuando se pasa la tolerancia; está por confirmar con gerencia.
+- **Correcciones, export y respaldo**:
+  - Se agregó la librería `shuchkin/simplexlsxgen` 1.5.
+  - Clases nuevas: `Correcciones`, `Seguimiento`, `Exportes`, `Respaldo`, `Admin/PantallaDia` y `Admin/PantallaExportar`. En el núcleo, `TotalesDia` y `MaquinaEstados::problemaEnSecuencia` (7 pruebas).
+  - Rutas nuevas: `POST /correcciones`. La app tiene "Olvidé marcar" y el aviso de que ayer quedó sin salida.
+  - Ajustes: nuevo `correo_rrhh`. Cron diario `pka_diario`, que se desprograma al desactivar el plugin.
+- **Probado en el navegador**: aprobar una solicitud y anular una marca desde los formularios, el detalle del día, la página Exportar y la descarga del Excel (7 KB, con SHA-256 en la cabecera).
+- **Sin probar todavía**: el formulario "Olvidé marcar" de la app en pantalla, porque hace falta una passkey real (por la API sí está probado), y el envío real de correo (se probó interceptando `wp_mail`).
 
 ### 12-11-2026
 - Se definió el enfoque:
