@@ -1,0 +1,21 @@
+# Dependencias
+/vendor/
+/node_modules/
+
+# Configuración local y secretos
+.env
+.env.*
+!.env.example
+
+# Registros y artefactos
+.phpunit.cache/
+*.log
+*.zip
+/build/
+/dist/
+
+# Editores y sistema
+.idea/
+.vscode/
+Thumbs.db
+.DS_Store

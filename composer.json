@@ -1,0 +1,31 @@
+{
+	"name": "pekokis/asistencia",
+	"description": "Registro de asistencia del personal del taller de Pekokis (plugin de WordPress).",
+	"type": "wordpress-plugin",
+	"license": "proprietary",
+	"require": {
+		"php": ">=8.2"
+	},
+	"require-dev": {
+		"phpunit/phpunit": "^11.5"
+	},
+	"autoload": {
+		"psr-4": {
+			"Pekokis\\Asistencia\\": "src/"
+		}
+	},
+	"autoload-dev": {
+		"psr-4": {
+			"Pekokis\\Asistencia\\Pruebas\\": "tests/"
+		}
+	},
+	"config": {
+		"platform": {
+			"php": "8.2.0"
+		},
+		"sort-packages": true
+	},
+	"scripts": {
+		"test": "phpunit"
+	}
+}
