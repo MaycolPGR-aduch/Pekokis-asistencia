@@ -28,6 +28,7 @@ final class Api {
 	private const SEGUNDOS_TICKET   = 120;
 	private const MAX_FALLOS        = 10;
 	private const VENTANA_FALLOS    = 15 * MINUTE_IN_SECONDS;
+	private const MAX_FALLOS_QR     = 5;
 
 	public static function registrar(): void {
 		add_action( 'rest_api_init', array( self::class, 'rutas' ) );
@@ -42,6 +43,61 @@ final class Api {
 		register_rest_route( self::ESPACIO, '/identificar', array( 'methods' => 'POST', 'callback' => array( self::class, 'identificar' ), 'permission_callback' => $publica ) );
 		register_rest_route( self::ESPACIO, '/marcas', array( 'methods' => 'POST', 'callback' => array( self::class, 'marcar' ), 'permission_callback' => $publica ) );
 		register_rest_route( self::ESPACIO, '/presencia', array( 'methods' => 'GET', 'callback' => array( self::class, 'presencia' ), 'permission_callback' => $publica ) );
+		register_rest_route( self::ESPACIO, '/presencia/codigo', array( 'methods' => 'POST', 'callback' => array( self::class, 'presenciaCodigo' ), 'permission_callback' => $publica ) );
+		register_rest_route( self::ESPACIO, '/pantalla/codigo', array( 'methods' => 'GET', 'callback' => array( self::class, 'pantallaCodigo' ), 'permission_callback' => $publica ) );
+		register_rest_route(
+			self::ESPACIO,
+			'/pantalla/activar',
+			array(
+				'methods'             => 'POST',
+				'callback'            => array( self::class, 'pantallaActivar' ),
+				'permission_callback' => static fn(): bool => current_user_can( Capacidades::AJUSTES ),
+			)
+		);
+	}
+
+	/**
+	 * Valida el QR escaneado (token) o el código de 6 dígitos de la pantalla
+	 * y deja en este navegador un pase de presencia de unos minutos.
+	 */
+	public static function presenciaCodigo( WP_REST_Request $peticion ): WP_REST_Response|WP_Error {
+		if ( Temporales::bloqueado( 'qr|' . Peticion::ip(), self::MAX_FALLOS_QR ) ) {
+			return new WP_Error( 'pka_bloqueado', 'Demasiados códigos equivocados. Espera 15 minutos o conéctate al WiFi del taller.', array( 'status' => 429 ) );
+		}
+
+		$codigos  = Pantallas::codigos();
+		$token    = (string) $peticion->get_param( 'token' );
+		$codigo   = preg_replace( '/\D/', '', (string) $peticion->get_param( 'codigo' ) );
+		$activas  = Pantallas::activas();
+		$pantalla = '' !== $token ? $codigos->validarToken( $token, time() ) : $codigos->validarCodigo( $codigo, $activas, time() );
+
+		if ( null === $pantalla || ! in_array( $pantalla, $activas, true ) ) {
+			Temporales::sumarFallo( 'qr|' . Peticion::ip(), self::VENTANA_FALLOS );
+
+			return new WP_Error( 'pka_codigo', 'Ese código ya cambió o no es correcto. Escanea el QR de nuevo.', array( 'status' => 422 ) );
+		}
+
+		$pases = Presencia::pases();
+		Peticion::ponerCookie( Presencia::COOKIE_PASE, $pases->emitir( $pantalla, time() ), max( 60, (int) Ajustes::todos()['pase_minutos'] * MINUTE_IN_SECONDS ) );
+
+		return self::respuesta( array( 'ok' => true, 'mensaje' => 'QR leído. Ya puedes marcar.' ) );
+	}
+
+	/** La tablet pide el código vigente cada pocos segundos. */
+	public static function pantallaCodigo( WP_REST_Request $peticion ): WP_REST_Response|WP_Error {
+		$pantalla = Pantallas::deEsteEquipo();
+
+		if ( null === $pantalla ) {
+			return new WP_Error( 'pka_pantalla', 'Este equipo no está activado como pantalla.', array( 'status' => 401 ) );
+		}
+
+		return self::respuesta( Pantallas::codigoVigente( $pantalla, (string) $peticion->get_param( 'actual' ) ) );
+	}
+
+	public static function pantallaActivar( WP_REST_Request $peticion ): WP_REST_Response {
+		$id = Pantallas::activarEsteEquipo( sanitize_text_field( (string) $peticion->get_param( 'nombre' ) ) );
+
+		return self::respuesta( array( 'id' => $id ) );
 	}
 
 	public static function activacionOpciones( WP_REST_Request $peticion ): WP_REST_Response|WP_Error {

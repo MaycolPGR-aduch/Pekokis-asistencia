@@ -68,10 +68,14 @@
 	}
 
 	function api( ruta, cuerpo, metodo ) {
+		var cabeceras = { 'Content-Type': 'application/json' };
+		if ( config.nonce ) {
+			cabeceras[ 'X-WP-Nonce' ] = config.nonce;
+		}
 		return fetch( config.api + ruta, {
 			method: metodo || 'POST',
 			credentials: 'same-origin',
-			headers: { 'Content-Type': 'application/json' },
+			headers: cabeceras,
 			body: cuerpo ? JSON.stringify( cuerpo ) : undefined,
 		} ).then( function ( r ) {
 			return r.json().catch( function () {
@@ -332,9 +336,152 @@
 				vistaInicio( aviso( 'error', error.message ) );
 				return;
 			}
+			if ( 'pka_sin_presencia' === error.codigo && error.datos.acepta_qr ) {
+				vistaEstado( datos, formularioCodigo( error.message, function () {
+					enviarMarca( datos, accion, motivo, nota );
+				} ) );
+				return;
+			}
 			vistaEstado( datos, aviso( 'error', error.message ) );
 			actualizarPresencia();
 		} );
+	}
+
+	/** Pide el código de 6 dígitos de la pantalla y, si es correcto, reintenta la marca. */
+	function formularioCodigo( mensaje, reintentar ) {
+		var entrada = el( 'input', { type: 'text', id: 'codigo', inputmode: 'numeric', autocomplete: 'one-time-code', maxlength: '6', pattern: '[0-9]{6}' } );
+		var estado = el( 'div', {} );
+		var boton = el( 'button', { class: 'principal', type: 'button', texto: 'Validar código y marcar' } );
+
+		boton.addEventListener( 'click', function () {
+			boton.disabled = true;
+			api( 'presencia/codigo', { codigo: entrada.value } ).then( reintentar ).catch( function ( error ) {
+				boton.disabled = false;
+				estado.replaceChildren( aviso( 'error', error.message ) );
+			} );
+		} );
+
+		return el( 'div', { class: 'tarjeta' }, [
+			aviso( 'error', mensaje ),
+			el( 'p', { class: 'ayuda', texto: 'Escribe el código de 6 números que se ve debajo del QR en la pantalla de la entrada.' } ),
+			el( 'label', { for: 'codigo', texto: 'Código de la pantalla' } ),
+			entrada,
+			el( 'div', { class: 'botones' }, [ boton ] ),
+			estado,
+		] );
+	}
+
+	/** Si se llegó escaneando el QR (/m?q=…), valida la presencia antes de seguir. */
+	function leerQr() {
+		var token = new URLSearchParams( location.search ).get( 'q' );
+		if ( ! token ) {
+			return Promise.resolve( null );
+		}
+		history.replaceState( null, '', config.inicio );
+		return api( 'presencia/codigo', { token: token } ).then( function ( r ) {
+			return aviso( 'ok', r.mensaje );
+		}, function ( error ) {
+			return aviso( 'error', error.message );
+		} );
+	}
+
+	// ---------- pantalla de la entrada ----------
+
+	function vistaPantalla() {
+		var tokenActual = '';
+		var img = el( 'img', { class: 'qr', alt: 'Código QR para marcar asistencia' } );
+		var codigo = el( 'p', { class: 'codigo-pantalla', 'aria-label': 'Código' } );
+		var cuenta = el( 'p', { class: 'cuenta' } );
+		var hora = el( 'p', { class: 'hora-pantalla' } );
+		var estado = el( 'p', { class: 'aviso error', hidden: 'hidden', texto: 'Sin conexión. Los trabajadores pueden marcar con el WiFi del taller.' } );
+		var restantes = 30;
+		var pintada = false;
+
+		function pedir() {
+			// Con enlaces permanentes "simples", la URL de la API ya trae "?rest_route=".
+			var separador = -1 === config.api.indexOf( '?' ) ? '?' : '&';
+			api( 'pantalla/codigo' + separador + 'actual=' + encodeURIComponent( tokenActual ), null, 'GET' ).then( function ( r ) {
+				estado.hidden = true;
+				if ( ! pintada ) {
+					// Se dibuja recién con el primer código, para no mostrar un marco vacío.
+					pintada = true;
+					pintar(
+						el( 'h1', {}, [ 'Escanea para ', el( 'em', { texto: 'marcar' } ) ] ),
+						el( 'div', { class: 'tarjeta marco-qr' }, [ img ] ),
+						el( 'p', { class: 'ayuda', texto: 'Si tu cámara no lo lee, escribe este código:' } ),
+						codigo,
+						cuenta,
+						hora,
+						estado
+					);
+				}
+				if ( r.qr ) {
+					img.src = r.qr;
+				}
+				tokenActual = r.token;
+				codigo.textContent = r.codigo.slice( 0, 3 ) + ' ' + r.codigo.slice( 3 );
+				hora.textContent = r.hora;
+				restantes = r.segundos;
+				setTimeout( pedir, Math.min( r.segundos, 10 ) * 1000 + 300 );
+			} ).catch( function ( error ) {
+				if ( 'pka_pantalla' === error.codigo ) {
+					vistaActivarPantalla();
+					return;
+				}
+				estado.hidden = false;
+				setTimeout( pedir, 5000 );
+			} );
+		}
+
+		setInterval( function () {
+			restantes = Math.max( 0, restantes - 1 );
+			cuenta.textContent = 'Cambia en ' + restantes + ' s';
+		}, 1000 );
+
+		// Que la tablet no se apague.
+		if ( navigator.wakeLock ) {
+			var pedirLuz = function () {
+				navigator.wakeLock.request( 'screen' ).catch( function () {} );
+			};
+			pedirLuz();
+			document.addEventListener( 'visibilitychange', function () {
+				if ( 'visible' === document.visibilityState ) {
+					pedirLuz();
+				}
+			} );
+		}
+
+		pedir();
+	}
+
+	function vistaActivarPantalla() {
+		if ( ! config.nonce ) {
+			pintar(
+				el( 'h1', { texto: 'Pantalla sin activar' } ),
+				el( 'p', { texto: 'Para usar este equipo como pantalla del QR, un administrador debe iniciar sesión en este mismo equipo y volver a abrir esta página.' } )
+			);
+			return;
+		}
+
+		var nombre = el( 'input', { type: 'text', id: 'nombre-pantalla', value: 'Pantalla de la entrada', maxlength: '80' } );
+		var boton = el( 'button', { class: 'principal', type: 'button', texto: 'Usar este equipo como pantalla' } );
+		var estado = el( 'div', {} );
+
+		boton.addEventListener( 'click', function () {
+			boton.disabled = true;
+			api( 'pantalla/activar', { nombre: nombre.value } ).then( vistaPantalla ).catch( function ( error ) {
+				boton.disabled = false;
+				estado.replaceChildren( aviso( 'error', error.message ) );
+			} );
+		} );
+
+		pintar(
+			el( 'h1', {}, [ 'Activar ', el( 'em', { texto: 'pantalla' } ) ] ),
+			el( 'p', { texto: 'Este equipo mostrará el QR que cambia cada 30 segundos. Déjalo enchufado en la entrada del taller.' } ),
+			el( 'div', {}, [ el( 'label', { for: 'nombre-pantalla', texto: 'Nombre' } ), nombre ] ),
+			boton,
+			estado
+		);
 	}
 
 	function listaHoy( hoy ) {
@@ -363,7 +510,11 @@
 
 	if ( 'activar' === config.vista ) {
 		vistaActivar();
+	} else if ( 'pantalla' === config.vista ) {
+		vistaPantalla();
 	} else {
-		vistaInicio();
+		leerQr().then( function ( mensaje ) {
+			vistaInicio( mensaje );
+		} );
 	}
 }() );

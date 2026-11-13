@@ -3,7 +3,7 @@
 Este archivo lleva lo hecho, lo pendiente y la bitácora del proyecto. Se actualiza cada vez que avanzamos.
 El detalle técnico de cada punto está en [docs/plan-tecnico.md](docs/plan-tecnico.md).
 
-**Estado actual:** MVP en marcha. En el WordPress local ya funciona todo el flujo: perfiles, activación con passkey, identificación con huella y marcas, con 30 comprobaciones automáticas. Lo siguiente: pantalla QR, panel del día y correcciones.
+**Estado actual:** MVP en marcha. En el WordPress local ya funcionan los perfiles, las passkeys, las marcas, la pantalla QR, el panel del día y la revisión de marcas: 74 pruebas del núcleo y 47 de punta a punta. Lo siguiente: "olvidé marcar" con marca manual del jefe, cierre del día, export mensual y luego el sitio en Hostinger para probar en celulares.
 
 **Estrategia:** primero un MVP con las fases 0 y 1 del plan (registro de asistencia funcionando y conforme a la norma). Después, mejoras por etapas según lo que opine gerencia.
 
@@ -45,17 +45,25 @@ Leyenda: `[x]` hecho · `[ ]` pendiente · `[~]` en curso
 
 ### 3. Presencia
 - [x] Redes autorizadas y modo de presencia (Asistencia → Ajustes): muestra tu IP, avisa si es CGNAT, permite agregar, activar y desactivar redes, y elegir uno de los 4 modos
-- [~] Pantalla QR: los tokens y el código de 6 dígitos cada 30 s están hechos; falta la página de la tablet y su activación
-- [~] Pase de presencia por QR o código: el pase firmado de 3 min está hecho y la marca ya lo lee de la cookie. Falta la ruta que valida el QR o el código, y su límite de intentos
-- [ ] Alertas en el panel: pantalla sin conexión e IP nueva
+- [x] Pantalla QR en `/pantalla/`:
+  - se activa desde la misma tablet, con un administrador con sesión iniciada;
+  - muestra el QR (SVG generado en el servidor con `chillerlan/php-qrcode`), el código de 6 dígitos, la cuenta regresiva y la hora;
+  - mantiene la pantalla encendida (Wake Lock);
+  - las pantallas se pueden desactivar en Ajustes.
+- [x] Pase de presencia: `/m?q=…` (el QR escaneado) o el código de 6 dígitos que se escribe en la app cuando no está en el WiFi; luego se reintenta la marca sin volver a poner la huella. Límite de 5 códigos fallidos por IP cada 15 min
+- [~] Alertas en el panel: pantalla sin conexión hecha (más de 5 min); falta el aviso de IP nueva
 
 ### 4. Marcas
 - [x] Máquina de estados, validación en el servidor, antirrebote y cadena de hashes. Usa un candado por trabajador y otro para la cadena en MySQL. API: `/identificar`, `/marcas` y `/presencia`
-- [~] App del trabajador en `/` y `/activar/`: estado, botones válidos, motivos, nota, marcas de hoy y aviso de presencia. Falta probarla en un navegador real, el manifest/PWA y "mis marcas" del mes
+- [~] App del trabajador en `/` y `/activar/`: estado, botones válidos, motivos, nota, marcas de hoy, aviso de presencia y código de la pantalla. Ya se vio en el navegador (pantallas de inicio y de la tablet). Falta probar la huella real, el manifest/PWA y "mis marcas" del mes
 - [x] Salida por emergencia sin presencia, marcada para revisión
 
 ### 5. Revisión y auditoría
-- [ ] Panel del día: presentes, tarde, ausentes, en refrigerio y fuera
+- [x] Panel del día (Asistencia → Hoy):
+  - muestra ausentes, quién llegó tarde (con los minutos), en refrigerio (avisa si se pasó del tiempo), fuera con motivo, presentes, por llegar y quién terminó;
+  - se actualiza cada minuto;
+  - el jefe ve solo a su equipo y RR.HH. ve a todos.
+- [x] Revisión de marcas: aprobar o rechazar emergencias y salidas personales o de salud. Para rechazar hay que escribir una nota; queda en la auditoría
 - [ ] Solicitud "olvidé marcar" y su aprobación
 - [ ] Marca manual del jefe con motivo
 - [ ] Visor de auditoría
@@ -67,8 +75,9 @@ Leyenda: `[x]` hecho · `[ ]` pendiente · `[~]` en curso
 
 ### 7. Calidad y puesta en marcha
 - [x] Pruebas automáticas:
-  - 65 del núcleo (`composer test`);
-  - 30 de todo el flujo contra el WordPress local, con un autenticador simulado (`tests/integracion/flujo-marcas.php`).
+  - 74 del núcleo (`composer test`);
+  - 47 de todo el flujo contra el WordPress local, con un autenticador simulado (`tests/integracion/flujo-marcas.php`);
+  - `tests/integracion/datos-demo.php` carga 5 trabajadores de ejemplo para ver el panel.
 - [ ] Pruebas en celulares reales: Android (Chrome) e iPhone (Safari)
 - [ ] Aviso de datos personales para los trabajadores (revisado por el abogado)
 - [ ] Piloto: una semana con 3 o 4 trabajadores y una semana con todos, en paralelo con el método actual
@@ -146,6 +155,16 @@ Vienen de la sección 16 del plan; se resuelven con gerencia y el contador.
   - la app y las pantallas de wp-admin en un navegador real (la lógica ya se probó por la API);
   - una passkey real con huella, en Windows Hello o en un celular.
 - Decisión: el refrigerio y el fin de jornada no piden elegir motivo, porque cada uno tiene uno solo.
+- **Pantalla QR, panel del día y revisión**:
+  - Se agregó la librería `chillerlan/php-qrcode` 6.0.
+  - Clases nuevas: `Pantallas`, `Horarios`, `Revisiones` y `Admin/PantallaHoy`. En el núcleo, `HorarioDelDia` y `ResumenDia` (9 pruebas).
+  - El menú Asistencia ahora abre en "Hoy"; Trabajadores pasó a `page=pka-trabajadores`.
+  - Rutas nuevas: `/pantalla/`, `/m`, `POST /presencia/codigo`, `GET /pantalla/codigo` y `POST /pantalla/activar` (solo administradores, con nonce).
+- **Revisión en el navegador** (WordPress local servido con `php -S` en `http://localhost:8080`, con un ajuste solo local en `wp-config.php`):
+  - Hoy, Trabajadores, Ajustes, la app y la pantalla se ven bien.
+  - La pantalla rota el código cada 30 s.
+  - **Bug encontrado:** Ajustes daba error fatal porque `checked()` no acepta enums de PHP. Corregido.
+- Pendiente de decidir: la tardanza se cuenta desde las 9:00 cuando se pasa la tolerancia; está por confirmar con gerencia.
 
 ### 12-11-2026
 - Se definió el enfoque:

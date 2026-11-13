@@ -14,22 +14,16 @@ final class Menu {
 
 	public static function registrar(): void {
 		add_action( 'admin_menu', array( self::class, 'menu' ) );
+		PantallaHoy::registrar();
 		PantallaTrabajadores::registrar();
 		PantallaAjustes::registrar();
 	}
 
 	public static function menu(): void {
-		add_menu_page(
-			'Asistencia',
-			'Asistencia',
-			Capacidades::GESTIONAR_PERSONAL,
-			self::SLUG,
-			array( PantallaTrabajadores::class, 'pintar' ),
-			'dashicons-clock',
-			3
-		);
+		add_menu_page( 'Asistencia de hoy', 'Asistencia', Capacidades::VER_EQUIPO, self::SLUG, array( PantallaHoy::class, 'pintar' ), 'dashicons-clock', 3 );
 
-		add_submenu_page( self::SLUG, 'Trabajadores', 'Trabajadores', Capacidades::GESTIONAR_PERSONAL, self::SLUG, array( PantallaTrabajadores::class, 'pintar' ) );
+		add_submenu_page( self::SLUG, 'Asistencia de hoy', 'Hoy', Capacidades::VER_EQUIPO, self::SLUG, array( PantallaHoy::class, 'pintar' ) );
+		add_submenu_page( self::SLUG, 'Trabajadores', 'Trabajadores', Capacidades::GESTIONAR_PERSONAL, PantallaTrabajadores::SLUG, array( PantallaTrabajadores::class, 'pintar' ) );
 		add_submenu_page( self::SLUG, 'Ajustes de asistencia', 'Ajustes', Capacidades::AJUSTES, PantallaAjustes::SLUG, array( PantallaAjustes::class, 'pintar' ) );
 	}
 

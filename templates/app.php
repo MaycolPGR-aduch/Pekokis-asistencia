@@ -20,7 +20,7 @@ defined( 'ABSPATH' ) || exit;
 	<script type="application/json" id="pka-config"><?php echo wp_json_encode( $config ); ?></script>
 	<script src="<?php echo esc_url( Rutas::asset( 'app.js' ) ); ?>" defer></script>
 </head>
-<body>
+<body class="vista-<?php echo esc_attr( $config['vista'] ); ?>">
 	<main class="app" id="app" aria-live="polite">
 		<header class="cabecera">
 			<span class="marca">Pekokis</span>

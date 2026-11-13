@@ -8,6 +8,7 @@ use Pekokis\Asistencia\Nucleo\RedAutorizada;
 use Pekokis\Asistencia\WordPress\Ajustes;
 use Pekokis\Asistencia\WordPress\Auditoria;
 use Pekokis\Asistencia\WordPress\Capacidades;
+use Pekokis\Asistencia\WordPress\Pantallas;
 use Pekokis\Asistencia\WordPress\Peticion;
 use Pekokis\Asistencia\WordPress\Presencia;
 use Pekokis\Asistencia\WordPress\Tablas;
@@ -24,6 +25,52 @@ final class PantallaAjustes {
 		add_action( 'admin_post_pka_guardar_modo', array( self::class, 'guardarModo' ) );
 		add_action( 'admin_post_pka_agregar_red', array( self::class, 'agregarRed' ) );
 		add_action( 'admin_post_pka_cambiar_red', array( self::class, 'cambiarRed' ) );
+		add_action( 'admin_post_pka_cambiar_pantalla', array( self::class, 'cambiarPantalla' ) );
+	}
+
+	private static function pantallas(): void {
+		$pantallas = Pantallas::listar();
+		$limite    = gmdate( 'Y-m-d H:i:s', time() - Pantallas::SEGUNDOS_SIN_CONEXION );
+		?>
+		<h2>Pantallas del QR</h2>
+		<p>
+			Para activar una tablet: inicia sesión con tu usuario en esa tablet y abre
+			<a href="<?php echo esc_url( home_url( '/pantalla/' ) ); ?>" target="_blank" rel="noopener"><code><?php echo esc_html( home_url( '/pantalla/' ) ); ?></code></a>.
+			Después puedes cerrar la sesión: la pantalla sigue funcionando.
+		</p>
+		<table class="widefat striped">
+			<thead><tr><th>Nombre</th><th>Última conexión</th><th>IP</th><th>Estado</th><th></th></tr></thead>
+			<tbody>
+			<?php if ( ! $pantallas ) : ?>
+				<tr><td colspan="5">Todavía no hay pantallas. Sin ellas, la presencia solo se prueba con el WiFi del taller.</td></tr>
+			<?php endif; ?>
+			<?php foreach ( $pantallas as $p ) : ?>
+				<?php $apagada = $p['activa'] && ( null === $p['ultima_conexion'] || $p['ultima_conexion'] < $limite ); ?>
+				<tr>
+					<td><?php echo esc_html( $p['nombre'] ); ?></td>
+					<td><?php echo $p['ultima_conexion'] ? esc_html( get_date_from_gmt( $p['ultima_conexion'], 'd/m H:i' ) ) : '—'; ?><?php echo $apagada ? ' <strong style="color:#b32d2e">sin conexión</strong>' : ''; ?></td>
+					<td><code><?php echo esc_html( $p['ultima_ip'] ); ?></code></td>
+					<td><?php echo $p['activa'] ? 'Activa' : 'Desactivada'; ?></td>
+					<td><a href="<?php echo esc_url( Menu::urlAccion( 'pka_cambiar_pantalla', array( 'id' => $p['id'] ) ) ); ?>"><?php echo $p['activa'] ? 'Desactivar' : 'Activar'; ?></a></td>
+				</tr>
+			<?php endforeach; ?>
+			</tbody>
+		</table>
+		<?php
+	}
+
+	public static function cambiarPantalla(): void {
+		self::exigir( 'pka_cambiar_pantalla' );
+
+		$id = isset( $_GET['id'] ) ? absint( $_GET['id'] ) : 0;
+
+		foreach ( Pantallas::listar() as $p ) {
+			if ( (int) $p['id'] === $id ) {
+				Pantallas::cambiarEstado( $id, ! $p['activa'] );
+			}
+		}
+
+		Menu::volver( self::SLUG );
 	}
 
 	public static function pintar(): void {
@@ -47,7 +94,7 @@ final class PantallaAjustes {
 				<fieldset>
 					<?php foreach ( ModoPresencia::cases() as $opcion ) : ?>
 						<label style="display:block;margin:6px 0">
-							<input type="radio" name="modo" value="<?php echo esc_attr( $opcion->value ); ?>" <?php checked( $modo, $opcion ); ?>>
+							<input type="radio" name="modo" value="<?php echo esc_attr( $opcion->value ); ?>" <?php checked( $modo->value, $opcion->value ); ?>>
 							<?php echo esc_html( $opcion->etiqueta() ); ?>
 						</label>
 					<?php endforeach; ?>
@@ -100,6 +147,8 @@ final class PantallaAjustes {
 				<?php endforeach; ?>
 				</tbody>
 			</table>
+
+			<?php self::pantallas(); ?>
 		</div>
 		<?php
 	}

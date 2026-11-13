@@ -13,6 +13,8 @@ defined( 'ABSPATH' ) || exit;
  * Asistencia → Trabajadores: alta, edición, enlace de activación y cese.
  */
 final class PantallaTrabajadores {
+	public const SLUG = 'pka-trabajadores';
+
 	private const CAMPOS = array(
 		'dni'           => 'DNI',
 		'nombres'       => 'Nombres',
@@ -56,7 +58,7 @@ final class PantallaTrabajadores {
 		$estado   = isset( $_GET['estado'] ) && Trabajadores::CESADO === $_GET['estado'] ? Trabajadores::CESADO : Trabajadores::ACTIVO; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$busqueda = isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$filas    = Trabajadores::listar( $estado, $busqueda );
-		$base     = admin_url( 'admin.php?page=' . Menu::SLUG );
+		$base     = admin_url( 'admin.php?page=' . self::SLUG );
 		?>
 		<h1 class="wp-heading-inline">Trabajadores</h1>
 		<a href="<?php echo esc_url( add_query_arg( 'vista', 'editar', $base ) ); ?>" class="page-title-action">Agregar trabajador</a>
@@ -68,7 +70,7 @@ final class PantallaTrabajadores {
 		</ul>
 
 		<form method="get" class="search-form" style="float:right;margin:8px 0">
-			<input type="hidden" name="page" value="<?php echo esc_attr( Menu::SLUG ); ?>">
+			<input type="hidden" name="page" value="<?php echo esc_attr( self::SLUG ); ?>">
 			<input type="hidden" name="estado" value="<?php echo esc_attr( $estado ); ?>">
 			<label class="screen-reader-text" for="pka-buscar">Buscar trabajador</label>
 			<input type="search" id="pka-buscar" name="s" value="<?php echo esc_attr( $busqueda ); ?>" placeholder="Nombre, DNI o área">
@@ -206,11 +208,11 @@ final class PantallaTrabajadores {
 				5 * MINUTE_IN_SECONDS
 			);
 			Avisos::agregar( 'error', esc_html( $result->get_error_message() ) );
-			Menu::volver( Menu::SLUG, array( 'vista' => 'editar' ) + ( $id ? array( 'id' => $id ) : array() ) );
+			Menu::volver( self::SLUG, array( 'vista' => 'editar' ) + ( $id ? array( 'id' => $id ) : array() ) );
 		}
 
 		Avisos::agregar( 'success', $id ? 'Cambios guardados.' : 'Trabajador agregado. Ahora genera su <strong>enlace de activación</strong> para que active su celular.' );
-		Menu::volver( Menu::SLUG );
+		Menu::volver( self::SLUG );
 	}
 
 	public static function enlace(): void {
@@ -221,7 +223,7 @@ final class PantallaTrabajadores {
 
 		if ( ! $t || Trabajadores::ACTIVO !== $t['estado'] ) {
 			Avisos::agregar( 'error', 'Ese trabajador no existe o está cesado.' );
-			Menu::volver( Menu::SLUG );
+			Menu::volver( self::SLUG );
 		}
 
 		$url = Activaciones::generar( $id );
@@ -232,7 +234,7 @@ final class PantallaTrabajadores {
 			. '<input type="text" readonly class="large-text code" value="' . esc_attr( $url ) . '"><br>'
 			. 'Entrégaselo en persona o por WhatsApp; debe abrirlo en su propio celular. Este enlace no se vuelve a mostrar.'
 		);
-		Menu::volver( Menu::SLUG );
+		Menu::volver( self::SLUG );
 	}
 
 	public static function cesar(): void {
@@ -245,11 +247,11 @@ final class PantallaTrabajadores {
 
 		if ( $result instanceof WP_Error ) {
 			Avisos::agregar( 'error', esc_html( $result->get_error_message() ) );
-			Menu::volver( Menu::SLUG, array( 'vista' => 'cesar', 'id' => $id ) );
+			Menu::volver( self::SLUG, array( 'vista' => 'cesar', 'id' => $id ) );
 		}
 
 		Avisos::agregar( 'success', 'Trabajador cesado. Su celular y su llave quedaron desactivados.' );
-		Menu::volver( Menu::SLUG );
+		Menu::volver( self::SLUG );
 	}
 
 	/** @param array<string, string> $errores */

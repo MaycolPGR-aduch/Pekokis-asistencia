@@ -203,3 +203,47 @@ input[type="text"] {
 .presencia.ok { color: var(--ok); }
 
 .cargando { color: var(--gris); }
+
+input[type="text"][inputmode="numeric"] {
+	font-size: 1.6rem;
+	letter-spacing: .3em;
+	text-align: center;
+	font-variant-numeric: tabular-nums;
+	margin-bottom: 12px;
+}
+
+/* Pantalla de la entrada (tablet) */
+.vista-pantalla .app { max-width: 720px; text-align: center; }
+.vista-pantalla .presencia { display: none; }
+.vista-pantalla h1 { font-size: 2.2rem; }
+
+.marco-qr {
+	align-self: center;
+	width: min(80vw, 62vh, 520px);
+	padding: 12px;
+	background: #fff;
+}
+
+.qr {
+	display: block;
+	width: 100%;
+	height: auto;
+	aspect-ratio: 1;
+	image-rendering: pixelated;
+}
+
+.codigo-pantalla {
+	font-size: clamp(2.4rem, 9vw, 4.5rem);
+	font-weight: 800;
+	letter-spacing: .12em;
+	font-variant-numeric: tabular-nums;
+	color: var(--rosa);
+}
+
+.cuenta { color: var(--gris); font-variant-numeric: tabular-nums; }
+
+.hora-pantalla {
+	font-size: 1.6rem;
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+}

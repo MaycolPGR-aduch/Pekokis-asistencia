@@ -44,7 +44,7 @@ $api = static function ( string $metodo, string $ruta, array $cuerpo = array() )
 };
 
 // ---- Preparación: tablas vacías, una red autorizada y la IP del "WiFi del taller".
-foreach ( array( 'trabajadores', 'marcas', 'auditoria', 'credenciales', 'dispositivos', 'activaciones', 'redes', 'correcciones' ) as $tabla ) {
+foreach ( array( 'trabajadores', 'marcas', 'auditoria', 'credenciales', 'dispositivos', 'activaciones', 'redes', 'correcciones', 'pantallas', 'revisiones' ) as $tabla ) {
 	$wpdb->query( 'TRUNCATE TABLE ' . Tablas::nombre( $tabla ) ); // phpcs:ignore
 }
 $wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE '\\_transient\\_pka\\_%' OR option_name LIKE '\\_transient\\_timeout\\_pka\\_%'" ); // phpcs:ignore
@@ -130,6 +130,61 @@ $comprobar( 'regreso aceptado', 200 === $st && 2 === count( array_filter( $r['ho
 [ $st, $r ] = $api( 'POST', 'marcas', array( 'ticket' => $id4['ticket'], 'accion' => 'salida_refrigerio' ) );
 $comprobar( 'refrigerio sin elegir motivo (tiene uno solo)', 200 === $st && str_starts_with( $r['mensaje'], 'Refrigerio' ), wp_json_encode( $r ) );
 
+// ---- 3b. Pantalla QR (fuera del WiFi).
+WP_CLI::line( '3b. Pantalla QR' );
+$_SERVER['REMOTE_ADDR'] = '198.51.100.7';
+$cookiesCelular         = $_COOKIE;
+$_COOKIE                = array(); // La tablet es otro navegador.
+[ $st ] = $api( 'GET', 'pantalla/codigo' );
+$comprobar( 'un equipo sin activar no recibe códigos', 401 === $st );
+$pantalla = \Pekokis\Asistencia\WordPress\Pantallas::activarEsteEquipo( 'Entrada' );
+[ $st, $cod ] = $api( 'GET', 'pantalla/codigo' );
+$comprobar( 'la pantalla recibe token, código de 6 dígitos y QR', 200 === $st && preg_match( '/^\d{6}$/', $cod['codigo'] ) && str_starts_with( (string) $cod['qr'], 'data:image/svg+xml' ), wp_json_encode( array_diff_key( $cod, array( 'qr' => 1 ) ) ) );
+$peticion = new WP_REST_Request( 'GET', '/asistencia/v1/pantalla/codigo' );
+$peticion->set_param( 'actual', $cod['token'] );
+$comprobar( 'si el token no cambió, no reenvía el QR', null === rest_do_request( $peticion )->get_data()['qr'] );
+$_COOKIE = $cookiesCelular; // Vuelve el celular.
+
+[ , $id5 ] = $identificar();
+[ $st ] = $api( 'POST', 'presencia/codigo', array( 'codigo' => '000000' === $cod['codigo'] ? '111111' : '000000' ) );
+$comprobar( 'código equivocado se rechaza', 422 === $st );
+[ $st, $r ] = $api( 'POST', 'presencia/codigo', array( 'token' => $cod['token'] ) );
+$comprobar( 'el QR escaneado deja un pase de presencia', 200 === $st && '' !== ( $_COOKIE[ Presencia::COOKIE_PASE ] ?? '' ), wp_json_encode( $r ) );
+[ $st, $r ] = $api( 'POST', 'marcas', array( 'ticket' => $id5['ticket'], 'accion' => 'regreso' ) );
+$comprobar( 'regreso del refrigerio por QR, sin WiFi', 200 === $st && str_ends_with( $r['mensaje'], 'QR' ), wp_json_encode( $r ) );
+
+unset( $_COOKIE[ Presencia::COOKIE_PASE ] );
+[ , $id6 ] = $identificar();
+[ $st ] = $api( 'POST', 'presencia/codigo', array( 'codigo' => $cod['codigo'] ) );
+$comprobar( 'el código de 6 dígitos también sirve', 200 === $st );
+\Pekokis\Asistencia\WordPress\Pantallas::cambiarEstado( $pantalla, false );
+[ $st, $r ] = $api( 'POST', 'marcas', array( 'ticket' => $id6['ticket'], 'accion' => 'salida_temporal', 'motivo' => 'personal' ) );
+$comprobar( 'si se desactiva la pantalla, su pase deja de valer', 422 === $st && 'pka_sin_presencia' === $r['code'], wp_json_encode( $r ) );
+\Pekokis\Asistencia\WordPress\Pantallas::cambiarEstado( $pantalla, true );
+[ $st, $r ] = $api( 'POST', 'marcas', array( 'ticket' => $id6['ticket'], 'accion' => 'salida_temporal', 'motivo' => 'personal' ) );
+$comprobar( 'salida personal por QR, queda para aprobación', 200 === $st && true === $r['revision'] );
+$_SERVER['REMOTE_ADDR'] = '203.0.113.10';
+
+// ---- 3c. Revisión del jefe.
+WP_CLI::line( '3c. Revisión' );
+$pendientes = \Pekokis\Asistencia\WordPress\Revisiones::pendientes( null );
+$comprobar( 'hay 2 marcas por revisar (emergencia y personal)', 2 === count( $pendientes ), (string) count( $pendientes ) );
+$comprobar( 'un jefe sin equipo no ve nada', array() === \Pekokis\Asistencia\WordPress\Revisiones::pendientes( array() ) );
+$comprobar( 'rechazar sin nota no se permite', is_wp_error( \Pekokis\Asistencia\WordPress\Revisiones::resolver( (int) $pendientes[0]['id'], 'rechazada', '' ) ) );
+$comprobar( 'aprobar', true === \Pekokis\Asistencia\WordPress\Revisiones::resolver( (int) $pendientes[0]['id'], 'aprobada', 'Avisó por WhatsApp' ) );
+$comprobar( 'no se revisa dos veces', is_wp_error( \Pekokis\Asistencia\WordPress\Revisiones::resolver( (int) $pendientes[0]['id'], 'aprobada', '' ) ) );
+$comprobar( 'queda 1 pendiente', 1 === count( \Pekokis\Asistencia\WordPress\Revisiones::pendientes( null ) ) );
+
+$hoy     = \Pekokis\Asistencia\WordPress\Ajustes::diaLaboral()->de( new DateTimeImmutable( 'now', new DateTimeZone( 'UTC' ) ) );
+$resumen = \Pekokis\Asistencia\Nucleo\ResumenDia::calcular(
+	\Pekokis\Asistencia\WordPress\Marcas::delDia( $id, $hoy ),
+	\Pekokis\Asistencia\WordPress\Horarios::delDia( $horario, $hoy ),
+	$hoy,
+	\Pekokis\Asistencia\WordPress\Ajustes::zona(),
+	new DateTimeImmutable( 'now', new DateTimeZone( 'UTC' ) )
+);
+$comprobar( 'el panel del día la ve fuera por motivo personal', 'fuera' === $resumen->situacion && 'personal' === $resumen->motivoActual?->clave, $resumen->situacion );
+
 // ---- 4. Cese.
 WP_CLI::line( '4. Cese' );
 $comprobar( 'cese sin motivo se rechaza', is_wp_error( Trabajadores::cesar( $id, gmdate( 'Y-m-d' ), '' ) ) );
@@ -140,7 +195,7 @@ $comprobar( 'ya no puede identificarse', 401 === $st, (string) $st );
 // ---- 5. Integridad.
 WP_CLI::line( '5. Integridad' );
 $marcas = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Tablas::nombre( 'marcas' ) ); // phpcs:ignore
-$comprobar( '4 marcas guardadas', 4 === $marcas, (string) $marcas );
+$comprobar( '6 marcas guardadas', 6 === $marcas, (string) $marcas );
 $comprobar( 'cadena de marcas íntegra', null === InsercionEncadenada::verificar( 'marcas' ) );
 $comprobar( 'cadena de auditoría íntegra', null === InsercionEncadenada::verificar( 'auditoria' ) );
 $acciones = $wpdb->get_col( 'SELECT accion FROM ' . Tablas::nombre( 'auditoria' ) . ' ORDER BY id' ); // phpcs:ignore

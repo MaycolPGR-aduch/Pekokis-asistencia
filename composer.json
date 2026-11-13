@@ -5,6 +5,7 @@
 	"license": "proprietary",
 	"require": {
 		"php": ">=8.2",
+		"chillerlan/php-qrcode": "^6.0",
 		"lbuchs/webauthn": "^2.2"
 	},
 	"require-dev": {
