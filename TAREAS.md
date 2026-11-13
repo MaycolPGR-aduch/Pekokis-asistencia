@@ -3,7 +3,7 @@
 Este archivo lleva lo hecho, lo pendiente y la bitácora del proyecto. Se actualiza cada vez que avanzamos.
 El detalle técnico de cada punto está en [docs/plan-tecnico.md](docs/plan-tecnico.md).
 
-**Estado actual:** MVP en marcha. El núcleo en PHP puro está hecho y probado. Lo siguiente es montar un WordPress local para probar el instalador, y después passkeys y la API de marcas.
+**Estado actual:** MVP en marcha. El núcleo y el instalador están hechos y probados en un WordPress local (Laragon). Lo siguiente: perfiles de trabajadores, passkeys y la API de marcas.
 
 **Estrategia:** primero un MVP con las fases 0 y 1 del plan (registro de asistencia funcionando y conforme a la norma). Después, mejoras por etapas según lo que opine gerencia.
 
@@ -21,12 +21,15 @@ Leyenda: `[x]` hecho · `[ ]` pendiente · `[~]` en curso
 - [ ] Revisar qué mide el 77 % de "Uso de recursos" del plan de Hostinger antes de agregar otro sitio
 - [ ] Crear el sitio en Hostinger, aparte del staging
 - [ ] Subdominio `asistencia.pekokis.com` en Cloudflare en modo solo DNS, más SSL de Hostinger
-- [ ] Entorno local de desarrollo con datos de prueba (Laragon tiene MySQL pero no está corriendo, y no hay WordPress local)
+- [x] Entorno local con Laragon:
+  - WordPress 7.1 en español en `C:\laragon\www\asistencia` (`http://asistencia.test`), con base de datos `pka_asistencia` y WP-CLI en `C:\laragon\bin\wp-cli\wp-cli.phar`.
+  - El plugin está enlazado (junction) a esta carpeta, así que los cambios se ven al instante.
+  - El usuario de prueba está en `.env.local`, que no se sube al repositorio.
 - [ ] Conseguir la tablet para la pantalla QR y su soporte en la entrada
 
 ### 1. Base
 - [x] Núcleo en PHP puro (`src/Nucleo`) con 59 pruebas automáticas: estados, validación de marcas, presencia por IP y QR, pase de presencia, cadena de hashes y día laboral
-- [~] Esqueleto del plugin, tema vacío, instalador (13 tablas, roles `pka_jefe` y `pka_rrhh`, motivos y horario base) y endurecimiento básico. Está escrito, pero falta probarlo en un WordPress real
+- [x] Esqueleto del plugin, tema vacío, instalador (13 tablas, roles `pka_jefe` y `pka_rrhh`, motivos y horario base) y endurecimiento básico. Probado en WordPress 7.1 local
 - [ ] Perfiles de trabajadores: alta, edición con auditoría y cese
 - [~] Horario base 9:00–19:30 con 5 min de tolerancia y 60 min de refrigerio: se crea al instalar, pero falta su pantalla
 - [x] Motivos de salida por defecto (catálogo en el núcleo; se cargan al instalar)
@@ -110,6 +113,22 @@ Vienen de la sección 16 del plan; se resuelven con gerencia y el contador.
   - El esquema se actualiza solo cuando cambia la versión de la base de datos, porque el despliegue con `git pull` no ejecuta el hook de activación.
 - Decisión de diseño: los trabajadores no son usuarios de WordPress, se identifican solo con su passkey. Se actualizó el plan (secciones 3, 4, 6.1 y 7).
 - Primer commit `e842da8` subido a GitHub (`origin/main`).
+- Entorno local con Laragon:
+  - MySQL 8.4 arranca bien y se creó la base `pka_asistencia`.
+  - La descarga de WordPress y WP-CLI desde internet quedó bloqueada por los permisos de Claude Code. Maycol dio permiso y se instaló WordPress 7.1 en español.
+- **Instalador probado en WordPress local**:
+  - El plugin se activa sin errores ni avisos en `debug.log`.
+  - Están las 13 tablas `wp_pka_*` con sus índices.
+  - Los 7 motivos tienen sus reglas, y el horario base es de lunes a viernes, de 9:00 a 19:30, con 5 min de tolerancia y 60 min de refrigerio.
+  - Los roles tienen sus capacidades, y el administrador las tiene todas.
+  - Los ajustes están cargados, y el secreto tiene 64 caracteres y no se autocarga.
+  - Volver a ejecutar el instalador (al desactivar y activar, o al cambiar la versión) no duplica nada.
+  - El tema vacío se activa desde la carpeta del plugin.
+  - Endurecimiento: XML-RPC y las contraseñas de aplicación están apagados, `/wp/v2/users` devuelve 404 a los anónimos y `blog_public` vale 0.
+- Detalle: `stylesheet_root` guarda la ruta real del plugin. En local apunta a la carpeta de Downloads por el junction; en Hostinger el plugin estará dentro de `wp-content`.
+- Notas del entorno:
+  - `wp db query` no funciona en esta PC porque `mysql` no está en el PATH; se usa el cliente de Laragon.
+  - MySQL se arrancó desde Claude con `mysqld --standalone`; también se puede arrancar desde Laragon.
 
 ### 12-11-2026
 - Se definió el enfoque:
