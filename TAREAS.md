@@ -3,7 +3,7 @@
 Este archivo lleva lo hecho, lo pendiente y la bitácora del proyecto. Se actualiza cada vez que avanzamos.
 El detalle técnico de cada punto está en [docs/plan-tecnico.md](docs/plan-tecnico.md).
 
-**Estado actual:** MVP en marcha. El núcleo y el instalador están hechos y probados en un WordPress local (Laragon). Lo siguiente: perfiles de trabajadores, passkeys y la API de marcas.
+**Estado actual:** MVP en marcha. En el WordPress local ya funciona todo el flujo: perfiles, activación con passkey, identificación con huella y marcas, con 30 comprobaciones automáticas. Lo siguiente: pantalla QR, panel del día y correcciones.
 
 **Estrategia:** primero un MVP con las fases 0 y 1 del plan (registro de asistencia funcionando y conforme a la norma). Después, mejoras por etapas según lo que opine gerencia.
 
@@ -22,7 +22,7 @@ Leyenda: `[x]` hecho · `[ ]` pendiente · `[~]` en curso
 - [ ] Crear el sitio en Hostinger, aparte del staging
 - [ ] Subdominio `asistencia.pekokis.com` en Cloudflare en modo solo DNS, más SSL de Hostinger
 - [x] Entorno local con Laragon:
-  - WordPress 7.1 en español en `C:\laragon\www\asistencia` (`http://asistencia.test`), con base de datos `pka_asistencia` y WP-CLI en `C:\laragon\bin\wp-cli\wp-cli.phar`.
+  - WordPress 7.1 en español en `C:\laragon\www\asistencia` (`https://asistencia.test`; las passkeys exigen HTTPS, así que hay que activar el SSL de Laragon para abrirlo en el navegador), con base de datos `pka_asistencia` y WP-CLI en `C:\laragon\bin\wp-cli\wp-cli.phar`.
   - El plugin está enlazado (junction) a esta carpeta, así que los cambios se ven al instante.
   - El usuario de prueba está en `.env.local`, que no se sube al repositorio.
 - [ ] Conseguir la tablet para la pantalla QR y su soporte en la entrada
@@ -30,25 +30,29 @@ Leyenda: `[x]` hecho · `[ ]` pendiente · `[~]` en curso
 ### 1. Base
 - [x] Núcleo en PHP puro (`src/Nucleo`) con 59 pruebas automáticas: estados, validación de marcas, presencia por IP y QR, pase de presencia, cadena de hashes y día laboral
 - [x] Esqueleto del plugin, tema vacío, instalador (13 tablas, roles `pka_jefe` y `pka_rrhh`, motivos y horario base) y endurecimiento básico. Probado en WordPress 7.1 local
-- [ ] Perfiles de trabajadores: alta, edición con auditoría y cese
+- [x] Perfiles de trabajadores (Asistencia → Trabajadores):
+  - alta y edición con motivo, todo registrado en la auditoría;
+  - cese, que revoca el celular y la llave;
+  - búsqueda y lista de activos y cesados.
 - [~] Horario base 9:00–19:30 con 5 min de tolerancia y 60 min de refrigerio: se crea al instalar, pero falta su pantalla
 - [x] Motivos de salida por defecto (catálogo en el núcleo; se cargan al instalar)
 
 ### 2. Identidad (passkeys)
-- [ ] Enlace de activación de un solo uso y registro de la passkey
-- [ ] Identificación con huella y ticket de marca (2 min, un uso)
-- [ ] Un celular por trabajador; revocar passkey y celular
+- [x] Enlace de activación de un solo uso: vence en 24 h y el token va después de `#`. Con él se registra la passkey, con verificación del usuario obligatoria y attestation "none"
+- [x] Identificación con huella y ticket de marca (2 min, un solo uso). Límite de 10 fallos por IP cada 15 min
+- [x] Un celular por trabajador. Al cesar se revocan el celular y la passkey; para cambiar de celular se genera un enlace nuevo
+- [ ] Al activar un celular nuevo, revocar automáticamente la passkey del anterior
 
 ### 3. Presencia
-- [~] Redes autorizadas y modo de presencia: el núcleo está hecho (IP exacta, rangos, prefijo IPv6, detección de CGNAT y los 4 modos); falta la pantalla de administración
+- [x] Redes autorizadas y modo de presencia (Asistencia → Ajustes): muestra tu IP, avisa si es CGNAT, permite agregar, activar y desactivar redes, y elegir uno de los 4 modos
 - [~] Pantalla QR: los tokens y el código de 6 dígitos cada 30 s están hechos; falta la página de la tablet y su activación
-- [~] Pase de presencia por QR o código: el pase firmado de 3 min está hecho; falta la API y el límite de intentos
+- [~] Pase de presencia por QR o código: el pase firmado de 3 min está hecho y la marca ya lo lee de la cookie. Falta la ruta que valida el QR o el código, y su límite de intentos
 - [ ] Alertas en el panel: pantalla sin conexión e IP nueva
 
 ### 4. Marcas
-- [~] Máquina de estados, validación en el servidor, antirrebote y cadena de hashes: el núcleo está hecho y probado; falta guardar las marcas en la base de datos (con bloqueo para la cadena) y la API
-- [ ] App del trabajador (PWA): estado, botones válidos, marcar y "mis marcas"
-- [ ] Salida por emergencia sin presencia, marcada para revisión
+- [x] Máquina de estados, validación en el servidor, antirrebote y cadena de hashes. Usa un candado por trabajador y otro para la cadena en MySQL. API: `/identificar`, `/marcas` y `/presencia`
+- [~] App del trabajador en `/` y `/activar/`: estado, botones válidos, motivos, nota, marcas de hoy y aviso de presencia. Falta probarla en un navegador real, el manifest/PWA y "mis marcas" del mes
+- [x] Salida por emergencia sin presencia, marcada para revisión
 
 ### 5. Revisión y auditoría
 - [ ] Panel del día: presentes, tarde, ausentes, en refrigerio y fuera
@@ -62,7 +66,9 @@ Leyenda: `[x]` hecho · `[ ]` pendiente · `[~]` en curso
 - [ ] Respaldo mensual fuera de Hostinger (correo a RR.HH. y Google Drive)
 
 ### 7. Calidad y puesta en marcha
-- [x] Pruebas automáticas de validación de marcas (núcleo: `composer test`)
+- [x] Pruebas automáticas:
+  - 65 del núcleo (`composer test`);
+  - 30 de todo el flujo contra el WordPress local, con un autenticador simulado (`tests/integracion/flujo-marcas.php`).
 - [ ] Pruebas en celulares reales: Android (Chrome) e iPhone (Safari)
 - [ ] Aviso de datos personales para los trabajadores (revisado por el abogado)
 - [ ] Piloto: una semana con 3 o 4 trabajadores y una semana con todos, en paralelo con el método actual
@@ -129,6 +135,17 @@ Vienen de la sección 16 del plan; se resuelven con gerencia y el contador.
 - Notas del entorno:
   - `wp db query` no funciona en esta PC porque `mysql` no está en el PATH; se usa el cliente de Laragon.
   - MySQL se arrancó desde Claude con `mysqld --standalone`; también se puede arrancar desde Laragon.
+- **Perfiles, passkeys y marcas**:
+  - Se agregó la librería `lbuchs/webauthn` 2.2 (Composer).
+  - Clases nuevas en `src/WordPress`: `Trabajadores`, `Activaciones`, `Dispositivos`, `Passkeys`, `Marcas`, `Motivos`, `Presencia`, `Auditoria`, `InsercionEncadenada`, `Temporales`, `Peticion`, `Api` y `Rutas`. En `Admin/` van las pantallas Trabajadores y Ajustes.
+  - En el núcleo, `ValidacionTrabajador` valida los datos del perfil, y `Base64Url` ahora también decodifica.
+  - App del trabajador sin dependencias (`assets/app.js` y `app.css`), con CSP estricta.
+- **Bug encontrado por la prueba de punta a punta**: el reto de la passkey es binario y se perdía al guardarlo en un transient (columna de texto utf8mb4). Ahora se guarda en base64url. Sin la prueba habría fallado en producción.
+- El sitio local ahora es `https://asistencia.test`. Para abrirlo en el navegador hay que activar el SSL de Laragon (Menú → Apache → SSL).
+- **Sin probar todavía**:
+  - la app y las pantallas de wp-admin en un navegador real (la lógica ya se probó por la API);
+  - una passkey real con huella, en Windows Hello o en un celular.
+- Decisión: el refrigerio y el fin de jornada no piden elegir motivo, porque cada uno tiene uno solo.
 
 ### 12-11-2026
 - Se definió el enfoque:

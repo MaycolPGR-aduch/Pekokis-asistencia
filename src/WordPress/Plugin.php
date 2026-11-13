@@ -14,7 +14,13 @@ final class Plugin {
 		Instalador::actualizarSiHaceFalta();
 
 		Endurecimiento::registrar();
+		Rutas::registrar();
+		Api::registrar();
 
-		// Próximos bloques del MVP: API REST, app del trabajador, pantalla QR y panel de administración.
+		if ( is_admin() ) {
+			Admin\Menu::registrar();
+		}
+
+		// Próximos bloques del MVP: pantalla QR, panel del día, correcciones y exportes.
 	}
 }

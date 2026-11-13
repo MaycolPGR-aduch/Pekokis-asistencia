@@ -1,0 +1,337 @@
+<?php
+
+namespace Pekokis\Asistencia\WordPress;
+
+use DateTimeImmutable;
+use DateTimeZone;
+use Pekokis\Asistencia\Nucleo\Accion;
+use Pekokis\Asistencia\Nucleo\Estado;
+use Pekokis\Asistencia\Nucleo\MaquinaEstados;
+use Pekokis\Asistencia\Nucleo\Motivo;
+use Pekokis\Asistencia\Nucleo\SolicitudMarca;
+use Pekokis\Asistencia\Nucleo\ValidadorMarca;
+use WP_Error;
+use WP_REST_Request;
+use WP_REST_Response;
+
+defined( 'ABSPATH' ) || exit;
+
+/**
+ * API de la app del trabajador (/wp-json/asistencia/v1/...).
+ *
+ * Los trabajadores no inician sesión en WordPress: cada ruta valida su propio
+ * token (enlace de activación, reto de passkey o ticket de marca).
+ */
+final class Api {
+	public const ESPACIO = 'asistencia/v1';
+
+	private const SEGUNDOS_TICKET   = 120;
+	private const MAX_FALLOS        = 10;
+	private const VENTANA_FALLOS    = 15 * MINUTE_IN_SECONDS;
+
+	public static function registrar(): void {
+		add_action( 'rest_api_init', array( self::class, 'rutas' ) );
+	}
+
+	public static function rutas(): void {
+		$publica = '__return_true';
+
+		register_rest_route( self::ESPACIO, '/activacion/opciones', array( 'methods' => 'POST', 'callback' => array( self::class, 'activacionOpciones' ), 'permission_callback' => $publica ) );
+		register_rest_route( self::ESPACIO, '/activacion/completar', array( 'methods' => 'POST', 'callback' => array( self::class, 'activacionCompletar' ), 'permission_callback' => $publica ) );
+		register_rest_route( self::ESPACIO, '/identificar/opciones', array( 'methods' => 'POST', 'callback' => array( self::class, 'identificarOpciones' ), 'permission_callback' => $publica ) );
+		register_rest_route( self::ESPACIO, '/identificar', array( 'methods' => 'POST', 'callback' => array( self::class, 'identificar' ), 'permission_callback' => $publica ) );
+		register_rest_route( self::ESPACIO, '/marcas', array( 'methods' => 'POST', 'callback' => array( self::class, 'marcar' ), 'permission_callback' => $publica ) );
+		register_rest_route( self::ESPACIO, '/presencia', array( 'methods' => 'GET', 'callback' => array( self::class, 'presencia' ), 'permission_callback' => $publica ) );
+	}
+
+	public static function activacionOpciones( WP_REST_Request $peticion ): WP_REST_Response|WP_Error {
+		if ( $bloqueo = self::bloqueado() ) {
+			return $bloqueo;
+		}
+
+		$activacion = Activaciones::vigente( (string) $peticion->get_param( 'token' ) );
+
+		if ( null === $activacion ) {
+			self::sumarFallo();
+
+			return new WP_Error( 'pka_enlace', 'Este enlace ya se usó o venció. Pide uno nuevo a RR.HH.', array( 'status' => 404 ) );
+		}
+
+		if ( Dispositivos::perteneceAOtro( (int) $activacion['id'] ) ) {
+			return new WP_Error( 'pka_celular_ocupado', 'Este celular ya está activado para otra persona. Cada trabajador usa su propio celular.', array( 'status' => 409 ) );
+		}
+
+		$opciones = Passkeys::opcionesDeRegistro( $activacion, (int) $activacion['activacion_id'] );
+
+		return self::respuesta(
+			array(
+				'nombre'    => $activacion['nombres'],
+				'reto'      => $opciones['reto'],
+				'publicKey' => $opciones['publicKey'],
+			)
+		);
+	}
+
+	public static function activacionCompletar( WP_REST_Request $peticion ): WP_REST_Response|WP_Error {
+		$activacion = Activaciones::vigente( (string) $peticion->get_param( 'token' ) );
+
+		if ( null === $activacion ) {
+			return new WP_Error( 'pka_enlace', 'Este enlace ya se usó o venció. Pide uno nuevo a RR.HH.', array( 'status' => 404 ) );
+		}
+
+		$trabajadorId = (int) $activacion['id'];
+
+		if ( Dispositivos::perteneceAOtro( $trabajadorId ) ) {
+			return new WP_Error( 'pka_celular_ocupado', 'Este celular ya está activado para otra persona. Cada trabajador usa su propio celular.', array( 'status' => 409 ) );
+		}
+
+		$dispositivo = Dispositivos::vincular( $trabajadorId );
+		$credencial  = Passkeys::completarRegistro( (string) $peticion->get_param( 'reto' ), (array) $peticion->get_param( 'credencial' ), $trabajadorId, $dispositivo );
+
+		if ( $credencial instanceof WP_Error ) {
+			return $credencial;
+		}
+
+		Activaciones::consumir( (int) $activacion['activacion_id'] );
+		Auditoria::registrar( 'passkey.registrar', 'trabajador', $trabajadorId, null, array( 'credencial_id' => $credencial, 'dispositivo_id' => $dispositivo ), '', $trabajadorId );
+
+		return self::respuesta( array( 'nombre' => $activacion['nombres'] ) );
+	}
+
+	public static function identificarOpciones(): WP_REST_Response|WP_Error {
+		if ( $bloqueo = self::bloqueado() ) {
+			return $bloqueo;
+		}
+
+		return self::respuesta( Passkeys::opcionesDeIdentificacion() );
+	}
+
+	public static function identificar( WP_REST_Request $peticion ): WP_REST_Response|WP_Error {
+		if ( $bloqueo = self::bloqueado() ) {
+			return $bloqueo;
+		}
+
+		$credencial = Passkeys::identificar( (string) $peticion->get_param( 'reto' ), (array) $peticion->get_param( 'credencial' ) );
+
+		if ( $credencial instanceof WP_Error ) {
+			self::sumarFallo();
+
+			return $credencial;
+		}
+
+		$trabajadorId  = (int) $credencial['trabajador_id'];
+		$dispositivo   = Dispositivos::actual();
+		$dispositivoId = $dispositivo && (int) $dispositivo['trabajador_id'] === $trabajadorId ? (int) $dispositivo['id'] : null;
+
+		if ( $dispositivoId ) {
+			Dispositivos::tocar( $dispositivoId );
+		}
+
+		$ticket = Temporales::guardar(
+			'ticket',
+			array(
+				'trabajador_id'  => $trabajadorId,
+				'credencial_id'  => (int) $credencial['id'],
+				'dispositivo_id' => $dispositivoId,
+			),
+			self::SEGUNDOS_TICKET
+		);
+
+		return self::respuesta( array( 'ticket' => $ticket, 'segundos' => self::SEGUNDOS_TICKET ) + self::estadoDe( $trabajadorId ) );
+	}
+
+	public static function marcar( WP_REST_Request $peticion ): WP_REST_Response|WP_Error {
+		$clave  = (string) $peticion->get_param( 'ticket' );
+		$ticket = Temporales::leer( 'ticket', $clave );
+
+		if ( null === $ticket ) {
+			return new WP_Error( 'pka_ticket', 'Pasaron más de 2 minutos. Vuelve a poner tu huella.', array( 'status' => 401 ) );
+		}
+
+		$trabajador = Trabajadores::buscar( $ticket['trabajador_id'] );
+
+		if ( null === $trabajador || Trabajadores::ACTIVO !== $trabajador['estado'] ) {
+			return new WP_Error( 'pka_trabajador', 'Tu usuario no está activo. Habla con RR.HH.', array( 'status' => 403 ) );
+		}
+
+		$accion = Accion::tryFrom( (string) $peticion->get_param( 'accion' ) );
+
+		if ( null === $accion ) {
+			return new WP_Error( 'pka_accion', 'Acción desconocida.', array( 'status' => 400 ) );
+		}
+
+		$motivo       = self::motivoDe( $accion, $peticion->get_param( 'motivo' ) );
+		$trabajadorId = (int) $trabajador['id'];
+		$candado      = 'pka_marca_' . $trabajadorId;
+		global $wpdb;
+
+		// Un trabajador a la vez: decidir y guardar no se pueden cruzar con un doble toque.
+		if ( '1' !== (string) $wpdb->get_var( $wpdb->prepare( 'SELECT GET_LOCK(%s, 10)', $candado ) ) ) {
+			return new WP_Error( 'pka_ocupado', 'El sistema está ocupado. Intenta de nuevo.', array( 'status' => 503 ) );
+		}
+
+		try {
+			$ahora     = new DateTimeImmutable( 'now', new DateTimeZone( 'UTC' ) );
+			$dia       = Ajustes::diaLaboral()->de( $ahora );
+			$contexto  = Presencia::contexto();
+			$validador = new ValidadorMarca( Ajustes::modoPresencia(), (int) Ajustes::todos()['antirrebote_seg'] );
+			$resultado = $validador->decidir( Marcas::delDia( $trabajadorId, $dia ), new SolicitudMarca( $accion->tipo(), $motivo ), $contexto, $ahora );
+
+			if ( $resultado->esRechazada() ) {
+				// El ticket sigue vivo: puede escanear el QR y reintentar sin volver a poner la huella.
+				return new WP_Error(
+					'pka_' . $resultado->codigo,
+					$resultado->mensaje,
+					array( 'status' => 422, 'acepta_qr' => 'sin_presencia' === $resultado->codigo && Ajustes::modoPresencia()->aceptaQr() )
+				);
+			}
+
+			if ( $resultado->esRebote() ) {
+				$marca = $resultado->marcaExistente;
+				Temporales::borrar( 'ticket', $clave );
+
+				return self::respuesta(
+					array(
+						'resultado' => 'rebote',
+						'mensaje'   => 'Ya estaba registrada a las ' . Marcas::horaLocal( $marca->marcadoUtc ) . '.',
+					) + self::estadoDe( $trabajadorId )
+				);
+			}
+
+			$id = Marcas::registrar(
+				array(
+					'trabajador_id'     => $trabajadorId,
+					'tipo'              => $accion->tipo(),
+					'motivo_clave'      => $motivo?->clave,
+					'nota'              => sanitize_text_field( (string) $peticion->get_param( 'nota' ) ),
+					'marcado'           => $ahora,
+					'prueba'            => $resultado->prueba,
+					'requiere_revision' => $resultado->requiereRevision,
+					'dispositivo_id'    => $ticket['dispositivo_id'],
+					'credencial_id'     => $ticket['credencial_id'],
+					'pantalla_id'       => $contexto->pantallaQr,
+					'origen'            => 'trabajador',
+				)
+			);
+		} finally {
+			$wpdb->query( $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', $candado ) );
+		}
+
+		Temporales::borrar( 'ticket', $clave );
+
+		$texto = ( $motivo ? $motivo->nombre : $accion->etiqueta() ) . ' · ' . Marcas::horaLocal( $ahora ) . ' · ' . Marcas::etiquetaPrueba( $resultado->prueba );
+
+		return self::respuesta(
+			array(
+				'resultado' => 'aceptada',
+				'marca_id'  => $id,
+				'mensaje'   => $texto,
+				'revision'  => $resultado->requiereRevision,
+			) + self::estadoDe( $trabajadorId )
+		);
+	}
+
+	public static function presencia(): WP_REST_Response {
+		$modo     = Ajustes::modoPresencia();
+		$contexto = Presencia::contexto();
+		$prueba   = $modo->evaluar( $contexto );
+
+		return self::respuesta(
+			array(
+				'en_red'    => $contexto->enRedDelTaller,
+				'qr'        => $contexto->tieneQr(),
+				'cumple'    => null !== $prueba,
+				'modo'      => $modo->value,
+				'acepta_qr' => $modo->aceptaQr(),
+				'mensaje'   => null === $prueba ? $modo->mensajeSinPresencia( $contexto ) : 'Estás en el taller.',
+			)
+		);
+	}
+
+	/**
+	 * Estado actual, botones válidos y marcas de hoy para la app.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private static function estadoDe( int $trabajadorId ): array {
+		$trabajador = Trabajadores::buscar( $trabajadorId );
+		$dia        = Ajustes::diaLaboral()->de( new DateTimeImmutable( 'now', new DateTimeZone( 'UTC' ) ) );
+		$marcas     = MaquinaEstados::ordenar( Marcas::delDia( $trabajadorId, $dia ) );
+		$estado     = MaquinaEstados::estadoActual( $marcas );
+		$ultima     = $marcas ? $marcas[ count( $marcas ) - 1 ] : null;
+
+		$acciones = array();
+
+		foreach ( MaquinaEstados::acciones( $estado ) as $accion ) {
+			$categoria  = $accion->categoria();
+			$acciones[] = array(
+				'clave'    => $accion->value,
+				'etiqueta' => $accion->etiqueta(),
+				'motivos'  => null === $categoria ? array() : array_map(
+					static fn( Motivo $m ): array => array( 'clave' => $m->clave, 'nombre' => $m->nombre ),
+					Motivos::deCategoria( $categoria )
+				),
+			);
+		}
+
+		return array(
+			'nombre'   => $trabajador ? $trabajador['nombres'] : '',
+			'estado'   => array(
+				'clave'    => $estado->value,
+				'etiqueta' => $estado->etiqueta(),
+				'desde'    => $ultima && Estado::FUERA !== $estado ? Marcas::horaLocal( $ultima->marcadoUtc ) : null,
+			),
+			'acciones' => $acciones,
+			'hoy'      => array_map(
+				static fn( $m ): array => array(
+					'hora'  => Marcas::horaLocal( $m->marcadoUtc ),
+					'texto' => $m->motivo ? 'Salida · ' . $m->motivo->nombre : 'Entrada',
+				),
+				$marcas
+			),
+		);
+	}
+
+	private static function motivoDe( Accion $accion, mixed $clave ): ?Motivo {
+		$categoria = $accion->categoria();
+
+		if ( null === $categoria ) {
+			return null;
+		}
+
+		$opciones = Motivos::deCategoria( $categoria );
+
+		// Refrigerio y fin de jornada tienen un solo motivo: no hace falta elegirlo.
+		if ( 1 === count( $opciones ) && ( null === $clave || '' === $clave ) ) {
+			return $opciones[0];
+		}
+
+		foreach ( $opciones as $motivo ) {
+			if ( $motivo->clave === $clave ) {
+				return $motivo;
+			}
+		}
+
+		return null; // El validador responde "Elige el motivo de la salida".
+	}
+
+	private static function bloqueado(): ?WP_Error {
+		if ( Temporales::bloqueado( 'ip|' . Peticion::ip(), self::MAX_FALLOS ) ) {
+			return new WP_Error( 'pka_bloqueado', 'Demasiados intentos fallidos. Espera 15 minutos.', array( 'status' => 429 ) );
+		}
+
+		return null;
+	}
+
+	private static function sumarFallo(): void {
+		Temporales::sumarFallo( 'ip|' . Peticion::ip(), self::VENTANA_FALLOS );
+	}
+
+	/** @param array<string, mixed> $datos */
+	private static function respuesta( array $datos ): WP_REST_Response {
+		$respuesta = new WP_REST_Response( $datos );
+		$respuesta->header( 'Cache-Control', 'no-store' );
+
+		return $respuesta;
+	}
+}
