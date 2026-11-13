@@ -14,6 +14,19 @@ final class Plugin {
 		Instalador::actualizarSiHaceFalta();
 
 		Endurecimiento::registrar();
+
+		if ( ! Diagnostico::libreriasCargadas() ) {
+			// Sin vendor/ no hay passkeys, QR ni Excel: mejor un aviso claro que un error fatal.
+			add_action(
+				'admin_notices',
+				static function (): void {
+					echo '<div class="notice notice-error"><p><strong>Pekokis Asistencia:</strong> faltan las librerías (carpeta vendor/). Instala el plugin desde el zip empaquetado o ejecuta <code>composer install --no-dev</code>.</p></div>';
+				}
+			);
+
+			return;
+		}
+
 		Rutas::registrar();
 		Api::registrar();
 		Respaldo::registrar();

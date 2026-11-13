@@ -8,6 +8,7 @@ use Pekokis\Asistencia\Nucleo\RedAutorizada;
 use Pekokis\Asistencia\WordPress\Ajustes;
 use Pekokis\Asistencia\WordPress\Auditoria;
 use Pekokis\Asistencia\WordPress\Capacidades;
+use Pekokis\Asistencia\WordPress\Diagnostico;
 use Pekokis\Asistencia\WordPress\Pantallas;
 use Pekokis\Asistencia\WordPress\Peticion;
 use Pekokis\Asistencia\WordPress\Presencia;
@@ -26,6 +27,30 @@ final class PantallaAjustes {
 		add_action( 'admin_post_pka_agregar_red', array( self::class, 'agregarRed' ) );
 		add_action( 'admin_post_pka_cambiar_red', array( self::class, 'cambiarRed' ) );
 		add_action( 'admin_post_pka_cambiar_pantalla', array( self::class, 'cambiarPantalla' ) );
+	}
+
+	/** Estado del sistema: sirve para comprobar el despliegue. */
+	private static function diagnostico(): void {
+		$puntos   = Diagnostico::revisar();
+		$pendient = array_filter( $puntos, static fn( array $p ): bool => Diagnostico::BIEN !== $p['estado'] );
+		$iconos   = array( Diagnostico::BIEN => '✔', Diagnostico::AVISO => '⚠', Diagnostico::PROBLEMA => '✘' );
+		$colores  = array( Diagnostico::BIEN => '#00733a', Diagnostico::AVISO => '#b26200', Diagnostico::PROBLEMA => '#b32d2e' );
+		?>
+		<details <?php echo $pendient ? 'open' : ''; ?> style="background:#fff;border:1px solid #c3c4c7;padding:8px 16px;margin:12px 0 24px">
+			<summary style="cursor:pointer;font-weight:600">
+				Estado del sistema: <?php echo $pendient ? esc_html( count( $pendient ) . ' punto(s) por revisar' ) : '✔ todo en orden'; ?>
+			</summary>
+			<ul style="margin:12px 0">
+				<?php foreach ( $puntos as $p ) : ?>
+					<li>
+						<span style="color:<?php echo esc_attr( $colores[ $p['estado'] ] ); ?>;font-weight:700" aria-hidden="true"><?php echo esc_html( $iconos[ $p['estado'] ] ); ?></span>
+						<strong><?php echo esc_html( $p['tema'] ); ?></strong>
+						<?php echo '' !== $p['detalle'] ? '— ' . esc_html( $p['detalle'] ) : ''; ?>
+					</li>
+				<?php endforeach; ?>
+			</ul>
+		</details>
+		<?php
 	}
 
 	private static function pantallas(): void {
@@ -86,6 +111,8 @@ final class PantallaAjustes {
 		<div class="wrap">
 			<?php Avisos::mostrar(); ?>
 			<h1>Ajustes de asistencia</h1>
+
+			<?php self::diagnostico(); ?>
 
 			<h2>Cómo se prueba que están en el taller</h2>
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">

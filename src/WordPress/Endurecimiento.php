@@ -16,6 +16,25 @@ final class Endurecimiento {
 		add_filter( 'pre_option_blog_public', static fn() => '0' );
 
 		add_filter( 'rest_endpoints', array( self::class, 'ocultarUsuarios' ) );
+
+		// El subdominio va sin el firewall de Cloudflare: limitar los intentos de acceso a wp-admin.
+		add_action( 'wp_login_failed', array( self::class, 'sumarFalloLogin' ) );
+		add_filter( 'authenticate', array( self::class, 'bloquearLogin' ), 30, 1 );
+	}
+
+	public const MAX_FALLOS_LOGIN = 5;
+
+	public static function sumarFalloLogin(): void {
+		Temporales::sumarFallo( 'login|' . Peticion::ip(), 15 * MINUTE_IN_SECONDS );
+	}
+
+	/** Después de 5 intentos fallidos desde una IP, bloquea el acceso 15 minutos. */
+	public static function bloquearLogin( mixed $usuario ): mixed {
+		if ( Temporales::bloqueado( 'login|' . Peticion::ip(), self::MAX_FALLOS_LOGIN ) ) {
+			return new \WP_Error( 'pka_login_bloqueado', '<strong>Demasiados intentos fallidos.</strong> Espera 15 minutos y vuelve a intentarlo.' );
+		}
+
+		return $usuario;
 	}
 
 	/**

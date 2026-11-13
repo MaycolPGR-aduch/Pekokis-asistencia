@@ -3,7 +3,7 @@
 Este archivo lleva lo hecho, lo pendiente y la bitácora del proyecto. Se actualiza cada vez que avanzamos.
 El detalle técnico de cada punto está en [docs/plan-tecnico.md](docs/plan-tecnico.md).
 
-**Estado actual:** el MVP funcional está completo en el WordPress local: perfiles, passkeys, marcas, pantalla QR, panel del día, revisión, correcciones, export mensual y respaldo. Lo cubren 81 pruebas del núcleo y 70 de punta a punta. Lo siguiente: montar el sitio en Hostinger para probar con celulares reales, y lo que queda de calidad (visor de auditoría, manifest/PWA, aviso de IP nueva).
+**Estado actual:** el MVP funcional está completo en el WordPress local: perfiles, passkeys, marcas, pantalla QR, panel del día, revisión, correcciones, export mensual y respaldo. Lo cubren 81 pruebas del núcleo y 68 de punta a punta. El despliegue está preparado (zip 0.2.0, guía paso a paso y diagnóstico en Ajustes). **Siguiente: Maycol monta el sitio en Hostinger** siguiendo [docs/despliegue-hostinger.md](docs/despliegue-hostinger.md), y después se hace el piloto con celulares reales. Queda de calidad: visor de auditoría, manifest/PWA y aviso de IP nueva.
 
 **Estrategia:** primero un MVP con las fases 0 y 1 del plan (registro de asistencia funcionando y conforme a la norma). Después, mejoras por etapas según lo que opine gerencia.
 
@@ -19,8 +19,13 @@ Leyenda: `[x]` hecho · `[ ]` pendiente · `[~]` en curso
 - [x] Decidir el stack → **WordPress + plugin propio**, con la lógica de negocio en PHP puro
 - [ ] Revisar la IP WAN del router del taller (¿CGNAT? ¿IP fija?)
 - [ ] Revisar qué mide el 77 % de "Uso de recursos" del plan de Hostinger antes de agregar otro sitio
-- [ ] Crear el sitio en Hostinger, aparte del staging
-- [ ] Subdominio `asistencia.pekokis.com` en Cloudflare en modo solo DNS, más SSL de Hostinger
+- [x] Preparar el despliegue:
+  - `scripts/empaquetar.php` genera un zip con las librerías de producción (sin pruebas ni PHPUnit), que se sube desde wp-admin sin necesidad de SSH. Probado: el plugin empaquetado pasó la prueba de punta a punta;
+  - guía paso a paso en `docs/despliegue-hostinger.md`;
+  - "Estado del sistema" en Ajustes, que revisa 13 puntos.
+- [ ] **(Maycol)** Crear el sitio en Hostinger, aparte del staging. Pasos 1 a 9 de la guía
+- [ ] **(Maycol)** Subdominio `asistencia.pekokis.com` en Cloudflare en modo solo DNS, más SSL de Hostinger. Paso 2 de la guía
+- [ ] **(Maycol)** En el taller: agregar la red del WiFi y activar la pantalla. Paso 10 de la guía
 - [x] Entorno local con Laragon:
   - WordPress 7.1 en español en `C:\laragon\www\asistencia` (`https://asistencia.test`; las passkeys exigen HTTPS, así que hay que activar el SSL de Laragon para abrirlo en el navegador), con base de datos `pka_asistencia` y WP-CLI en `C:\laragon\bin\wp-cli\wp-cli.phar`.
   - El plugin está enlazado (junction) a esta carpeta, así que los cambios se ven al instante.
@@ -86,7 +91,7 @@ Leyenda: `[x]` hecho · `[ ]` pendiente · `[~]` en curso
 ### 7. Calidad y puesta en marcha
 - [x] Pruebas automáticas:
   - 81 del núcleo (`composer test`);
-  - 70 de todo el flujo contra el WordPress local, con un autenticador simulado (`tests/integracion/flujo-marcas.php`);
+  - 68 de todo el flujo contra el WordPress local, con un autenticador simulado (`tests/integracion/flujo-marcas.php`);
   - `tests/integracion/datos-demo.php` carga 5 trabajadores de ejemplo, con casos de hoy y de ayer, para ver el panel.
 - [ ] Pruebas en celulares reales: Android (Chrome) e iPhone (Safari)
 - [ ] Aviso de datos personales para los trabajadores (revisado por el abogado)
@@ -182,6 +187,13 @@ Vienen de la sección 16 del plan; se resuelven con gerencia y el contador.
   - Ajustes: nuevo `correo_rrhh`. Cron diario `pka_diario`, que se desprograma al desactivar el plugin.
 - **Probado en el navegador**: aprobar una solicitud y anular una marca desde los formularios, el detalle del día, la página Exportar y la descarga del Excel (7 KB, con SHA-256 en la cabecera).
 - **Sin probar todavía**: el formulario "Olvidé marcar" de la app en pantalla, porque hace falta una passkey real (por la API sí está probado), y el envío real de correo (se probó interceptando `wp_mail`).
+- **Preparación del despliegue (versión 0.2.0)**:
+  - `Diagnostico`: "Estado del sistema" en Ajustes revisa PHP, extensiones, librerías, HTTPS, secreto en wp-config, enlaces permanentes, tema, plugins de caché, errores visibles, cron, cron real, correo y presencia.
+  - Límite de acceso a wp-admin: 5 contraseñas equivocadas desde una IP la bloquean 15 minutos; desde otra IP se sigue entrando. Probado.
+  - Si falta `vendor/`, el plugin muestra un aviso en lugar de un error fatal.
+  - `scripts/empaquetar.php` arma `dist/pekokis-asistencia-0.2.0.zip` (200 archivos, 1,3 MB). Se probó instalando el paquete en el WordPress local: pasó la prueba de punta a punta sin PHPUnit.
+  - Guía `docs/despliegue-hostinger.md`: 11 pasos, del sitio en hPanel al checklist del piloto en Android e iPhone.
+- **Corrección de un dato:** la prueba de punta a punta tiene **68** comprobaciones, no 70 como se anotó antes. Se contaron directamente en el archivo.
 
 ### 12-11-2026
 - Se definió el enfoque:

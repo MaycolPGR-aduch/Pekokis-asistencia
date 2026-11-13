@@ -1,0 +1,137 @@
+# Despliegue en Hostinger — paso a paso
+
+Objetivo: tener `https://asistencia.pekokis.com` funcionando para el piloto con celulares reales.
+
+Al terminar, **Asistencia → Ajustes → Estado del sistema** debe mostrar todo en verde. Esa lista sirve para comprobar cada paso.
+
+Lo que tienes que hacer tú está marcado con ☐. Los nombres de los menús de hPanel pueden variar un poco según la versión.
+
+---
+
+## 0. Antes de empezar
+
+- ☐ **Recursos del plan.** En hPanel, revisa qué mide el 77 % de "Uso de recursos". Este sitio consume poco, pero suma archivos (unos 3.000 de WordPress y 200 del plugin) y un cron cada 5 minutos.
+- ☐ **El zip del plugin.** Ya está en `dist/pekokis-asistencia-0.2.0.zip`. Si cambia el código, se vuelve a generar con:
+  ```bash
+  php scripts/empaquetar.php
+  ```
+- ☐ **Una cuenta de correo para el sitio** (por ejemplo `asistencia@pekokis.com`), con sus datos SMTP. Se usa para el respaldo mensual.
+
+## 1. Crear el sitio en Hostinger
+
+1. ☐ hPanel → **Sitios web → Crear web → WordPress**. Usa el dominio **`asistencia.pekokis.com`** como dominio existente o subdominio, **aparte del staging**.
+2. ☐ Usuario administrador: un nombre que **no** sea `admin` y una contraseña larga (guárdala en tu gestor de contraseñas).
+3. ☐ Anota la **IP del servidor** que muestra hPanel; se usa en el paso 2.
+
+## 2. DNS en Cloudflare (zona pekokis.com)
+
+1. ☐ **DNS → Agregar registro**:
+   - **Tipo:** `A`
+   - **Nombre:** `asistencia`
+   - **Contenido:** la IP de Hostinger
+   - **Proxy:** **desactivado (nube gris, "Solo DNS")**
+
+   La nube gris es importante: así el servidor ve la IP real de cada celular, y el control del WiFi del taller funciona.
+2. ☐ Espera a que el dominio apunte al servidor. Normalmente son minutos.
+3. ☐ hPanel → **Seguridad → SSL**: instala el certificado gratis para `asistencia.pekokis.com` y activa "forzar HTTPS".
+
+## 3. PHP y caché
+
+- ☐ hPanel → **Avanzado → Configuración de PHP**: elige **PHP 8.3** (sirve desde 8.2).
+- ☐ hPanel → **Rendimiento / Caché**: **desactiva la caché del servidor y el CDN** para este sitio.
+
+  Si se cachean las pantallas, un trabajador podría ver el estado de otro.
+
+## 4. WordPress mínimo
+
+1. ☐ **Plugins:** desactiva y borra todo lo que instaló Hostinger (LiteSpeed Cache, el plugin de Hostinger, etc.). Quedan solo los del paso 6 y 8.
+2. ☐ **Ajustes → Generales:**
+   - Dirección de WordPress y del sitio: `https://asistencia.pekokis.com`
+   - Idioma: Español
+   - Zona horaria: **Lima**
+3. ☐ **Ajustes → Enlaces permanentes:** "Nombre de la entrada".
+
+## 5. wp-config.php
+
+Ábrelo en hPanel → **Administrador de archivos** (`public_html/wp-config.php`). Agrega estas líneas antes de `/* That's all, stop editing! */`:
+
+```php
+// Pekokis Asistencia
+define( 'PKA_SECRETO', 'PEGA_AQUÍ_64_CARACTERES' ); // Firma los QR y los pases de presencia.
+define( 'DISABLE_WP_CRON', true );                   // Usamos el cron real (paso 7).
+define( 'WP_ENVIRONMENT_TYPE', 'production' );
+define( 'DISALLOW_FILE_EDIT', true );                // Nadie edita código desde wp-admin.
+define( 'WP_DEBUG', false );
+```
+
+☐ Genera el secreto en tu PC con:
+
+```bash
+php -r "echo bin2hex(random_bytes(32));"
+```
+
+No lo compartas ni lo subas a git. Si algún día cambia, solo se invalidan los QR y pases vigentes en ese momento; las passkeys siguen funcionando.
+
+## 6. Instalar el plugin y el tema
+
+1. ☐ **Plugins → Añadir nuevo → Subir plugin:** sube `pekokis-asistencia-0.2.0.zip` y actívalo. Al activarse crea sus tablas, roles, motivos y el horario base.
+2. ☐ **Apariencia → Temas:** activa **"Pekokis Asistencia (vacío)"** y borra los demás temas, salvo uno por defecto como respaldo.
+3. ☐ Revisa **Asistencia → Ajustes → Estado del sistema.**
+
+**Para actualizar más adelante:** genera un zip nuevo y súbelo igual. WordPress pregunta si reemplazar la versión instalada: acepta. Los datos se conservan y las tablas se actualizan solas.
+
+## 7. Cron real
+
+☐ hPanel → **Avanzado → Cron Jobs**: crea una tarea **cada 5 minutos** con este comando (la ruta exacta aparece en hPanel):
+
+```
+/usr/bin/php /home/TU_USUARIO/domains/asistencia.pekokis.com/public_html/wp-cron.php
+```
+
+Es igual que en producción: **nunca** se llama a `wp-cron.php` por URL.
+
+## 8. Correo (respaldo mensual)
+
+1. ☐ Instala **WP Mail SMTP** (o el plugin SMTP que prefieras) y configúralo con la cuenta del paso 0.
+2. ☐ **Asistencia → Exportar:** escribe el correo de RR.HH. en "Enviar a" y pulsa **"Enviar respaldo"** con el mes actual, para probar que llega.
+
+## 9. Usuarios del panel
+
+- ☐ **Usuarios → Añadir nuevo:** crea las cuentas de RR.HH. (rol **"RR.HH. (asistencia)"**) y de los jefes (rol **"Jefe de área (asistencia)"**).
+
+  Los trabajadores **no** llevan usuario: entran con su passkey.
+- ☐ Recomendado: instala el plugin **Two Factor** y exige un segundo factor a administradores y RR.HH.
+
+  El plugin ya bloquea 15 minutos una IP después de 5 contraseñas equivocadas.
+
+## 10. Configuración desde el taller
+
+1. ☐ **Red del WiFi:** con un celular o laptop **conectado al WiFi del taller**, entra a wp-admin → Asistencia → Ajustes → "Agregar red" (el campo ya trae tu IP).
+   - Si aparece el aviso de **IP compartida (CGNAT)**, no la agregues: elige el modo **"Solo QR"**.
+2. ☐ **Pantalla:** en la tablet de la entrada, inicia sesión en wp-admin, abre `https://asistencia.pekokis.com/pantalla/` y pulsa **"Usar este equipo como pantalla"**.
+   - Puedes cerrar la sesión después: la pantalla sigue funcionando.
+   - Déjala enchufada y con el brillo alto.
+3. ☐ **Trabajadores:** en Asistencia → Trabajadores, agrega a las 2 o 3 personas del piloto y genera su **enlace de activación**. Cada una lo abre en su propio celular.
+
+## 11. Checklist del piloto
+
+| # | Prueba | Android (Chrome) | iPhone (Safari) |
+|---|---|---|---|
+| 1 | Activar el celular con el enlace (huella, rostro o PIN) | ☐ | ☐ |
+| 2 | Agregar la web a la pantalla de inicio | ☐ | ☐ |
+| 3 | Marcar entrada conectado al WiFi del taller | ☐ | ☐ |
+| 4 | Con datos móviles: escanear el QR con la cámara y marcar | ☐ | ☐ |
+| 5 | Con datos móviles: escribir el código de 6 dígitos y marcar | ☐ | ☐ |
+| 6 | Salir a refrigerio y volver | ☐ | ☐ |
+| 7 | Salida temporal con motivo "Personal" (aparece para revisión) | ☐ | ☐ |
+| 8 | "Olvidé marcar" y que el jefe lo apruebe en Hoy | ☐ | ☐ |
+| 9 | Intentar activar a otra persona en el mismo celular (debe negarlo) | ☐ | ☐ |
+| 10 | En wp-admin: Hoy muestra a todos bien; descargar el Excel del mes | ☐ | — |
+
+Anota en [TAREAS.md](../TAREAS.md) lo que falle, con el celular y el navegador.
+
+## Si algo falla
+
+- **Errores de PHP:** pon `WP_DEBUG` en `true` y `WP_DEBUG_LOG` en `true` (nunca `WP_DEBUG_DISPLAY`), reproduce el problema y revisa `wp-content/debug.log`. Después vuelve a dejarlo en `false`.
+- **"No reconocimos tu llave"**: confirma que la dirección del sitio sea exactamente `https://asistencia.pekokis.com`. La passkey queda atada a ese dominio.
+- **Nadie puede marcar con WiFi:** compara la IP que muestra Ajustes estando en el taller con la red guardada. Si cambió, agrega la nueva.
