@@ -15,7 +15,7 @@ Leyenda: `[x]` hecho · `[ ]` pendiente · `[~]` en curso
 
 ### 0. Preparación
 - [x] Plan técnico — `docs/plan-tecnico.md`
-- [x] Repositorio local y remoto `origin` en GitHub
+- [x] Repositorio local y remoto `origin` en GitHub (primer push el 13-11)
 - [x] Decidir el stack → **WordPress + plugin propio**, con la lógica de negocio en PHP puro
 - [ ] Revisar la IP WAN del router del taller (¿CGNAT? ¿IP fija?)
 - [ ] Revisar qué mide el 77 % de "Uso de recursos" del plan de Hostinger antes de agregar otro sitio
@@ -109,6 +109,7 @@ Vienen de la sección 16 del plan; se resuelven con gerencia y el contador.
   - Instalador escrito: 13 tablas, roles, motivos, horario base, ajustes (razón social y RUC tomados del Libro de Reclamaciones) y secreto. Falta probarlo en WordPress.
   - El esquema se actualiza solo cuando cambia la versión de la base de datos, porque el despliegue con `git pull` no ejecuta el hook de activación.
 - Decisión de diseño: los trabajadores no son usuarios de WordPress, se identifican solo con su passkey. Se actualizó el plan (secciones 3, 4, 6.1 y 7).
+- Primer commit `e842da8` subido a GitHub (`origin/main`).
 
 ### 12-11-2026
 - Se definió el enfoque:
