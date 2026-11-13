@@ -194,6 +194,11 @@ Vienen de la sección 16 del plan; se resuelven con gerencia y el contador.
   - `scripts/empaquetar.php` arma `dist/pekokis-asistencia-0.2.0.zip` (200 archivos, 1,3 MB). Se probó instalando el paquete en el WordPress local: pasó la prueba de punta a punta sin PHPUnit.
   - Guía `docs/despliegue-hostinger.md`: 11 pasos, del sitio en hPanel al checklist del piloto en Android e iPhone.
 - **Corrección de un dato:** la prueba de punta a punta tiene **68** comprobaciones, no 70 como se anotó antes. Se contaron directamente en el archivo.
+- **Bug del entorno local (lo encontró Maycol):** `http://localhost:8080/wp-admin/` salía en blanco.
+  - Causa: el router del servidor de PHP no buscaba el `index.php` de las carpetas, así que mandaba esa dirección a la parte pública, donde el tema vacío responde con una página vacía. En las pruebas siempre se había entrado por `/wp-admin/admin.php?...`, por eso no se notó.
+  - Corrección: router nuevo dentro del proyecto, en `scripts/servidor-local.php` (antes estaba en una carpeta temporal). Ahora `/wp-admin` redirige a `/wp-admin/` y sirve su `index.php`.
+  - Se comprobaron 9 rutas: inicio, wp-admin con y sin barra, login, activar, pantalla, API, CSS y estilos del panel.
+  - No afecta a Hostinger, donde Apache o LiteSpeed resuelven las carpetas solos.
 
 ### 12-11-2026
 - Se definió el enfoque:

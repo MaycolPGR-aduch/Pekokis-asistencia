@@ -17,3 +17,21 @@ php scripts/empaquetar.php  # zip listo para subir en dist/
 ```
 
 La prueba de punta a punta (`tests/integracion/flujo-marcas.php`) corre con WP-CLI contra un WordPress local y vacía las tablas del plugin.
+
+### Probar en local (Laragon)
+
+Para levantar el entorno, cada comando en su propia terminal:
+
+```bash
+# MySQL de Laragon (si no está abierto Laragon)
+/c/laragon/bin/mysql/mysql-8.4.3-winx64/bin/mysqld.exe --defaults-file="C:/laragon/bin/mysql/mysql-8.4.3-winx64/my.ini" --standalone
+
+# WordPress en http://localhost:8080 (las passkeys funcionan en localhost sin HTTPS)
+php -S localhost:8080 -t C:/laragon/www/asistencia scripts/servidor-local.php
+```
+
+El segundo comando se ejecuta desde esta carpeta. Para cargar los datos de ejemplo:
+
+```bash
+php C:/laragon/bin/wp-cli/wp-cli.phar --path=C:/laragon/www/asistencia eval-file tests/integracion/datos-demo.php
+```
