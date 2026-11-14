@@ -30,6 +30,7 @@ final class Plugin {
 		Rutas::registrar();
 		Api::registrar();
 		Respaldo::registrar();
+		Notificaciones::registrar();
 
 		if ( is_admin() ) {
 			Admin\Menu::registrar();

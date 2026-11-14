@@ -103,7 +103,7 @@ final class Jornadas {
 	 * @return array{0: string, 1: string}
 	 */
 	public static function periodoDe( array $t, string $desde, string $hasta ): array {
-		$alta   = get_date_from_gmt( (string) $t['creado_en'], 'Y-m-d' );
+		$alta   = Ajustes::local( (string) $t['creado_en'] );
 		$inicio = max( $desde, (string) ( $t['fecha_ingreso'] ?? '' ), $alta );
 		$fin    = empty( $t['fecha_cese'] ) ? $hasta : min( $hasta, (string) $t['fecha_cese'] );
 

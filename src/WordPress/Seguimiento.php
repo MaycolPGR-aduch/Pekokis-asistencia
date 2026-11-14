@@ -38,7 +38,7 @@ final class Seguimiento {
 			}
 
 			// No hay faltas antes de que existiera el perfil o de su fecha de ingreso.
-			$inicio = max( (string) $t['fecha_ingreso'], get_date_from_gmt( $t['creado_en'], 'Y-m-d' ) );
+			$inicio = max( (string) $t['fecha_ingreso'], Ajustes::local( (string) $t['creado_en'] ) );
 
 			for ( $d = new DateTimeImmutable( $hasta ); $d->format( 'Y-m-d' ) >= $desde; $d = $d->modify( '-1 day' ) ) {
 				$dia = $d->format( 'Y-m-d' );

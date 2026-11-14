@@ -302,6 +302,10 @@ final class Api {
 
 		Temporales::borrar( 'ticket', $clave );
 
+		if ( $resultado->requiereRevision ) {
+			Notificaciones::revision( (int) $id );
+		}
+
 		$texto = ( $motivo ? $motivo->nombre : $accion->etiqueta() ) . ' · ' . Marcas::horaLocal( $ahora ) . ' · ' . Marcas::etiquetaPrueba( $resultado->prueba );
 
 		return self::respuesta(

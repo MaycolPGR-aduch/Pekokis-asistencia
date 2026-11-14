@@ -65,6 +65,7 @@ final class Historial {
 		'ajustes.reglas'         => 'Cambio de las reglas de horas',
 		'preplanilla.descargar'  => 'Pre-planilla descargada',
 		'informe.descargar'      => 'Informe por trabajador descargado',
+		'ajustes.avisos'         => 'Cambio de los avisos',
 	);
 
 	private const CAMPOS = array(
@@ -126,6 +127,8 @@ final class Historial {
 		'tardanza_desde'              => 'Tardanza desde',
 		'aviso_permanencia_min'       => 'Aviso de permanencia (min)',
 		'formato'                     => 'Formato',
+		'avisos'                      => 'Avisos encendidos',
+		'horario'                     => 'Horas y márgenes',
 	);
 
 	/**

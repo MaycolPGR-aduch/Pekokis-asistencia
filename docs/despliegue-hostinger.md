@@ -11,7 +11,7 @@ Lo que tienes que hacer tú está marcado con ☐. Los nombres de los menús de 
 ## 0. Antes de empezar
 
 - ☐ **Recursos del plan.** En hPanel, revisa qué mide el 77 % de "Uso de recursos". Este sitio consume poco, pero suma archivos (unos 3.000 de WordPress y 200 del plugin) y un cron cada 5 minutos.
-- ☐ **El zip del plugin.** Ya está en `dist/pekokis-asistencia-0.8.1.zip`. Si cambia el código, se vuelve a generar con:
+- ☐ **El zip del plugin.** Ya está en `dist/pekokis-asistencia-0.9.0.zip`. Si cambia el código, se vuelve a generar con:
   ```bash
   php scripts/empaquetar.php
   ```
@@ -74,7 +74,7 @@ No lo compartas ni lo subas a git. Si algún día cambia, solo se invalidan los 
 
 ## 6. Instalar el plugin y el tema
 
-1. ☐ **Plugins → Añadir nuevo → Subir plugin:** sube `pekokis-asistencia-0.8.1.zip` y actívalo. Al activarse crea sus tablas, roles, motivos y el horario base.
+1. ☐ **Plugins → Añadir nuevo → Subir plugin:** sube `pekokis-asistencia-0.9.0.zip` y actívalo. Al activarse crea sus tablas, roles, motivos y el horario base.
 2. ☐ **Apariencia → Temas:** activa **"Pekokis Asistencia (vacío)"** y borra los demás temas, salvo uno por defecto como respaldo.
 3. ☐ Revisa **Asistencia → Ajustes → Estado del sistema.**
 
@@ -143,6 +143,7 @@ Es igual que en producción: **nunca** se llama a `wp-cron.php` por URL.
 | 16 | Descargar la pre-planilla del mes y revisarla con el contador (sueldos, faltas, horas extra) | ☐ | — |
 | 17 | Asistencia → Resumen del mes: los totales cuadran con lo que se vio en Hoy durante la semana; un jefe solo ve a su equipo | ☐ | — |
 | 18 | Asistencia → Informe: el calendario de un trabajador, "Descargar Excel" e "Imprimir o guardar PDF" | ☐ | — |
+| 19 | Ajustes → Avisos: "Enviarme un correo de prueba"; encender "No llegó", pedir un "olvidé marcar" y ver que el correo llega al jefe (revisa también spam) | ☐ | — |
 
 Anota en [TAREAS.md](../TAREAS.md) lo que falle, con el celular y el navegador.
 

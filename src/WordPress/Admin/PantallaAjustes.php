@@ -5,7 +5,9 @@ namespace Pekokis\Asistencia\WordPress\Admin;
 use InvalidArgumentException;
 use Pekokis\Asistencia\Nucleo\ModoPresencia;
 use Pekokis\Asistencia\Nucleo\RedAutorizada;
+use Pekokis\Asistencia\Nucleo\ReglasAvisos;
 use Pekokis\Asistencia\Nucleo\ReglasPago;
+use Pekokis\Asistencia\WordPress\Notificaciones;
 use Pekokis\Asistencia\WordPress\Ajustes;
 use Pekokis\Asistencia\WordPress\Auditoria;
 use Pekokis\Asistencia\WordPress\Aviso;
@@ -32,6 +34,8 @@ final class PantallaAjustes {
 		add_action( 'admin_post_pka_guardar_empleador', array( self::class, 'guardarEmpleador' ) );
 		add_action( 'admin_post_pka_guardar_aviso', array( self::class, 'guardarAviso' ) );
 		add_action( 'admin_post_pka_guardar_reglas', array( self::class, 'guardarReglas' ) );
+		add_action( 'admin_post_pka_guardar_avisos', array( self::class, 'guardarAvisos' ) );
+		add_action( 'admin_post_pka_probar_avisos', array( self::class, 'probarAvisos' ) );
 	}
 
 	/** Datos del empleador (salen en el Excel y en el aviso) y el aviso de datos personales. */
@@ -108,6 +112,142 @@ final class PantallaAjustes {
 
 		Avisos::agregar( 'success', 'Reglas de horas guardadas.' );
 		Menu::volverA( admin_url( 'admin.php?page=' . self::SLUG ) . '#reglas' );
+	}
+
+	private const ESTADOS_AVISO = array(
+		'pendiente' => 'Pendiente',
+		'enviado'   => 'Enviado',
+		'fallido'   => 'Falló',
+	);
+
+	private static function avisos(): void {
+		$a       = Ajustes::todos();
+		$activos = Notificaciones::activos();
+		$grupos  = array(
+			ReglasAvisos::PARA_JEFE       => 'Al jefe del trabajador (o a RR.HH. si no tiene jefe)',
+			ReglasAvisos::PARA_TRABAJADOR => 'Al trabajador (a su correo, si lo tiene, y al webhook con su teléfono)',
+			ReglasAvisos::PARA_ADMIN      => 'A RR.HH. (el correo de Exportar)',
+		);
+		$ultimos = Notificaciones::ultimos( 25 );
+		?>
+		<h2 style="margin-top:32px" id="avisos">Avisos por correo y WhatsApp</h2>
+		<p>El sistema revisa cada 5 minutos y agrupa: si a las 9:15 faltan tres personas del mismo jefe, le llega un solo correo con las tres. Cada aviso sale una sola vez. Todos empiezan apagados.</p>
+		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+			<input type="hidden" name="action" value="pka_guardar_avisos">
+			<?php wp_nonce_field( 'pka_guardar_avisos' ); ?>
+			<table class="form-table" role="presentation">
+				<?php foreach ( $grupos as $para => $titulo ) : ?>
+					<tr>
+						<th scope="row"><?php echo esc_html( $titulo ); ?></th>
+						<td>
+							<?php foreach ( ReglasAvisos::TIPOS as $tipo => $info ) : ?>
+								<?php if ( $info[1] === $para ) : ?>
+									<label style="display:block;margin-bottom:4px"><input type="checkbox" name="avisos_activos[]" value="<?php echo esc_attr( $tipo ); ?>" <?php checked( in_array( $tipo, $activos, true ) ); ?>> <?php echo esc_html( $info[0] ); ?></label>
+								<?php endif; ?>
+							<?php endforeach; ?>
+						</td>
+					</tr>
+				<?php endforeach; ?>
+				<tr>
+					<th scope="row"><label for="pka-av-ausencia">Avisar ausencia después de</label></th>
+					<td><input type="number" id="pka-av-ausencia" name="aviso_margen_ausencia" class="small-text" min="0" max="240" value="<?php echo esc_attr( (string) $a['aviso_margen_ausencia'] ); ?>"> minutos, pasada la tolerancia <span class="description">(con entrada 9:00 y 5 de tolerancia, 10 → 9:15)</span></td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="pka-av-refrigerio">Refrigerio largo: margen</label></th>
+					<td><input type="number" id="pka-av-refrigerio" name="aviso_margen_refrigerio" class="small-text" min="0" max="240" value="<?php echo esc_attr( (string) $a['aviso_margen_refrigerio'] ); ?>"> minutos más que el refrigerio del horario</td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="pka-av-salida">Salida temporal larga</label></th>
+					<td><input type="number" id="pka-av-salida" name="aviso_limite_salida" class="small-text" min="15" max="600" value="<?php echo esc_attr( (string) $a['aviso_limite_salida'] ); ?>"> minutos fuera</td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="pka-av-hora">"No marcaste tu salida" a las</label></th>
+					<td><input type="time" id="pka-av-hora" name="aviso_hora_sin_salida" value="<?php echo esc_attr( (string) $a['aviso_hora_sin_salida'] ); ?>"> <span class="description">o 30 min después del fin de su horario, si termina más tarde</span></td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="pka-av-webhook">Webhook para WhatsApp (opcional)</label></th>
+					<td>
+						<input type="url" id="pka-av-webhook" name="webhook_avisos" class="large-text code" placeholder="https://hook.us1.make.com/…" value="<?php echo esc_attr( (string) $a['webhook_avisos'] ); ?>">
+						<p class="description">Recibe cada aviso en JSON (<code>evento</code>, <code>para.nombre</code>, <code>para.telefono</code>, <code>mensaje</code>, <code>enlace</code>), firmado con HMAC en la cabecera <code>X-PKA-Firma</code>. Desde ahí, Make o el bot lo mandan por WhatsApp. Déjalo vacío para usar solo el correo.</p>
+					</td>
+				</tr>
+			</table>
+			<?php submit_button( 'Guardar avisos', 'secondary' ); ?>
+		</form>
+		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="margin-top:-8px">
+			<input type="hidden" name="action" value="pka_probar_avisos">
+			<?php wp_nonce_field( 'pka_probar_avisos' ); ?>
+			<button class="button">Enviarme un correo de prueba</button>
+			<span class="description">Llega a <?php echo esc_html( wp_get_current_user()->user_email ); ?>. Sirve para comprobar el SMTP.</span>
+		</form>
+
+		<h3>Últimos avisos</h3>
+		<table class="widefat striped" style="max-width:1100px">
+			<thead><tr><th>Cuándo</th><th>Aviso</th><th>Para</th><th>Canal</th><th>Estado</th></tr></thead>
+			<tbody>
+			<?php if ( ! $ultimos ) : ?>
+				<tr><td colspan="5">Todavía no se envió ningún aviso.</td></tr>
+			<?php endif; ?>
+			<?php foreach ( $ultimos as $u ) : ?>
+				<tr>
+					<td><?php echo esc_html( Ajustes::local( $u['creado_en'], 'd/m H:i' ) ); ?></td>
+					<td><strong><?php echo esc_html( ReglasAvisos::titulo( $u['tipo'] ) ); ?></strong><br><span class="description"><?php echo esc_html( $u['linea'] ); ?></span></td>
+					<td><?php echo esc_html( $u['nombre'] ); ?><br><span class="description"><?php echo esc_html( 'webhook' === $u['canal'] && '' !== $u['telefono'] ? $u['telefono'] : $u['destino'] ); ?></span></td>
+					<td><?php echo 'correo' === $u['canal'] ? 'Correo' : 'WhatsApp (webhook)'; ?></td>
+					<td><?php echo esc_html( self::ESTADOS_AVISO[ $u['estado'] ] ?? $u['estado'] ); ?><?php echo '' !== $u['error'] ? '<br><span class="description" style="color:#b32d2e">' . esc_html( $u['error'] ) . '</span>' : ''; ?></td>
+				</tr>
+			<?php endforeach; ?>
+			</tbody>
+		</table>
+		<?php
+	}
+
+	public static function guardarAvisos(): void {
+		self::exigir( 'pka_guardar_avisos' );
+
+		$antes   = Ajustes::todos();
+		$ajustes = $antes;
+		$pedidos = isset( $_POST['avisos_activos'] ) ? array_map( 'sanitize_key', (array) wp_unslash( $_POST['avisos_activos'] ) ) : array();
+		$hora    = isset( $_POST['aviso_hora_sin_salida'] ) ? sanitize_text_field( wp_unslash( $_POST['aviso_hora_sin_salida'] ) ) : '20:00';
+		$webhook = isset( $_POST['webhook_avisos'] ) ? esc_url_raw( trim( (string) wp_unslash( $_POST['webhook_avisos'] ) ), array( 'https' ) ) : '';
+
+		if ( '' !== $webhook && ! wp_http_validate_url( $webhook ) ) {
+			Avisos::agregar( 'error', 'La dirección del webhook no es válida (debe empezar con https://).' );
+			Menu::volverA( admin_url( 'admin.php?page=' . self::SLUG ) . '#avisos' );
+		}
+
+		$ajustes['avisos_activos']          = array_values( array_intersect( array_keys( ReglasAvisos::TIPOS ), $pedidos ) );
+		$ajustes['aviso_hora_sin_salida']   = preg_match( '/^([01]\d|2[0-3]):[0-5]\d$/', $hora ) ? $hora : '20:00';
+		$ajustes['aviso_margen_ausencia']   = isset( $_POST['aviso_margen_ausencia'] ) ? max( 0, min( 240, (int) $_POST['aviso_margen_ausencia'] ) ) : 10;
+		$ajustes['aviso_margen_refrigerio'] = isset( $_POST['aviso_margen_refrigerio'] ) ? max( 0, min( 240, (int) $_POST['aviso_margen_refrigerio'] ) ) : 10;
+		$ajustes['aviso_limite_salida']     = isset( $_POST['aviso_limite_salida'] ) ? max( 15, min( 600, (int) $_POST['aviso_limite_salida'] ) ) : 120;
+		$ajustes['webhook_avisos']          = $webhook;
+		update_option( Ajustes::OPCION, $ajustes );
+
+		// En el historial: los avisos por nombre y, del webhook (un secreto), solo el dominio.
+		$resumen = static fn( array $x ): array => array(
+			'avisos'  => implode( ', ', array_map( array( ReglasAvisos::class, 'etiqueta' ), (array) $x['avisos_activos'] ) ),
+			'horario' => $x['aviso_hora_sin_salida'] . ' · ' . $x['aviso_margen_ausencia'] . '/' . $x['aviso_margen_refrigerio'] . '/' . $x['aviso_limite_salida'] . ' min',
+			'webhook' => '' === $x['webhook_avisos'] ? '—' : (string) wp_parse_url( $x['webhook_avisos'], PHP_URL_HOST ),
+		);
+		[ $a, $d ] = Auditoria::diferencias( $resumen( $antes ), $resumen( $ajustes ) );
+
+		if ( $d ) {
+			Auditoria::registrar( 'ajustes.avisos', 'ajustes', null, $a, $d );
+		}
+
+		Avisos::agregar( 'success', $ajustes['avisos_activos'] ? 'Avisos guardados. El sistema los revisa cada 5 minutos.' : 'Avisos guardados: están todos apagados.' );
+		Menu::volverA( admin_url( 'admin.php?page=' . self::SLUG ) . '#avisos' );
+	}
+
+	public static function probarAvisos(): void {
+		self::exigir( 'pka_probar_avisos' );
+
+		$correo = wp_get_current_user()->user_email;
+		$ok     = is_email( $correo ) && Notificaciones::prueba( $correo );
+
+		Avisos::agregar( $ok ? 'success' : 'error', $ok ? 'Correo de prueba enviado a ' . esc_html( $correo ) . '. Revisa tu bandeja (y la de spam).' : 'No se pudo enviar el correo de prueba: revisa la configuración del SMTP.' );
+		Menu::volverA( admin_url( 'admin.php?page=' . self::SLUG ) . '#avisos' );
 	}
 
 	private static function empleadorYAviso(): void {
@@ -271,7 +411,7 @@ final class PantallaAjustes {
 				<?php $apagada = $p['activa'] && ( null === $p['ultima_conexion'] || $p['ultima_conexion'] < $limite ); ?>
 				<tr>
 					<td><?php echo esc_html( $p['nombre'] ); ?></td>
-					<td><?php echo $p['ultima_conexion'] ? esc_html( get_date_from_gmt( $p['ultima_conexion'], 'd/m H:i' ) ) : '—'; ?><?php echo $apagada ? ' <strong style="color:#b32d2e">sin conexión</strong>' : ''; ?></td>
+					<td><?php echo $p['ultima_conexion'] ? esc_html( Ajustes::local( $p['ultima_conexion'], 'd/m H:i' ) ) : '—'; ?><?php echo $apagada ? ' <strong style="color:#b32d2e">sin conexión</strong>' : ''; ?></td>
 					<td><code><?php echo esc_html( $p['ultima_ip'] ); ?></code></td>
 					<td><?php echo $p['activa'] ? 'Activa' : 'Desactivada'; ?></td>
 					<td><a href="<?php echo esc_url( Menu::urlAccion( 'pka_cambiar_pantalla', array( 'id' => $p['id'] ) ) ); ?>"><?php echo $p['activa'] ? 'Desactivar' : 'Activar'; ?></a></td>
@@ -376,6 +516,7 @@ final class PantallaAjustes {
 
 			<?php self::pantallas(); ?>
 			<?php self::reglas(); ?>
+			<?php self::avisos(); ?>
 			<?php self::empleadorYAviso(); ?>
 		</div>
 		<?php

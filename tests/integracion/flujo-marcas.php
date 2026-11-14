@@ -44,7 +44,7 @@ $api = static function ( string $metodo, string $ruta, array $cuerpo = array() )
 };
 
 // ---- Preparación: tablas vacías, una red autorizada y la IP del "WiFi del taller".
-foreach ( array( 'trabajadores', 'marcas', 'auditoria', 'credenciales', 'dispositivos', 'activaciones', 'redes', 'correcciones', 'pantallas', 'revisiones', 'calendario', 'ausencias', 'sueldos', 'sobretiempo' ) as $tabla ) {
+foreach ( array( 'trabajadores', 'marcas', 'auditoria', 'credenciales', 'dispositivos', 'activaciones', 'redes', 'correcciones', 'pantallas', 'revisiones', 'calendario', 'ausencias', 'sueldos', 'sobretiempo', 'avisos' ) as $tabla ) {
 	$wpdb->query( 'TRUNCATE TABLE ' . Tablas::nombre( $tabla ) ); // phpcs:ignore
 }
 $wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE '\\_transient\\_pka\\_%' OR option_name LIKE '\\_transient\\_timeout\\_pka\\_%'" ); // phpcs:ignore
@@ -302,7 +302,7 @@ $correo = null;
 add_filter(
 	'pre_wp_mail',
 	static function ( $nulo, $atts ) use ( &$correo ) {
-		$correo = array( 'para' => $atts['to'], 'asunto' => $atts['subject'], 'adjunto' => file_exists( $atts['attachments'][0] ) ? filesize( $atts['attachments'][0] ) : 0 );
+		$correo = array( 'para' => $atts['to'], 'asunto' => $atts['subject'], 'adjunto' => isset( $atts['attachments'][0] ) && file_exists( $atts['attachments'][0] ) ? filesize( $atts['attachments'][0] ) : 0 );
 		return true;
 	},
 	10,
@@ -569,7 +569,7 @@ $comprobar( 'nadie se autoriza horas extra ni se registra su sueldo', is_wp_erro
 
 $comprobar( 'anular la autorización exige motivo', is_wp_error( $ST::anular( $aut, '' ) ) );
 $comprobar( 'al anularla vuelve a quedar sin autorizar', true === $ST::anular( $aut, 'Se autorizó por error' ) && 120 === $J::delDia( $luis, $diaExtra )->minutosSinAutorizar );
-$comprobar( 'la base de datos está en la versión 3', '3' === get_option( 'pka_version_bd' ) );
+$comprobar( 'la base de datos ya tiene las tablas de la fase 2 (versión 3 o más)', (int) get_option( 'pka_version_bd' ) >= 3 );
 wp_delete_user( $gerente2 );
 wp_delete_user( $jefe2 );
 
@@ -596,6 +596,89 @@ if ( class_exists( 'ZipArchive' ) ) {
 	$comprobar( 'el Excel del informe trae resumen, días y marcas, sin montos si no ve sueldos', str_contains( $textos, 'Informe de asistencia' ) && str_contains( $textos, 'Entrada (manual)' ) && str_contains( $textos, 'Tarde' ) && ! str_contains( $textos, 'Costo estimado' ) );
 }
 $comprobar( 'el nombre del archivo no lleva tildes', str_starts_with( $xlsInf['nombre'], 'informe-perez-luis-' ), $xlsInf['nombre'] );
+
+// ---- 13. Avisos por correo y webhook (fase 4). Nada sale de verdad: se capturan.
+WP_CLI::line( '13. Avisos' );
+$N  = \Pekokis\Asistencia\WordPress\Notificaciones::class;
+$RA = \Pekokis\Asistencia\Nucleo\ReglasAvisos::class;
+$correos  = array();
+$llamadas = array();
+$fallarCorreo = false;
+add_filter( 'pre_wp_mail', static function ( $nulo, $atts ) use ( &$correos, &$fallarCorreo ) {
+	if ( $fallarCorreo ) {
+		return false;
+	}
+	$correos[] = $atts;
+	return true;
+}, 10, 2 );
+add_filter( 'pre_http_request', static function ( $nulo, $args, $url ) use ( &$llamadas ) {
+	if ( str_contains( $url, 'avisos.example.test' ) ) {
+		$llamadas[] = array( 'url' => $url, 'args' => $args );
+		return array( 'headers' => array(), 'body' => 'ok', 'response' => array( 'code' => 200, 'message' => 'OK' ), 'cookies' => array(), 'filename' => null );
+	}
+	return $nulo;
+}, 10, 3 );
+$wpdb->query( 'TRUNCATE TABLE ' . Tablas::nombre( 'avisos' ) ); // phpcs:ignore
+$ajustesAvisos = \Pekokis\Asistencia\WordPress\Ajustes::todos();
+update_option( \Pekokis\Asistencia\WordPress\Ajustes::OPCION, array( 'avisos_activos' => array(), 'webhook_avisos' => '' ) + $ajustesAvisos );
+$colaDe = static fn( string $tipo ): array => $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM ' . Tablas::nombre( 'avisos' ) . ' WHERE tipo = %s ORDER BY id', $tipo ), ARRAY_A ); // phpcs:ignore
+
+$comprobar( 'con los avisos apagados no se encola nada', 0 === $N::encolar( $RA::SOLICITUD, 'prueba|1', Trabajadores::buscar( $id2 ), 'x' ) && 0 === $N::revisar( new DateTimeImmutable( 'now', new DateTimeZone( 'UTC' ) ) ) );
+update_option( \Pekokis\Asistencia\WordPress\Ajustes::OPCION, array( 'avisos_activos' => array_keys( $RA::TIPOS ), 'webhook_avisos' => '' ) + $ajustesAvisos );
+$wpdb->update( Tablas::nombre( 'trabajadores' ), array( 'correo' => 'luis@example.test', 'telefono' => '+51 987 654 321', 'jefe_user_id' => 1 ), array( 'id' => $id2 ) );
+
+$sol = \Pekokis\Asistencia\WordPress\Correcciones::solicitar( $id2, $ayer, '19:00', \Pekokis\Asistencia\Nucleo\Accion::FIN_JORNADA, 'fin_jornada', 'Me olvidé de marcar' );
+$avSol = $colaDe( $RA::SOLICITUD );
+$comprobar( 'una solicitud nueva avisa al jefe', is_int( $sol ) && 1 === count( $avSol ) && get_userdata( 1 )->user_email === $avSol[0]['destino'] && str_contains( $avSol[0]['linea'], 'Me olvidé de marcar' ), wp_json_encode( $avSol ) );
+\Pekokis\Asistencia\WordPress\Correcciones::rechazar( $sol, 'Ese día no viniste' );
+$avRes = $colaDe( $RA::RESUELTA );
+$comprobar( 'al rechazarla se avisa al trabajador, con la nota', 1 === count( $avRes ) && 'luis@example.test' === $avRes[0]['destino'] && str_contains( $avRes[0]['linea'], 'rechazada' ) && str_contains( $avRes[0]['linea'], 'Ese día no viniste' ) );
+
+$marcaRev = (int) $wpdb->get_var( 'SELECT id FROM ' . Tablas::nombre( 'marcas' ) . ' WHERE requiere_revision = 1 ORDER BY id LIMIT 1' ); // phpcs:ignore
+$N::revision( $marcaRev );
+$N::revision( $marcaRev );
+$comprobar( 'una marca por revisar avisa una sola vez', $marcaRev > 0 && 1 === count( $colaDe( $RA::REVISION ) ) );
+
+// El próximo lunes a las 9:20: nadie marcó, todos "no llegaron".
+$lunes   = ( new DateTimeImmutable( 'next monday 09:20', $zonaLima ) )->setTimezone( new DateTimeZone( 'UTC' ) );
+$nuevos  = $N::revisar( $lunes );
+$ausentes = $colaDe( $RA::AUSENTE );
+$comprobar( 'a las 9:20 se encola un aviso por cada ausente', $nuevos >= 1 && count( $ausentes ) === count( Trabajadores::listar() ) && str_contains( implode( ' ', array_column( $ausentes, 'linea' ) ), 'Luis Pérez entra a las 09:00' ), $nuevos . ' / ' . count( $ausentes ) );
+$comprobar( 'si el cron vuelve a pasar no se repiten', 0 === $N::revisar( $lunes ) );
+
+// Otro ausente del mismo jefe: tienen que salir juntos en un solo correo.
+$N::encolar( $RA::AUSENTE, 'ausente|prueba-otro', Trabajadores::buscar( $id2 ), 'Otra Persona entra a las 09:00 y todavía no marca.' );
+$correos = array();
+$envio   = $N::despachar();
+$ausMail = array_values( array_filter( $correos, static fn( $c ) => str_contains( $c['subject'], 'llegaron' ) || str_contains( $c['subject'], 'llegó' ) ) );
+$comprobar( 'se envían agrupados: un solo correo "No llegaron a su hora" con la lista', 0 === $envio['fallidos'] && 1 === count( $ausMail ) && str_contains( $ausMail[0]['subject'], 'No llegaron a su hora' ) && str_contains( $ausMail[0]['message'], '- Luis Pérez entra' ) && str_contains( $ausMail[0]['message'], '- Otra Persona' ), wp_json_encode( array_column( $correos, 'subject' ) ) );
+$comprobar( 'después quedan como enviados', 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Tablas::nombre( 'avisos' ) . " WHERE estado = 'pendiente'" ) ); // phpcs:ignore
+
+// Webhook para WhatsApp: JSON firmado con el teléfono del trabajador.
+update_option( \Pekokis\Asistencia\WordPress\Ajustes::OPCION, array( 'webhook_avisos' => 'https://avisos.example.test/hook' ) + \Pekokis\Asistencia\WordPress\Ajustes::todos() );
+$N::encolar( $RA::SIN_SALIDA, 'sin_salida|prueba|' . $id2, Trabajadores::buscar( $id2 ), 'Hola, Luis: no has marcado tu salida de hoy.' );
+$correos  = array();
+$llamadas = array();
+$N::despachar();
+$cuerpo = $llamadas[0]['args']['body'] ?? '';
+$json   = json_decode( $cuerpo, true );
+$comprobar( 'el aviso al trabajador sale por correo y por el webhook con su teléfono', 1 === count( $correos ) && 1 === count( $llamadas ) && '+51987654321' === ( $json['para']['telefono'] ?? '' ) && 'sin_salida' === ( $json['evento'] ?? '' ), $cuerpo );
+$comprobar( 'el webhook va firmado con HMAC', hash_hmac( 'sha256', $cuerpo, \Pekokis\Asistencia\WordPress\Secretos::clave() ) === ( $llamadas[0]['args']['headers']['X-PKA-Firma'] ?? '' ) );
+
+// Si el correo falla, se reintenta y a la tercera queda como fallido.
+update_option( \Pekokis\Asistencia\WordPress\Ajustes::OPCION, array( 'webhook_avisos' => '' ) + \Pekokis\Asistencia\WordPress\Ajustes::todos() );
+$N::encolar( $RA::PANTALLA, 'pantalla|prueba', null, 'La pantalla de prueba no se conecta.' );
+$fallarCorreo = true;
+$N::despachar();
+$N::despachar();
+$intentos = $wpdb->get_row( 'SELECT estado, intentos FROM ' . Tablas::nombre( 'avisos' ) . " WHERE clave = 'pantalla|prueba'", ARRAY_A ); // phpcs:ignore
+$N::despachar();
+$final = $wpdb->get_row( 'SELECT estado, intentos, error FROM ' . Tablas::nombre( 'avisos' ) . " WHERE clave = 'pantalla|prueba'", ARRAY_A ); // phpcs:ignore
+$fallarCorreo = false;
+$comprobar( 'un correo que falla se reintenta y a la tercera queda como fallido', 'pendiente' === $intentos['estado'] && 2 === (int) $intentos['intentos'] && 'fallido' === $final['estado'] && str_contains( $final['error'], 'SMTP' ), wp_json_encode( array( $intentos, $final ) ) );
+$comprobar( 'el cron de avisos está programado cada 5 minutos', false !== wp_next_scheduled( $N::EVENTO ) && 'pka_cinco_minutos' === wp_get_schedule( $N::EVENTO ) );
+$comprobar( 'la base de datos está en la versión 4', '4' === get_option( 'pka_version_bd' ) );
+update_option( \Pekokis\Asistencia\WordPress\Ajustes::OPCION, $ajustesAvisos );
 
 $comprobar( 'presencia por IP del taller', ( $_SERVER['REMOTE_ADDR'] = '203.0.113.10' ) && Presencia::enRedDelTaller() );
 

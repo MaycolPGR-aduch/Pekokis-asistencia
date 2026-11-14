@@ -42,6 +42,7 @@ final class Correcciones {
 
 		$id = self::insertar( $datos + array( 'solicitado_por_trabajador' => $trabajadorId, 'estado' => self::PENDIENTE ) );
 		Auditoria::registrar( 'correccion.solicitar', 'correccion', $id, null, self::paraAuditoria( $datos ), $justificacion, $trabajadorId );
+		Notificaciones::solicitud( $id );
 
 		return $id;
 	}
@@ -136,6 +137,7 @@ final class Correcciones {
 		self::resolver( $id, self::APROBADA, $nota );
 		$marca = self::registrarMarca( $c, $id, 'correccion' );
 		Auditoria::registrar( 'correccion.aprobar', 'correccion', $id, null, array( 'marca_id' => $marca ), $nota );
+		Notificaciones::resuelta( $id );
 
 		return true;
 	}
@@ -153,6 +155,7 @@ final class Correcciones {
 
 		self::resolver( $id, self::RECHAZADA, $nota );
 		Auditoria::registrar( 'correccion.rechazar', 'correccion', $id, null, null, $nota );
+		Notificaciones::resuelta( $id );
 
 		return true;
 	}

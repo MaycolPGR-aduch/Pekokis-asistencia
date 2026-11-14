@@ -45,6 +45,14 @@ final class Ajustes {
 			'descontar_no_trabajado' => 1,
 			'tardanza_desde'         => ReglasPago::TARDANZA_DESDE_ENTRADA,
 			'aviso_permanencia_min'  => 30,
+			// Avisos (fase 4). Todos empiezan apagados; se encienden en Ajustes.
+			'avisos_activos'          => array(),
+			'aviso_hora_sin_salida'   => '20:00',
+			'aviso_margen_ausencia'   => 10,
+			'aviso_margen_refrigerio' => 10,
+			'aviso_limite_salida'     => 120,
+			// Webhook (Make, n8n o el bot) que recibe los avisos para mandarlos por WhatsApp.
+			'webhook_avisos'          => '',
 		);
 	}
 
@@ -65,6 +73,19 @@ final class Ajustes {
 		} catch ( Exception $e ) {
 			return new DateTimeZone( 'America/Lima' );
 		}
+	}
+
+	/**
+	 * Fecha u hora de Lima a partir de una fecha UTC de la base de datos. No usa
+	 * get_date_from_gmt(), que depende de la zona horaria de WordPress (que puede
+	 * no ser la del taller).
+	 */
+	public static function local( ?string $utc, string $formato = 'Y-m-d' ): string {
+		if ( null === $utc || '' === $utc ) {
+			return '';
+		}
+
+		return ( new \DateTimeImmutable( $utc, new DateTimeZone( 'UTC' ) ) )->setTimezone( self::zona() )->format( $formato );
 	}
 
 	public static function reglasPago(): ReglasPago {

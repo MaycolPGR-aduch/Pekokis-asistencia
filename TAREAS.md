@@ -3,7 +3,7 @@
 Este archivo lleva lo hecho, lo pendiente y la bitácora del proyecto. Se actualiza cada vez que avanzamos.
 El detalle técnico de cada punto está en [docs/plan-tecnico.md](docs/plan-tecnico.md).
 
-**Estado actual:** **versión 0.8.1 en producción** (`https://asistencia.pekokis.com`, subida el 14-11). Incluye el MVP, la 0.6.0 (feriados, ausencias, aviso de datos, Gerencia, copia en la nube), la **fase 2** (horas extra, sueldos y pre-planilla) y la **fase 3** (Resumen del mes con gráficos, Informe por trabajador en Excel y PDF, y el calendario de colores en la app del trabajador). La cubren 123 pruebas del núcleo y 161 de punta a punta. El respaldo ya llega a Google Drive y los feriados de 2026 y 2027 están cargados. **Siguiente:** terminar el SMTP y la red del taller, que el abogado revise el aviso, hacer el piloto y revisar con el contador las reglas de horas. Después, la fase 4 (notificaciones).
+**Estado actual:** en producción está la **0.8.1** (`https://asistencia.pekokis.com`). Ya tiene el respaldo en Google Drive y los feriados de 2026 y 2027 cargados. En local está lista la **0.9.0**, que agrega la **fase 4**: avisos por correo (y un webhook para WhatsApp) a jefes, trabajadores y RR.HH. La cubren 129 pruebas del núcleo y 174 de punta a punta. **Siguiente:** subir la 0.9.0 y encender los avisos que gerencia quiera. Además, terminar el correo de RR.HH. y la red o pantalla del taller, cambiar `PKA_SECRETO`, que el abogado revise el aviso, hacer el piloto y revisar con el contador las reglas de horas.
 
 **Estrategia:** primero un MVP con las fases 0 y 1 del plan (registro de asistencia funcionando y conforme a la norma). Después, mejoras por etapas según lo que opine gerencia.
 
@@ -137,8 +137,8 @@ Leyenda: `[x]` hecho · `[ ]` pendiente · `[~]` en curso
 
 ### 7. Calidad y puesta en marcha
 - [x] Pruebas automáticas:
-  - 123 del núcleo (`composer test`);
-  - 161 de todo el flujo contra el WordPress local, con un autenticador simulado (`tests/integracion/flujo-marcas.php`);
+  - 129 del núcleo (`composer test`);
+  - 174 de todo el flujo contra el WordPress local, con un autenticador simulado (`tests/integracion/flujo-marcas.php`);
   - `tests/integracion/datos-demo.php` carga 5 trabajadores de ejemplo, con casos de hoy y de ayer, para ver el panel.
 - [ ] Pruebas en celulares reales: Android (Chrome) e iPhone (Safari)
 - [~] Aviso de datos personales (Ley 29733):
@@ -182,7 +182,22 @@ Leyenda: `[x]` hecho · `[ ]` pendiente · `[~]` en curso
     - horas trabajadas por persona en el mes;
     - SVG propio sin librerías, un solo color validado (azul #2a78d6) y un tooltip al pasar el mouse o con el teclado;
     - la tabla de comparación sigue debajo como vista de datos.
-- [ ] **Fase 4 — Notificaciones:** correo y luego WhatsApp
+- [~] **Fase 4 — Notificaciones** (versión 0.9.0):
+  - [x] **Qué se avisa y a quién** (`ReglasAvisos`, en el núcleo):
+    - al jefe: no llegó (pasada la tolerancia y un margen), refrigerio que se alarga, salida temporal larga, marca por revisar, solicitud de "olvidé marcar", y fuera de horario sin autorizar (el día siguiente);
+    - al trabajador: sigue sin marcar la salida a las 20:00 (o 30 min después del fin de su horario), y su solicitud fue aprobada o rechazada;
+    - a RR.HH.: pantalla QR sin conexión y posible IP nueva del taller (de lunes a sábado, de 7 a 20 h, sin feriados).
+  - [x] **Cola de avisos** (tabla `avisos`, base de datos versión 4) y cron cada 5 minutos:
+    - cada aviso sale una sola vez, gracias a una clave única;
+    - se agrupa por persona ("No llegaron a su hora" con la lista);
+    - se reintenta 3 veces y se borra a los 90 días;
+    - marcar o aprobar nunca espera a un correo.
+  - [x] **Canales:**
+    - correo con `wp_mail`, que en producción sale por WP Mail SMTP;
+    - webhook JSON firmado con HMAC, con nombre, teléfono y mensaje, para mandarlo por WhatsApp desde Make o el bot.
+  - [x] **Ajustes → Avisos:** interruptores por tipo (todo empieza apagado), márgenes, hora límite, webhook, "Enviarme un correo de prueba" y la lista de los últimos 25 avisos con su estado. Los cambios quedan en el historial.
+  - [ ] **WhatsApp de verdad:** un escenario de Make o un flujo del bot que reciba el webhook y mande el mensaje con la API de Meta. Necesita una plantilla aprobada por Meta, porque son mensajes que inicia la empresa.
+  - [ ] Push web: solo si hace falta (en iPhone solo funciona con la app instalada).
 
 ---
 
@@ -203,6 +218,17 @@ Vienen de la sección 16 del plan; se resuelven con gerencia y el contador.
 ---
 
 ## Bitácora
+
+### 14-11-2026 (noche, 5) — versión 0.9.0 (fase 4: avisos)
+- **Núcleo:** `ReglasAvisos`, que decide qué avisos tocan según la hora y el estado del día, con la clave única de cada uno. 6 pruebas nuevas, 129 en total.
+- **WordPress:**
+  - `Notificaciones`: la cola, las revisiones del cron, los avisos que disparan los hechos (solicitud, resuelta, revisión), el envío agrupado por correo y webhook, los reintentos y la limpieza.
+  - Base de datos versión 4: tabla `avisos`. Cron `pka_avisos` cada 5 minutos.
+  - Llamadas desde `Correcciones` (solicitar, aprobar, rechazar) y desde la API de marcas (cuando una marca queda por revisar). Van con try/catch: un aviso nunca rompe una marca.
+  - En Ajustes, la sección "Avisos por correo y WhatsApp".
+- **Arreglo:** las fechas UTC de la base se mostraban con la zona horaria de WordPress (en local es Europe/Madrid), no con la de Lima. Ahora se usa `Ajustes::local()`, también en `Jornadas`, `Seguimiento` y la lista de pantallas.
+- **Prueba de punta a punta:** 174 comprobaciones (13 nuevas). Los correos y el webhook se capturan con `pre_wp_mail` y `pre_http_request`, así que no sale nada de verdad. Revisa: apagado no encola, solicitud al jefe, resuelta al trabajador, que no se repita, ausentes del lunes a las 9:20, agrupado en un solo correo, webhook con teléfono y firma, y 3 reintentos hasta "fallido".
+- En el navegador revisé la sección de avisos y la lista de los últimos avisos, con la hora de Lima.
 
 ### 14-11-2026 (noche, 4) — 0.8.1 en producción
 - Maycol subió `pekokis-asistencia-0.8.1.zip` por wp-admin, encima de la 0.5.0. La base de datos pasa sola a la versión 3.

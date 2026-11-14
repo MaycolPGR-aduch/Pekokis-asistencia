@@ -440,6 +440,8 @@ Con la fase 1 ya se cumple el registro de asistencia que pide la norma. La fase 
 
 **14-11-2026:** la fase 3 llegó con la versión 0.8.0: Resumen del mes (dashboard con comparación de 6 meses) e Informe por trabajador (calendario, detalle, Excel y vista para imprimir o guardar como PDF). El PDF sale del navegador, sin librerías en el servidor.
 
+**14-11-2026:** la fase 4 (avisos) llegó con la versión 0.9.0. Tiene una cola en la tabla `avisos` y un cron cada 5 minutos, y agrupa por destinatario. Avisa por correo y por un webhook firmado para WhatsApp. Todo empieza apagado. El envío por WhatsApp (escenario de Make o bot con la API de Meta) queda para cuando se apruebe la plantilla del mensaje en Meta.
+
 **Decisión del 13-11-2026:** el MVP son las fases 0 y 1. Las fases 2, 3 y 4 se harán por etapas, según lo que pida gerencia. El avance se lleva en [TAREAS.md](../TAREAS.md).
 
 ---

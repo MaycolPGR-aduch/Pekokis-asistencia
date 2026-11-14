@@ -13,7 +13,7 @@ defined( 'ABSPATH' ) || exit;
  * lo que RR.HH. haya cambiado.
  */
 final class Instalador {
-	public const VERSION_BD = '3';
+	public const VERSION_BD = '4';
 
 	private const OPCION_VERSION = 'pka_version_bd';
 
@@ -56,7 +56,7 @@ final class Instalador {
 		$c = $wpdb->get_charset_collate();
 		$t = array();
 
-		foreach ( array( 'trabajadores', 'horarios', 'horario_dias', 'motivos', 'marcas', 'revisiones', 'correcciones', 'credenciales', 'dispositivos', 'activaciones', 'redes', 'pantallas', 'auditoria', 'calendario', 'ausencias', 'sueldos', 'sobretiempo' ) as $tabla ) {
+		foreach ( array( 'trabajadores', 'horarios', 'horario_dias', 'motivos', 'marcas', 'revisiones', 'correcciones', 'credenciales', 'dispositivos', 'activaciones', 'redes', 'pantallas', 'auditoria', 'calendario', 'ausencias', 'sueldos', 'sobretiempo', 'avisos' ) as $tabla ) {
 			$t[ $tabla ] = Tablas::nombre( $tabla );
 		}
 
@@ -310,6 +310,29 @@ final class Instalador {
 				PRIMARY KEY  (id),
 				KEY trabajador_fecha (trabajador_id,estado,fecha),
 				KEY fecha (fecha)
+			) {$c};",
+
+			// Cola de avisos por correo y webhook (versión 4). La clave evita repetir un aviso.
+			"CREATE TABLE {$t['avisos']} (
+				id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+				tipo varchar(24) NOT NULL,
+				clave varchar(120) NOT NULL,
+				canal varchar(10) NOT NULL,
+				destino varchar(190) NOT NULL,
+				nombre varchar(120) NOT NULL DEFAULT '',
+				telefono varchar(32) NOT NULL DEFAULT '',
+				trabajador_id bigint(20) unsigned NOT NULL DEFAULT 0,
+				linea text NOT NULL,
+				enlace varchar(255) NOT NULL DEFAULT '',
+				estado varchar(12) NOT NULL DEFAULT 'pendiente',
+				intentos tinyint(3) unsigned NOT NULL DEFAULT 0,
+				error varchar(255) NOT NULL DEFAULT '',
+				creado_en datetime NOT NULL,
+				enviado_en datetime NULL,
+				PRIMARY KEY  (id),
+				UNIQUE KEY unico (clave,canal,destino),
+				KEY estado (estado,id),
+				KEY creado_en (creado_en)
 			) {$c};",
 
 			// Solo inserciones, con cadena de hashes igual que las marcas.
