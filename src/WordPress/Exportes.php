@@ -8,6 +8,7 @@ use Pekokis\Asistencia\Nucleo\Marca;
 use Pekokis\Asistencia\Nucleo\PruebaPresencia;
 use Pekokis\Asistencia\Nucleo\TipoMarca;
 use Pekokis\Asistencia\Nucleo\TotalesDia;
+use Pekokis\Asistencia\Nucleo\ValidacionAusencia;
 use Shuchkin\SimpleXLSXGen;
 
 defined( 'ABSPATH' ) || exit;
@@ -17,6 +18,7 @@ defined( 'ABSPATH' ) || exit;
  *
  * - "Registro": un renglón por trabajador y día, con ingreso y salida.
  * - "Marcas": todas las marcas, incluidas las anuladas, con su prueba y origen.
+ * - "Ausencias y feriados": ausencias justificadas del mes y días no laborables.
  * - "Integridad": quién lo generó, cuándo y el estado de la cadena de hashes.
  */
 final class Exportes {
@@ -122,8 +124,34 @@ final class Exportes {
 			array( 'Cada marca guarda el hash de la anterior. Si alguien edita o borra una marca directamente en la base de datos, la cadena se rompe.' ),
 		);
 
+		$a       = Tablas::nombre( 'ausencias' );
+		$ausente = array( array( '<b>DNI</b>', '<b>Apellidos y nombres</b>', '<b>Tipo</b>', '<b>Desde</b>', '<b>Hasta</b>', '<b>Días en el mes</b>', '<b>Nota</b>' ) );
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		foreach ( $wpdb->get_results( $wpdb->prepare( "SELECT a.*, t.dni, t.nombres, t.apellidos FROM {$a} a JOIN {$t} t ON t.id = a.trabajador_id WHERE a.estado = 'vigente' AND a.desde <= %s AND a.hasta >= %s ORDER BY t.apellidos, a.desde", $hasta, $desde ), ARRAY_A ) as $au ) {
+			$ausente[] = array(
+				$au['dni'],
+				$au['apellidos'] . ', ' . $au['nombres'],
+				ValidacionAusencia::TIPOS[ $au['tipo'] ] ?? $au['tipo'],
+				$au['desde'],
+				$au['hasta'],
+				ValidacionAusencia::dias( max( $au['desde'], $desde ), min( $au['hasta'], $hasta ) ),
+				$au['nota'],
+			);
+		}
+
+		$ausente[] = array();
+		$ausente[] = array( '<b>Feriados y días no laborables del mes</b>' );
+
+		foreach ( Calendario::delAnio( (int) substr( $mes, 0, 4 ) ) as $fecha => $dia ) {
+			if ( str_starts_with( $fecha, $mes ) ) {
+				$ausente[] = array( '', '', Calendario::TIPOS[ $dia['tipo'] ] ?? $dia['tipo'], $fecha, $fecha, 1, $dia['nombre'] );
+			}
+		}
+
 		$xlsx = SimpleXLSXGen::fromArray( $registro, 'Registro' )
 			->addSheet( $detalle, 'Marcas' )
+			->addSheet( $ausente, 'Ausencias y feriados' )
 			->addSheet( $integridad, 'Integridad' )
 			->setTitle( 'Registro de asistencia ' . $mes )
 			->setCompany( (string) $ajust['razon_social'] );

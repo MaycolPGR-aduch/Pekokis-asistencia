@@ -20,6 +20,7 @@ final class ResumenDia {
 	public const FUERA       = 'fuera';
 	public const SALIO       = 'salio';
 	public const LIBRE       = 'libre';
+	public const JUSTIFICADO = 'justificado';
 
 	private function __construct(
 		public readonly string $situacion,
@@ -30,13 +31,15 @@ final class ResumenDia {
 		public readonly ?Motivo $motivoActual,
 		public readonly int $minutosEnEstado,
 		public readonly bool $excedeRefrigerio,
+		public readonly string $detalle = '',
 	) {
 	}
 
 	/**
-	 * @param Marca[] $marcasDelDia Marcas efectivas del día laboral.
+	 * @param Marca[]     $marcasDelDia Marcas efectivas del día laboral.
+	 * @param string|null $ausencia     Ausencia justificada que cubre el día ("Vacaciones"…), si hay.
 	 */
-	public static function calcular( array $marcasDelDia, HorarioDelDia $horario, string $dia, DateTimeZone $zona, DateTimeImmutable $ahora ): self {
+	public static function calcular( array $marcasDelDia, HorarioDelDia $horario, string $dia, DateTimeZone $zona, DateTimeImmutable $ahora, ?string $ausencia = null ): self {
 		$marcas  = MaquinaEstados::ordenar( $marcasDelDia );
 		$estado  = MaquinaEstados::estadoActual( $marcas );
 		$ultima  = $marcas ? $marcas[ count( $marcas ) - 1 ] : null;
@@ -57,6 +60,7 @@ final class ResumenDia {
 		if ( ! $marcas ) {
 			$limite    = $inicio ? $inicio->modify( '+' . $horario->toleranciaMin . ' minutes' ) : null;
 			$situacion = match ( true ) {
+				null !== $ausencia    => self::JUSTIFICADO,
 				! $horario->laborable => self::LIBRE,
 				$limite && $ahora > $limite => self::AUSENTE,
 				default => self::POR_LLEGAR,
@@ -78,7 +82,9 @@ final class ResumenDia {
 			$ultima?->marcadoUtc,
 			$ultima && TipoMarca::SALIDA === $ultima->tipo ? $ultima->motivo : null,
 			$enEstado,
-			Estado::REFRIGERIO === $estado && $enEstado > $horario->refrigerioMin
+			Estado::REFRIGERIO === $estado && $enEstado > $horario->refrigerioMin,
+			// Qué explica el día: la ausencia justificada o el motivo del descanso (feriado).
+			$ausencia ?? $horario->descanso
 		);
 	}
 

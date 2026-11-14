@@ -11,7 +11,7 @@ Lo que tienes que hacer tú está marcado con ☐. Los nombres de los menús de 
 ## 0. Antes de empezar
 
 - ☐ **Recursos del plan.** En hPanel, revisa qué mide el 77 % de "Uso de recursos". Este sitio consume poco, pero suma archivos (unos 3.000 de WordPress y 200 del plugin) y un cron cada 5 minutos.
-- ☐ **El zip del plugin.** Ya está en `dist/pekokis-asistencia-0.5.0.zip`. Si cambia el código, se vuelve a generar con:
+- ☐ **El zip del plugin.** Ya está en `dist/pekokis-asistencia-0.6.0.zip`. Si cambia el código, se vuelve a generar con:
   ```bash
   php scripts/empaquetar.php
   ```
@@ -74,7 +74,7 @@ No lo compartas ni lo subas a git. Si algún día cambia, solo se invalidan los 
 
 ## 6. Instalar el plugin y el tema
 
-1. ☐ **Plugins → Añadir nuevo → Subir plugin:** sube `pekokis-asistencia-0.5.0.zip` y actívalo. Al activarse crea sus tablas, roles, motivos y el horario base.
+1. ☐ **Plugins → Añadir nuevo → Subir plugin:** sube `pekokis-asistencia-0.6.0.zip` y actívalo. Al activarse crea sus tablas, roles, motivos y el horario base.
 2. ☐ **Apariencia → Temas:** activa **"Pekokis Asistencia (vacío)"** y borra los demás temas, salvo uno por defecto como respaldo.
 3. ☐ Revisa **Asistencia → Ajustes → Estado del sistema.**
 
@@ -111,7 +111,11 @@ Es igual que en producción: **nunca** se llama a `wp-cron.php` por URL.
 2. ☐ **Pantalla:** en la tablet de la entrada, inicia sesión en wp-admin, abre `https://asistencia.pekokis.com/pantalla/` y pulsa **"Usar este equipo como pantalla"**.
    - Puedes cerrar la sesión después: la pantalla sigue funcionando.
    - Déjala enchufada y con el brillo alto.
-3. ☐ **Trabajadores:** en Asistencia → Trabajadores, agrega a las 2 o 3 personas del piloto y genera su **enlace de activación**. Cada una lo abre en su propio celular.
+3. ☐ **Calendario:** en Asistencia → Calendario, revisa la lista sugerida de feriados del año (y del siguiente) contra el calendario oficial y pulsa "Cargar los feriados". Agrega los días no laborables propios de la empresa.
+4. ☐ **Aviso de datos personales:** en Asistencia → Ajustes, al final, está el borrador. **Revísalo con el abogado** y guárdalo antes de activar a nadie: cada trabajador lo acepta al activar su celular. Confirma también la razón social, el RUC y el domicilio.
+5. ☐ **Trabajadores:** en Asistencia → Trabajadores, agrega a las 2 o 3 personas del piloto y genera su **enlace de activación**. Cada una lo abre en su propio celular. Si un jefe o alguien de RR.HH. también marca, enlaza su perfil con su usuario de wp-admin ("Usuario de wp-admin"): así no puede aprobar sus propias marcas.
+6. ☐ **Gerencia (opcional):** crea su usuario con el rol **"Gerencia (asistencia, solo lectura)"**: ve el panel, el historial y descarga el Excel, pero no corrige nada.
+7. ☐ **Copia en la nube (opcional):** en Make, crea un escenario "Webhooks → Custom webhook" + "Google Drive → Upload a file" (el archivo llega en el campo `archivo`). Pega la URL del webhook en Asistencia → Exportar y pulsa "Enviar respaldo" para probar.
 
 ## 11. Checklist del piloto
 
@@ -129,6 +133,8 @@ Es igual que en producción: **nunca** se llama a `wp-cron.php` por URL.
 | 10 | En wp-admin: Hoy muestra a todos bien; descargar el Excel del mes | ☐ | — |
 | 11 | "Mis marcas del mes": ver los días, tardanzas y horas, y el mes anterior | ☐ | ☐ |
 | 12 | Cambio de celular: generar un enlace nuevo, activarlo en otro celular y comprobar que el anterior ya no entra | ☐ | ☐ |
+| 13 | Al activar: se ve el aviso de datos y "Crear mi llave" no funciona hasta marcar la casilla | ☐ | ☐ |
+| 14 | Registrar vacaciones a alguien: en Hoy aparece como "Ausencia justificada" y en su app, en "Mis marcas del mes" | ☐ | — |
 
 Anota en [TAREAS.md](../TAREAS.md) lo que falle, con el celular y el navegador.
 

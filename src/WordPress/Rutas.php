@@ -11,6 +11,7 @@ defined( 'ABSPATH' ) || exit;
  *   /m?q=…     Lo abre el QR de la pantalla: valida la presencia y sigue como /.
  *   /activar/  Crear la passkey con el enlace de un solo uso.
  *   /pantalla/ La tablet de la entrada con el QR que cambia cada 30 segundos.
+ *   /privacidad/ El aviso de datos personales, para leerlo cuando se quiera.
  */
 final class Rutas {
 	private const VISTAS = array(
@@ -18,6 +19,7 @@ final class Rutas {
 		'm'        => 'app',
 		'activar'  => 'activar',
 		'pantalla' => 'pantalla',
+		'privacidad' => 'privacidad',
 	);
 
 	public static function registrar(): void {

@@ -37,6 +37,9 @@ defined( 'ABSPATH' ) || exit;
 			<p class="cargando">Cargando…</p>
 		</section>
 		<p class="presencia" id="presencia" hidden></p>
+		<?php if ( 'pantalla' !== $config['vista'] ) : ?>
+			<p class="pie"><a href="<?php echo esc_url( home_url( '/privacidad/' ) ); ?>">Aviso de datos personales</a></p>
+		<?php endif; ?>
 	</main>
 	<noscript>Activa JavaScript para usar la asistencia.</noscript>
 </body>

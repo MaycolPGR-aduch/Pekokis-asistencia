@@ -20,9 +20,11 @@ final class Capacidades {
 	public const VER_SUELDOS        = 'pka_ver_sueldos';
 	public const AJUSTES            = 'pka_ajustes';
 	public const AUDITORIA          = 'pka_auditoria';
+	public const EXPORTAR           = 'pka_exportar';
 
-	public const ROL_JEFE = 'pka_jefe';
-	public const ROL_RRHH = 'pka_rrhh';
+	public const ROL_JEFE     = 'pka_jefe';
+	public const ROL_RRHH     = 'pka_rrhh';
+	public const ROL_GERENCIA = 'pka_gerencia';
 
 	/** @return string[] */
 	public static function deJefe(): array {
@@ -40,12 +42,19 @@ final class Capacidades {
 			self::VER_SUELDOS,
 			self::AJUSTES,
 			self::AUDITORIA,
+			self::EXPORTAR,
 		);
+	}
+
+	/** Gerencia: solo lectura. Ve el panel de todos, el historial y descarga el registro; no corrige nada. */
+	public static function deGerencia(): array {
+		return array( self::VER_EQUIPO, self::VER_TODO, self::AUDITORIA, self::EXPORTAR );
 	}
 
 	public static function registrarRoles(): void {
 		self::asegurarRol( self::ROL_JEFE, 'Jefe de área (asistencia)', self::deJefe() );
 		self::asegurarRol( self::ROL_RRHH, 'RR.HH. (asistencia)', self::deRrhh() );
+		self::asegurarRol( self::ROL_GERENCIA, 'Gerencia (asistencia, solo lectura)', self::deGerencia() );
 
 		$administrador = get_role( 'administrator' );
 

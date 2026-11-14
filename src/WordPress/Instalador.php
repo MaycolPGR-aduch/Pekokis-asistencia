@@ -13,7 +13,7 @@ defined( 'ABSPATH' ) || exit;
  * lo que RR.HH. haya cambiado.
  */
 final class Instalador {
-	public const VERSION_BD = '1';
+	public const VERSION_BD = '2';
 
 	private const OPCION_VERSION = 'pka_version_bd';
 
@@ -56,7 +56,7 @@ final class Instalador {
 		$c = $wpdb->get_charset_collate();
 		$t = array();
 
-		foreach ( array( 'trabajadores', 'horarios', 'horario_dias', 'motivos', 'marcas', 'revisiones', 'correcciones', 'credenciales', 'dispositivos', 'activaciones', 'redes', 'pantallas', 'auditoria' ) as $tabla ) {
+		foreach ( array( 'trabajadores', 'horarios', 'horario_dias', 'motivos', 'marcas', 'revisiones', 'correcciones', 'credenciales', 'dispositivos', 'activaciones', 'redes', 'pantallas', 'auditoria', 'calendario', 'ausencias' ) as $tabla ) {
 			$t[ $tabla ] = Tablas::nombre( $tabla );
 		}
 
@@ -76,6 +76,8 @@ final class Instalador {
 				fecha_ingreso date NULL,
 				fecha_cese date NULL,
 				estado varchar(16) NOT NULL DEFAULT 'activo',
+				aviso_version smallint(5) unsigned NOT NULL DEFAULT 0,
+				aviso_aceptado_en datetime NULL,
 				creado_en datetime NOT NULL,
 				actualizado_en datetime NOT NULL,
 				PRIMARY KEY  (id),
@@ -240,6 +242,35 @@ final class Instalador {
 				creado_en datetime NOT NULL,
 				PRIMARY KEY  (id),
 				UNIQUE KEY token_hash (token_hash)
+			) {$c};",
+
+			// Feriados y días no laborables de la empresa (versión 2).
+			"CREATE TABLE {$t['calendario']} (
+				fecha date NOT NULL,
+				nombre varchar(120) NOT NULL,
+				tipo varchar(16) NOT NULL DEFAULT 'feriado',
+				creado_por bigint(20) unsigned NOT NULL DEFAULT 0,
+				creado_en datetime NOT NULL,
+				PRIMARY KEY  (fecha)
+			) {$c};",
+
+			// Vacaciones, descanso médico, licencias y permisos de días completos (versión 2).
+			"CREATE TABLE {$t['ausencias']} (
+				id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+				trabajador_id bigint(20) unsigned NOT NULL,
+				tipo varchar(20) NOT NULL,
+				desde date NOT NULL,
+				hasta date NOT NULL,
+				nota varchar(255) NOT NULL DEFAULT '',
+				estado varchar(12) NOT NULL DEFAULT 'vigente',
+				creado_por bigint(20) unsigned NOT NULL,
+				creado_en datetime NOT NULL,
+				anulado_por bigint(20) unsigned NULL,
+				anulado_en datetime NULL,
+				motivo_anulacion varchar(255) NOT NULL DEFAULT '',
+				PRIMARY KEY  (id),
+				KEY trabajador_periodo (trabajador_id,estado,desde,hasta),
+				KEY periodo (desde,hasta)
 			) {$c};",
 
 			// Solo inserciones, con cadena de hashes igual que las marcas.

@@ -45,6 +45,8 @@ final class Api {
 		register_rest_route( self::ESPACIO, '/identificar', array( 'methods' => 'POST', 'callback' => array( self::class, 'identificar' ), 'permission_callback' => $publica ) );
 		register_rest_route( self::ESPACIO, '/marcas', array( 'methods' => 'POST', 'callback' => array( self::class, 'marcar' ), 'permission_callback' => $publica ) );
 		register_rest_route( self::ESPACIO, '/presencia', array( 'methods' => 'GET', 'callback' => array( self::class, 'presencia' ), 'permission_callback' => $publica ) );
+		register_rest_route( self::ESPACIO, '/aviso', array( 'methods' => 'GET', 'callback' => array( self::class, 'aviso' ), 'permission_callback' => $publica ) );
+		register_rest_route( self::ESPACIO, '/aviso/aceptar', array( 'methods' => 'POST', 'callback' => array( self::class, 'aceptarAviso' ), 'permission_callback' => $publica ) );
 		register_rest_route( self::ESPACIO, '/yo/mes', array( 'methods' => 'POST', 'callback' => array( self::class, 'miMes' ), 'permission_callback' => $publica ) );
 		register_rest_route( self::ESPACIO, '/correcciones', array( 'methods' => 'POST', 'callback' => array( self::class, 'solicitarCorreccion' ), 'permission_callback' => $publica ) );
 		register_rest_route( self::ESPACIO, '/presencia/codigo', array( 'methods' => 'POST', 'callback' => array( self::class, 'presenciaCodigo' ), 'permission_callback' => $publica ) );
@@ -128,6 +130,7 @@ final class Api {
 				'nombre'    => $activacion['nombres'],
 				'reto'      => $opciones['reto'],
 				'publicKey' => $opciones['publicKey'],
+				'aviso'     => Aviso::paraApp(),
 			)
 		);
 	}
@@ -145,6 +148,10 @@ final class Api {
 			return new WP_Error( 'pka_celular_ocupado', 'Este celular ya está activado para otra persona. Cada trabajador usa su propio celular.', array( 'status' => 409 ) );
 		}
 
+		if ( (int) $peticion->get_param( 'acepta_aviso' ) !== Aviso::version() ) {
+			return new WP_Error( 'pka_aviso', 'Lee el aviso de datos personales y marca la casilla para continuar.', array( 'status' => 422 ) );
+		}
+
 		$dispositivo = Dispositivos::vincular( $trabajadorId );
 		$credencial  = Passkeys::completarRegistro( (string) $peticion->get_param( 'reto' ), (array) $peticion->get_param( 'credencial' ), $trabajadorId, $dispositivo );
 
@@ -153,6 +160,7 @@ final class Api {
 		}
 
 		Activaciones::consumir( (int) $activacion['activacion_id'] );
+		Aviso::aceptar( $trabajadorId );
 
 		// Cambio de celular: la llave y el celular anteriores dejan de servir en el acto.
 		$revocadas = Dispositivos::revocarOtros( $trabajadorId, $dispositivo, $credencial );
@@ -209,7 +217,10 @@ final class Api {
 			self::SEGUNDOS_TICKET
 		);
 
-		return self::respuesta( array( 'ticket' => $ticket, 'segundos' => self::SEGUNDOS_TICKET ) + self::estadoDe( $trabajadorId ) );
+		$trabajador = Trabajadores::buscar( $trabajadorId );
+		$aviso      = $trabajador && Aviso::pendiente( $trabajador ) ? Aviso::paraApp() : null;
+
+		return self::respuesta( array( 'ticket' => $ticket, 'segundos' => self::SEGUNDOS_TICKET, 'aviso' => $aviso ) + self::estadoDe( $trabajadorId ) );
 	}
 
 	public static function marcar( WP_REST_Request $peticion ): WP_REST_Response|WP_Error {
@@ -411,6 +422,7 @@ final class Api {
 				'tardanza'   => $tardanza,
 				'tiempo'     => $hm( $tot->minutosDentro ),
 				'incompleto' => $tot->incompleto,
+				'nota'       => '',
 			);
 
 			++$totales['dias'];
@@ -419,6 +431,26 @@ final class Api {
 			$totales['incompletos']      += $tot->incompleto ? 1 : 0;
 			$totales['minutos']          += $tot->minutosDentro;
 		}
+
+		// Días de ausencia justificada sin marcas (vacaciones, descanso médico…).
+		foreach ( Ausencias::delRango( array( $trabajadorId ), $desde, $hasta )[ $trabajadorId ] ?? array() as $dia => $etiqueta ) {
+			if ( isset( $marcas[ $dia ] ) ) {
+				continue;
+			}
+
+			$dias[] = array(
+				'fecha'      => $dia,
+				'etiqueta'   => wp_date( 'D j', ( new DateTimeImmutable( $dia . ' 12:00', $zona ) )->getTimestamp(), $zona ),
+				'ingreso'    => null,
+				'salida'     => null,
+				'tardanza'   => 0,
+				'tiempo'     => '0:00',
+				'incompleto' => false,
+				'nota'       => $etiqueta,
+			);
+		}
+
+		usort( $dias, static fn( $a, $b ) => strcmp( $b['fecha'], $a['fecha'] ) );
 
 		$c          = Tablas::nombre( 'correcciones' );
 		$pendientes = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$c} WHERE trabajador_id = %d AND estado = 'pendiente'", $trabajadorId ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
@@ -433,6 +465,27 @@ final class Api {
 				'pendientes' => $pendientes,
 			)
 		);
+	}
+
+	public static function aviso(): WP_REST_Response {
+		return self::respuesta( Aviso::paraApp() );
+	}
+
+	/** Aceptar una versión nueva del aviso (cuando RR.HH. cambió el texto). */
+	public static function aceptarAviso( WP_REST_Request $peticion ): WP_REST_Response|WP_Error {
+		$ticket = Temporales::leer( 'ticket', (string) $peticion->get_param( 'ticket' ) );
+
+		if ( null === $ticket ) {
+			return new WP_Error( 'pka_ticket', 'Pasaron más de 2 minutos. Vuelve a poner tu huella.', array( 'status' => 401 ) );
+		}
+
+		if ( (int) $peticion->get_param( 'version' ) !== Aviso::version() ) {
+			return new WP_Error( 'pka_aviso', 'El aviso cambió mientras lo leías. Vuelve a abrirlo.', array( 'status' => 409 ) );
+		}
+
+		Aviso::aceptar( (int) $ticket['trabajador_id'] );
+
+		return self::respuesta( array( 'ok' => true ) + self::estadoDe( (int) $ticket['trabajador_id'] ) );
 	}
 
 	/** El trabajador avisa que olvidó marcar; queda pendiente para su jefe. */

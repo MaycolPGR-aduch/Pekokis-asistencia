@@ -26,6 +26,7 @@ final class ValidacionTrabajador {
 			'fecha_ingreso' => trim( (string) ( $datos['fecha_ingreso'] ?? '' ) ),
 			'horario_id'    => (int) ( $datos['horario_id'] ?? 0 ),
 			'jefe_user_id'  => (int) ( $datos['jefe_user_id'] ?? 0 ),
+			'user_id'       => (int) ( $datos['user_id'] ?? 0 ),
 		);
 	}
 

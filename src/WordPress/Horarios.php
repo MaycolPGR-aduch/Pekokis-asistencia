@@ -19,6 +19,13 @@ final class Horarios {
 	public static function delDia( int $horarioId, string $dia ): HorarioDelDia {
 		global $wpdb;
 
+		// Un feriado o día no laborable del calendario manda sobre el horario.
+		$feriado = Calendario::descripcion( $dia );
+
+		if ( '' !== $feriado ) {
+			return HorarioDelDia::libre( $feriado );
+		}
+
 		$diaSemana = (int) ( new DateTimeImmutable( $dia ) )->format( 'N' );
 		$clave     = $horarioId . '|' . $diaSemana;
 
@@ -43,6 +50,10 @@ final class Horarios {
 			: HorarioDelDia::libre();
 
 		return self::$cache[ $clave ];
+	}
+
+	public static function limpiarCache(): void {
+		self::$cache = array();
 	}
 
 	/** @return array<int, array<string, mixed>> Horarios con la cantidad de trabajadores activos que los usan. */

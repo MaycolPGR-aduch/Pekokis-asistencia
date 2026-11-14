@@ -44,11 +44,13 @@ $api = static function ( string $metodo, string $ruta, array $cuerpo = array() )
 };
 
 // ---- Preparación: tablas vacías, una red autorizada y la IP del "WiFi del taller".
-foreach ( array( 'trabajadores', 'marcas', 'auditoria', 'credenciales', 'dispositivos', 'activaciones', 'redes', 'correcciones', 'pantallas', 'revisiones' ) as $tabla ) {
+foreach ( array( 'trabajadores', 'marcas', 'auditoria', 'credenciales', 'dispositivos', 'activaciones', 'redes', 'correcciones', 'pantallas', 'revisiones', 'calendario', 'ausencias' ) as $tabla ) {
 	$wpdb->query( 'TRUNCATE TABLE ' . Tablas::nombre( $tabla ) ); // phpcs:ignore
 }
 $wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE '\\_transient\\_pka\\_%' OR option_name LIKE '\\_transient\\_timeout\\_pka\\_%'" ); // phpcs:ignore
 $_COOKIE = array();
+$ajustesPrueba = get_option( \Pekokis\Asistencia\WordPress\Ajustes::OPCION, array() );
+update_option( \Pekokis\Asistencia\WordPress\Ajustes::OPCION, array( 'aviso_texto' => '', 'aviso_version' => 1, 'webhook_respaldo' => '' ) + ( is_array( $ajustesPrueba ) ? $ajustesPrueba : array() ) );
 
 $wpdb->insert( Tablas::nombre( 'redes' ), array( 'red' => '203.0.113.10', 'nombre' => 'WiFi de prueba', 'activa' => 1, 'creada_por' => 1, 'creado_en' => gmdate( 'Y-m-d H:i:s' ) ) );
 $_SERVER['REMOTE_ADDR'] = '203.0.113.10';
@@ -76,8 +78,13 @@ $celular = new AutenticadorSimulado( Passkeys::rpId(), Passkeys::origen() );
 $comprobar( 'opciones de registro', 200 === $st && 'required' === $op['publicKey']['authenticatorSelection']['userVerification'], wp_json_encode( $op ) );
 $comprobar( 'el userHandle no lleva el DNI', ! str_contains( (string) base64_decode( strtr( $op['publicKey']['user']['id'], '-_', '+/' ) ), '45678912' ) );
 
+$comprobar( 'las opciones traen el aviso de datos con el empleador', str_contains( $op['aviso']['texto'] ?? '', 'FUSION ART SAC' ) && 1 === ( $op['aviso']['version'] ?? 0 ) );
 [ $st, $r ] = $api( 'POST', 'activacion/completar', array( 'token' => $token, 'reto' => $op['reto'], 'credencial' => $celular->crear( $op['publicKey']['challenge'] ) ) );
+$comprobar( 'sin aceptar el aviso no se activa', 422 === $st && 'pka_aviso' === $r['code'], wp_json_encode( $r ) );
+[ , $op ] = $api( 'POST', 'activacion/opciones', array( 'token' => $token ) );
+[ $st, $r ] = $api( 'POST', 'activacion/completar', array( 'token' => $token, 'reto' => $op['reto'], 'acepta_aviso' => $op['aviso']['version'], 'credencial' => $celular->crear( $op['publicKey']['challenge'] ) ) );
 $comprobar( 'passkey registrada', 200 === $st && 'Ana' === $r['nombre'], wp_json_encode( $r ) );
+$comprobar( 'queda registrado que aceptó el aviso', 1 === (int) Trabajadores::buscar( $id )['aviso_version'] && null !== Trabajadores::buscar( $id )['aviso_aceptado_en'] );
 $comprobar( 'el celular queda vinculado', null !== Dispositivos::actual() );
 
 [ $st ] = $api( 'POST', 'activacion/opciones', array( 'token' => $token ) );
@@ -94,7 +101,7 @@ $celularViejo = $celular;
 $celular      = new AutenticadorSimulado( Passkeys::rpId(), Passkeys::origen() );
 $tokenNuevo   = substr( Activaciones::generar( $id ), -32 );
 [ , $op ]     = $api( 'POST', 'activacion/opciones', array( 'token' => $tokenNuevo ) );
-[ $st ]       = $api( 'POST', 'activacion/completar', array( 'token' => $tokenNuevo, 'reto' => $op['reto'], 'credencial' => $celular->crear( $op['publicKey']['challenge'] ) ) );
+[ $st ]       = $api( 'POST', 'activacion/completar', array( 'token' => $tokenNuevo, 'reto' => $op['reto'], 'acepta_aviso' => $op['aviso']['version'], 'credencial' => $celular->crear( $op['publicKey']['challenge'] ) ) );
 $comprobar( 'cambio de celular: se activa la llave nueva', 200 === $st );
 [ , $op ] = $api( 'POST', 'identificar/opciones' );
 [ $st ]   = $api( 'POST', 'identificar', array( 'reto' => $op['reto'], 'credencial' => $celularViejo->firmar( $op['publicKey']['challenge'] ) ) );
@@ -197,6 +204,22 @@ $resumen = \Pekokis\Asistencia\Nucleo\ResumenDia::calcular(
 );
 $comprobar( 'el panel del día la ve fuera por motivo personal', 'fuera' === $resumen->situacion && 'personal' === $resumen->motivoActual?->clave, $resumen->situacion );
 
+// ---- 3c-bis. Aviso de datos: si cambia el texto, se acepta de nuevo.
+WP_CLI::line( '3c-bis. Aviso de datos' );
+[ , $idAv ] = $identificar();
+$comprobar( 'con el aviso al día no se pide nada', null === $idAv['aviso'] );
+\Pekokis\Asistencia\WordPress\Aviso::guardar( \Pekokis\Asistencia\WordPress\Aviso::borrador() . "\n\nCambio de prueba." );
+[ , $idAv ] = $identificar();
+$comprobar( 'después de cambiar el texto se pide aceptar la versión 2', 2 === ( $idAv['aviso']['version'] ?? 0 ) && str_contains( $idAv['aviso']['texto'], 'Cambio de prueba' ) );
+[ $st ] = $api( 'POST', 'aviso/aceptar', array( 'ticket' => $idAv['ticket'], 'version' => 1 ) );
+$comprobar( 'aceptar una versión vieja se rechaza', 409 === $st );
+[ $st, $r ] = $api( 'POST', 'aviso/aceptar', array( 'ticket' => $idAv['ticket'], 'version' => 2 ) );
+$comprobar( 'aceptar la versión nueva devuelve el estado para seguir', 200 === $st && isset( $r['acciones'] ) );
+[ , $idAv ] = $identificar();
+$comprobar( 'ya no se vuelve a pedir', null === $idAv['aviso'] );
+[ $st, $av ] = $api( 'GET', 'aviso' );
+$comprobar( 'el aviso público responde con la versión vigente', 200 === $st && 2 === $av['version'] );
+
 // ---- 3d. Correcciones: "olvidé marcar", marca manual y anulación.
 WP_CLI::line( '3d. Correcciones' );
 $zonaLima = \Pekokis\Asistencia\WordPress\Ajustes::zona();
@@ -263,7 +286,7 @@ if ( class_exists( 'ZipArchive' ) ) {
 	$zip = new ZipArchive();
 	$zip->open( $tmp );
 	$textos = (string) $zip->getFromName( 'xl/sharedStrings.xml' );
-	for ( $i = 1; $i <= 3; $i++ ) {
+	for ( $i = 1; $i <= 4; $i++ ) {
 		$textos .= (string) $zip->getFromName( 'xl/worksheets/sheet' . $i . '.xml' );
 	}
 	$zip->close();
@@ -283,7 +306,28 @@ add_filter(
 	2
 );
 $envio = \Pekokis\Asistencia\WordPress\Respaldo::enviar( $mesAyer, 'Prueba' );
-$comprobar( 'el respaldo se envía por correo con el Excel adjunto', true === $envio && $correo && $correo['adjunto'] > 1000, wp_json_encode( $correo ) );
+$comprobar( 'el respaldo se envía por correo con el Excel adjunto', true === $envio['correo'] && null === $envio['nube'] && $correo && $correo['adjunto'] > 1000, wp_json_encode( $correo ) );
+
+$llamada = null;
+add_filter(
+	'pre_http_request',
+	static function ( $nulo, $args, $url ) use ( &$llamada ) {
+		$llamada = array( 'url' => $url, 'firma' => $args['headers']['X-PKA-Firma'] ?? '', 'cuerpo' => $args['body'] );
+		return array( 'headers' => array(), 'body' => 'Accepted', 'response' => array( 'code' => 200, 'message' => 'OK' ), 'cookies' => array() );
+	},
+	10,
+	3
+);
+$aj = \Pekokis\Asistencia\WordPress\Ajustes::todos();
+update_option( \Pekokis\Asistencia\WordPress\Ajustes::OPCION, array( 'webhook_respaldo' => 'https://hook.example.test/respaldo' ) + $aj );
+$envio = \Pekokis\Asistencia\WordPress\Respaldo::enviar( $mesAyer, 'Prueba' );
+$comprobar(
+	'con webhook, el Excel también se envía a la nube firmado',
+	true === $envio['nube'] && 'https://hook.example.test/respaldo' === $llamada['url'] && 64 === strlen( $llamada['firma'] )
+		&& str_contains( $llamada['cuerpo'], 'filename="registro-asistencia-' . $mesAyer . '.xlsx"' ) && str_contains( $llamada['cuerpo'], 'name="hash"' ),
+	wp_json_encode( array( 'envio' => $envio, 'url' => $llamada['url'] ?? '' ) )
+);
+update_option( \Pekokis\Asistencia\WordPress\Ajustes::OPCION, array( 'webhook_respaldo' => '' ) + $aj );
 $comprobar( 'y el archivo temporal se borra', ! glob( wp_upload_dir()['basedir'] . '/pka-respaldos/*.xlsx' ) );
 
 // ---- 4. Cese.
@@ -300,7 +344,7 @@ $comprobar( '9 marcas guardadas (6 de hoy, 3 de ayer con una anulada)', 9 === $m
 $comprobar( 'cadena de marcas íntegra', null === InsercionEncadenada::verificar( 'marcas' ) );
 $comprobar( 'cadena de auditoría íntegra', null === InsercionEncadenada::verificar( 'auditoria' ) );
 $acciones = $wpdb->get_col( 'SELECT accion FROM ' . Tablas::nombre( 'auditoria' ) . ' ORDER BY id' ); // phpcs:ignore
-$comprobar( 'auditoría registra alta, edición, enlace, passkey y cese', array( 'trabajador.crear', 'trabajador.editar', 'activacion.generar', 'passkey.registrar' ) === array_slice( $acciones, 0, 4 ) && in_array( 'trabajador.cesar', $acciones, true ), implode( ', ', $acciones ) );
+$comprobar( 'auditoría registra alta, edición, enlace, passkey y cese', array( 'trabajador.crear', 'trabajador.editar', 'activacion.generar', 'aviso.aceptar', 'passkey.registrar' ) === array_slice( $acciones, 0, 5 ) && in_array( 'trabajador.cesar', $acciones, true ), implode( ', ', $acciones ) );
 
 $wpdb->query( $wpdb->prepare( 'UPDATE ' . Tablas::nombre( 'marcas' ) . " SET marcado_utc = DATE_SUB(marcado_utc, INTERVAL 30 MINUTE) WHERE id = %d", 1 ) ); // phpcs:ignore
 $comprobar( 'si alguien edita una marca en la base, la cadena lo detecta', 1 === InsercionEncadenada::verificar( 'marcas' ) );
@@ -382,7 +426,72 @@ $comprobar( 'sí se desactiva uno sin trabajadores', true === $H2::cambiarEstado
 $wpdb->delete( Tablas::nombre( 'horario_dias' ), array( 'horario_id' => $sab ) );
 $wpdb->delete( Tablas::nombre( 'horarios' ), array( 'id' => $sab ) );
 
+// ---- 9. Feriados y ausencias.
+WP_CLI::line( '9. Feriados y ausencias' );
+$Cal = \Pekokis\Asistencia\WordPress\Calendario::class;
+$Aus = \Pekokis\Asistencia\WordPress\Ausencias::class;
+$wpdb->update( Tablas::nombre( 'trabajadores' ), array( 'creado_en' => gmdate( 'Y-m-d H:i:s', time() - 10 * DAY_IN_SECONDS ) ), array( 'id' => $id2 ) );
+$faltasLuis = static fn() => array_values( array_map( static fn( $p ) => $p['dia'], array_filter( \Pekokis\Asistencia\WordPress\Seguimiento::pendientes( null, $hoy ), static fn( $p ) => (int) $p['trabajador']['id'] === $id2 && 'falta' === $p['tipo'] ) ) );
+$antes = $faltasLuis();
+$comprobar( 'Luis tiene días laborables sin marcas', count( $antes ) >= 2, wp_json_encode( $antes ) );
+[ $diaFeriado, $diaVacaciones ] = array( $antes[0], $antes[1] );
+
+$comprobar( 'se agrega un feriado', true === $Cal::agregar( $diaFeriado, 'Feriado de prueba', 'feriado' ) );
+$comprobar( 'no se repite la fecha', is_wp_error( $Cal::agregar( $diaFeriado, 'Otro', 'feriado' ) ) );
+$comprobar( 'el feriado deja de contar como falta', ! in_array( $diaFeriado, $faltasLuis(), true ) );
+$comprobar( 'el horario de ese día no es laborable y dice por qué', ! \Pekokis\Asistencia\WordPress\Horarios::delDia( $horario, $diaFeriado )->laborable && 'Feriado: Feriado de prueba' === \Pekokis\Asistencia\WordPress\Horarios::delDia( $horario, $diaFeriado )->descanso );
+
+$vac = $Aus::crear( array( 'trabajador_id' => $id2, 'tipo' => 'vacaciones', 'desde' => $diaVacaciones, 'hasta' => $diaVacaciones, 'nota' => 'Papeleta 12' ) );
+$comprobar( 'se registran vacaciones', is_int( $vac ) );
+$comprobar( 'no se cruzan dos ausencias', is_wp_error( $Aus::crear( array( 'trabajador_id' => $id2, 'tipo' => 'permiso', 'desde' => $diaVacaciones, 'hasta' => $diaVacaciones ) ) ) );
+$comprobar( 'las vacaciones dejan de contar como falta', ! in_array( $diaVacaciones, $faltasLuis(), true ) && 'Vacaciones' === $Aus::delDia( $id2, $diaVacaciones ) );
+$resLuis = \Pekokis\Asistencia\Nucleo\ResumenDia::calcular( array(), \Pekokis\Asistencia\WordPress\Horarios::delDia( $horario, $diaVacaciones ), $diaVacaciones, $zonaLima, new DateTimeImmutable( $diaVacaciones . ' 23:00', $zonaLima ), $Aus::delDia( $id2, $diaVacaciones ) );
+$comprobar( 'el panel lo muestra como ausencia justificada', 'justificado' === $resLuis->situacion && 'Vacaciones' === $resLuis->detalle );
+
+$xlsAus = \Pekokis\Asistencia\WordPress\Exportes::registroMensual( substr( $diaVacaciones, 0, 7 ), 'Prueba' );
+if ( class_exists( 'ZipArchive' ) ) {
+	$tmp = wp_tempnam( 'pka2.xlsx' );
+	file_put_contents( $tmp, $xlsAus['contenido'] ); // phpcs:ignore
+	$zip = new ZipArchive();
+	$zip->open( $tmp );
+	$textos = (string) $zip->getFromName( 'xl/sharedStrings.xml' ) . (string) $zip->getFromName( 'xl/worksheets/sheet3.xml' );
+	$zip->close();
+	wp_delete_file( $tmp );
+	$comprobar( 'el Excel trae la hoja de ausencias y feriados', str_contains( $textos, 'Papeleta 12' ) && str_contains( $textos, 'Feriado de prueba' ) );
+}
+
+$comprobar( 'anular sin motivo no se permite', is_wp_error( $Aus::anular( $vac, '' ) ) );
+$comprobar( 'al anular las vacaciones vuelve a figurar la falta', true === $Aus::anular( $vac, 'Se canceló' ) && in_array( $diaVacaciones, $faltasLuis(), true ) );
+$comprobar( 'al quitar el feriado vuelve a figurar la falta', true === $Cal::quitar( $diaFeriado ) && in_array( $diaFeriado, $faltasLuis(), true ) );
+$comprobar( 'carga los 16 feriados nacionales sugeridos de un año', 16 === $Cal::cargarFeriadosPeru( 2030 ) && 0 === $Cal::cargarFeriadosPeru( 2030 ) );
+[ $histAus ] = \Pekokis\Asistencia\WordPress\Historial::buscar( array( 'trabajador' => $id2, 'texto' => 'Se canceló' ) );
+$comprobar( 'el historial del trabajador incluye sus ausencias', 1 === count( $histAus ) && 'ausencia.anular' === $histAus[0]['accion'] );
+
+// ---- 10. Gerencia y "nadie se aprueba a sí mismo".
+WP_CLI::line( '10. Gerencia y permisos' );
+$gerente = wp_insert_user( array( 'user_login' => 'gerente_prueba_' . wp_rand(), 'user_pass' => wp_generate_password( 20 ), 'role' => 'pka_gerencia' ) );
+$jefe    = wp_insert_user( array( 'user_login' => 'jefe_prueba_' . wp_rand(), 'user_pass' => wp_generate_password( 20 ), 'role' => 'pka_jefe' ) );
+$C       = \Pekokis\Asistencia\WordPress\Capacidades::class;
+$comprobar( 'gerencia ve todo, el historial y descarga', user_can( $gerente, $C::VER_TODO ) && user_can( $gerente, $C::AUDITORIA ) && user_can( $gerente, $C::EXPORTAR ) );
+$comprobar( 'gerencia no aprueba, no corrige ni gestiona personal', ! user_can( $gerente, $C::APROBAR ) && ! user_can( $gerente, $C::MARCA_MANUAL ) && ! user_can( $gerente, $C::GESTIONAR_PERSONAL ) && ! user_can( $gerente, $C::AJUSTES ) );
+$datosLuis = Trabajadores::buscar( $id2 );
+$mismo     = Trabajadores::guardar( array( 'user_id' => $jefe, 'jefe_user_id' => $jefe ) + $datosLuis, $id2, 'Prueba' );
+$comprobar( 'nadie puede ser su propio jefe', is_wp_error( $mismo ) && isset( $mismo->get_error_data()['errores']['jefe_user_id'] ) );
+$comprobar( 'se enlaza el perfil con su usuario de wp-admin', $id2 === Trabajadores::guardar( array( 'user_id' => $jefe, 'jefe_user_id' => 1 ) + $datosLuis, $id2, 'Luis también es jefe' ) );
+$otro = Trabajadores::guardar( array( 'dni' => '47474747', 'nombres' => 'Eva', 'apellidos' => 'Ruiz', 'horario_id' => $horario, 'user_id' => $jefe ) );
+$comprobar( 'un usuario solo se enlaza con un trabajador', is_wp_error( $otro ) && isset( $otro->get_error_data()['errores']['user_id'] ) );
+wp_set_current_user( $jefe );
+$comprobar( 'para Luis, su propio perfil es "propio"', Trabajadores::esPropio( $id2 ) && ! Trabajadores::esPropio( $id ) );
+wp_set_current_user( 1 );
+$comprobar( 'para el administrador no lo es', ! Trabajadores::esPropio( $id2 ) );
+require_once ABSPATH . 'wp-admin/includes/user.php';
+wp_delete_user( $gerente );
+wp_delete_user( $jefe );
+
 $comprobar( 'presencia por IP del taller', ( $_SERVER['REMOTE_ADDR'] = '203.0.113.10' ) && Presencia::enRedDelTaller() );
+
+// Deja los ajustes como estaban (la prueba cambia el aviso y el webhook).
+update_option( \Pekokis\Asistencia\WordPress\Ajustes::OPCION, is_array( $ajustesPrueba ) ? $ajustesPrueba : array() );
 
 if ( $fallos ) {
 	WP_CLI::error( $fallos . ' comprobaciones fallaron.' );

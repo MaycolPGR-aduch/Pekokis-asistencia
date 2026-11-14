@@ -27,8 +27,14 @@ final class Ajustes {
 			// Tomados del Libro de Reclamaciones; RR.HH. puede corregirlos.
 			'razon_social'    => 'FUSION ART SAC',
 			'ruc'             => '20523257146',
+			'direccion_empleador' => 'Calle José Domingo Choquehuanca 284, San Miguel, Lima',
 			// Destino del respaldo mensual; vacío = correo del administrador.
 			'correo_rrhh'     => '',
+			// Webhook (Make, n8n…) que recibe el Excel del respaldo para guardarlo en la nube.
+			'webhook_respaldo' => '',
+			// Aviso de datos personales: vacío = borrador por defecto (Aviso::borrador()).
+			'aviso_texto'     => '',
+			'aviso_version'   => 1,
 		);
 	}
 

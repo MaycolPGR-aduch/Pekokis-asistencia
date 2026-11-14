@@ -8,6 +8,8 @@ use Pekokis\Asistencia\Nucleo\Estado;
 use Pekokis\Asistencia\Nucleo\PruebaPresencia;
 use Pekokis\Asistencia\Nucleo\ResumenDia;
 use Pekokis\Asistencia\WordPress\Ajustes;
+use Pekokis\Asistencia\WordPress\Ausencias;
+use Pekokis\Asistencia\WordPress\Calendario;
 use Pekokis\Asistencia\WordPress\Capacidades;
 use Pekokis\Asistencia\WordPress\Horarios;
 use Pekokis\Asistencia\WordPress\Marcas;
@@ -29,6 +31,7 @@ final class PantallaHoy {
 		ResumenDia::REFRIGERIO => array( 'En refrigerio', '#2271b1' ),
 		ResumenDia::FUERA      => array( 'Fuera', '#2271b1' ),
 		ResumenDia::PRESENTE   => array( 'Presente', '#00733a' ),
+		ResumenDia::JUSTIFICADO => array( 'Ausencia justificada', '#2271b1' ),
 		ResumenDia::POR_LLEGAR => array( 'Por llegar', '#50575e' ),
 		ResumenDia::SALIO      => array( 'Terminó', '#50575e' ),
 		ResumenDia::LIBRE      => array( 'Día libre', '#50575e' ),
@@ -67,12 +70,14 @@ final class PantallaHoy {
 		$filas   = array();
 		$cuentas = array_fill_keys( array_keys( self::SITUACIONES ), 0 );
 
+		$ausencias = Ausencias::delRango( $alcance, $dia, $dia );
+
 		foreach ( Trabajadores::listar() as $t ) {
 			if ( is_array( $alcance ) && ! in_array( (int) $t['id'], $alcance, true ) ) {
 				continue;
 			}
 
-			$resumen = ResumenDia::calcular( Marcas::delDia( (int) $t['id'], $dia ), Horarios::delDia( (int) $t['horario_id'], $dia ), $dia, $zona, $ahora );
+			$resumen = ResumenDia::calcular( Marcas::delDia( (int) $t['id'], $dia ), Horarios::delDia( (int) $t['horario_id'], $dia ), $dia, $zona, $ahora, $ausencias[ (int) $t['id'] ][ $dia ] ?? null );
 			$cuentas[ $resumen->situacion ]++;
 			$filas[] = array( 't' => $t, 'r' => $resumen );
 		}
@@ -88,6 +93,9 @@ final class PantallaHoy {
 			<?php Avisos::mostrar(); ?>
 			<h1>Hoy · <?php echo esc_html( wp_date( 'l j \d\e F', $ahora->getTimestamp(), $zona ) ); ?></h1>
 			<p class="description">Se actualiza cada minuto. Hora del servidor: <?php echo esc_html( $hora( $ahora ) ); ?>.</p>
+			<?php if ( '' !== Calendario::descripcion( $dia ) ) : ?>
+				<div class="notice notice-info inline"><p><strong><?php echo esc_html( Calendario::descripcion( $dia ) ); ?>.</strong> Hoy no es laborable: no se cuentan ausencias ni tardanzas.</p></div>
+			<?php endif; ?>
 
 			<?php self::alertas(); ?>
 
@@ -116,7 +124,9 @@ final class PantallaHoy {
 						<td><?php echo Estado::FUERA !== $r->estado || $r->desde ? esc_html( $hora( $r->desde ) ) : '—'; ?></td>
 						<td>
 							<?php
-							if ( ResumenDia::REFRIGERIO === $r->situacion ) {
+							if ( '' !== $r->detalle && in_array( $r->situacion, array( ResumenDia::JUSTIFICADO, ResumenDia::LIBRE ), true ) ) {
+								echo esc_html( $r->detalle );
+							} elseif ( ResumenDia::REFRIGERIO === $r->situacion ) {
 								echo esc_html( 'Hace ' . $r->minutosEnEstado . ' min' );
 								echo $r->excedeRefrigerio ? ' <strong style="color:#b32d2e">pasó el tiempo de refrigerio</strong>' : '';
 							} elseif ( ResumenDia::FUERA === $r->situacion ) {
@@ -215,8 +225,15 @@ final class PantallaHoy {
 		$alcance  = self::alcance();
 
 		// Un jefe solo revisa marcas de su equipo.
-		$propia = array_filter( Revisiones::pendientes( $alcance ), static fn( array $m ): bool => (int) $m['id'] === $marca );
-		$result = $propia ? Revisiones::resolver( $marca, $decision, $nota ) : new WP_Error( 'pka_alcance', 'Esa marca no está pendiente o no es de tu equipo.' );
+		$propia = array_values( array_filter( Revisiones::pendientes( $alcance ), static fn( array $m ): bool => (int) $m['id'] === $marca ) );
+
+		if ( ! $propia ) {
+			$result = new WP_Error( 'pka_alcance', 'Esa marca no está pendiente o no es de tu equipo.' );
+		} elseif ( Trabajadores::esPropio( (int) $propia[0]['trabajador_id'] ) ) {
+			$result = new WP_Error( 'pka_propia', 'No puedes revisar tus propias marcas: lo hace otra persona con permiso.' );
+		} else {
+			$result = Revisiones::resolver( $marca, $decision, $nota );
+		}
 
 		if ( $result instanceof WP_Error ) {
 			Avisos::agregar( 'error', esc_html( $result->get_error_message() ) );

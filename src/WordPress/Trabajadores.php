@@ -68,6 +68,14 @@ final class Trabajadores {
 			$errores['dni'] = 'Ya hay otro trabajador con ese DNI.';
 		}
 
+		if ( $datos['user_id'] > 0 && $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$tabla} WHERE user_id = %d AND id <> %d", $datos['user_id'], (int) $id ) ) ) { // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$errores['user_id'] = 'Ese usuario ya está enlazado con otro trabajador.';
+		}
+
+		if ( $datos['user_id'] > 0 && $datos['user_id'] === $datos['jefe_user_id'] ) {
+			$errores['jefe_user_id'] = 'Nadie puede ser su propio jefe: elige a otra persona para aprobar sus marcas.';
+		}
+
 		if ( $errores ) {
 			return new WP_Error( 'pka_datos_invalidos', 'Revisa los datos del trabajador.', array( 'errores' => $errores ) );
 		}
@@ -81,6 +89,7 @@ final class Trabajadores {
 			'cargo'          => $datos['cargo'],
 			'area'           => $datos['area'],
 			'jefe_user_id'   => $datos['jefe_user_id'] > 0 ? $datos['jefe_user_id'] : null,
+			'user_id'        => $datos['user_id'] > 0 ? $datos['user_id'] : null,
 			'horario_id'     => $datos['horario_id'],
 			'fecha_ingreso'  => '' !== $datos['fecha_ingreso'] ? $datos['fecha_ingreso'] : null,
 			'actualizado_en' => Peticion::ahoraUtc(),
@@ -155,6 +164,16 @@ final class Trabajadores {
 		);
 
 		return true;
+	}
+
+	/**
+	 * ¿Es el perfil de trabajador de quien está usando el panel? Un jefe o RR.HH.
+	 * que también marca no puede aprobar ni corregir sus propias marcas.
+	 */
+	public static function esPropio( int $trabajadorId ): bool {
+		$t = self::buscar( $trabajadorId );
+
+		return null !== $t && (int) $t['user_id'] > 0 && (int) $t['user_id'] === get_current_user_id();
 	}
 
 	/** @param array<string, mixed> $trabajador */

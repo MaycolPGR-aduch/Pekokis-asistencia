@@ -17,9 +17,9 @@ final class Historial {
 
 	/** Grupos para el filtro: etiqueta => prefijos de acción. */
 	public const GRUPOS = array(
-		'trabajadores' => array( 'Trabajadores y celulares', array( 'trabajador.', 'activacion.', 'passkey.' ) ),
+		'trabajadores' => array( 'Trabajadores, celulares y ausencias', array( 'trabajador.', 'activacion.', 'passkey.', 'ausencia.', 'aviso.' ) ),
 		'marcas'       => array( 'Marcas y correcciones', array( 'marca.', 'correccion.' ) ),
-		'ajustes'      => array( 'Ajustes, horarios, redes y pantallas', array( 'ajustes.', 'horario.', 'red.', 'pantalla.' ) ),
+		'ajustes'      => array( 'Ajustes, horarios, calendario, redes y pantallas', array( 'ajustes.', 'horario.', 'calendario.', 'red.', 'pantalla.' ) ),
 		'exportes'     => array( 'Descargas y respaldos', array( 'registro.', 'respaldo.', 'historial.' ) ),
 	);
 
@@ -40,6 +40,14 @@ final class Historial {
 		'red.agregar'            => 'Red del WiFi agregada',
 		'red.activar'            => 'Red del WiFi activada',
 		'red.desactivar'         => 'Red del WiFi desactivada',
+		'ausencia.crear'         => 'Ausencia registrada',
+		'ausencia.anular'        => 'Ausencia anulada',
+		'aviso.aceptar'          => 'Aviso de datos aceptado',
+		'calendario.agregar'     => 'Día agregado al calendario',
+		'calendario.quitar'      => 'Día quitado del calendario',
+		'ajustes.aviso'          => 'Aviso de datos modificado',
+		'ajustes.empleador'      => 'Cambio de los datos del empleador',
+		'ajustes.webhook'        => 'Cambio del respaldo en la nube',
 		'horario.crear'          => 'Horario creado',
 		'horario.editar'         => 'Horario modificado',
 		'horario.activar'        => 'Horario activado',
@@ -78,6 +86,16 @@ final class Historial {
 		'enviado'                     => 'Enviado',
 		'a'                           => 'Para',
 		'llaves_anteriores_revocadas' => 'Llaves anteriores revocadas',
+		'desde'                       => 'Desde',
+		'hasta'                       => 'Hasta',
+		'nota'                        => 'Nota',
+		'fecha'                       => 'Fecha',
+		'version'                     => 'Versión',
+		'user_id'                     => 'Usuario de wp-admin',
+		'razon_social'                => 'Razón social',
+		'ruc'                         => 'RUC',
+		'direccion_empleador'         => 'Domicilio',
+		'webhook'                     => 'Webhook',
 		'tolerancia_min'              => 'Tolerancia (min)',
 		'refrigerio_min'              => 'Refrigerio (min)',
 		'marca_id'                    => 'Marca',
@@ -185,11 +203,14 @@ final class Historial {
 			$id  = (int) $filtros['trabajador'];
 			$m   = Tablas::nombre( 'marcas' );
 			$co  = Tablas::nombre( 'correcciones' );
+			$au  = Tablas::nombre( 'ausencias' );
 			$c[] = $wpdb->prepare(
 				"( actor_trabajador_id = %d
 				OR ( entidad = 'trabajador' AND entidad_id = %d )
 				OR ( entidad = 'marca' AND entidad_id IN ( SELECT id FROM {$m} WHERE trabajador_id = %d ) )
-				OR ( entidad = 'correccion' AND entidad_id IN ( SELECT id FROM {$co} WHERE trabajador_id = %d ) ) )",
+				OR ( entidad = 'correccion' AND entidad_id IN ( SELECT id FROM {$co} WHERE trabajador_id = %d ) )
+				OR ( entidad = 'ausencia' AND entidad_id IN ( SELECT id FROM {$au} WHERE trabajador_id = %d ) ) )",
+				$id,
 				$id,
 				$id,
 				$id,
@@ -218,7 +239,7 @@ final class Historial {
 	private static function contexto( array $filas ): array {
 		global $wpdb;
 
-		$ids = array( 'trabajador' => array(), 'marca' => array(), 'correccion' => array() );
+		$ids = array( 'trabajador' => array(), 'marca' => array(), 'correccion' => array(), 'ausencia' => array() );
 
 		foreach ( $filas as $f ) {
 			if ( isset( $ids[ $f['entidad'] ] ) && $f['entidad_id'] ) {
@@ -243,8 +264,9 @@ final class Historial {
 
 		$marcas       = $traer( 'marcas', $ids['marca'], 'id, trabajador_id, dia_laboral, tipo, motivo_clave, marcado_utc' );
 		$correcciones = $traer( 'correcciones', $ids['correccion'], 'id, trabajador_id, marcado_utc' );
+		$ausencias    = $traer( 'ausencias', $ids['ausencia'], 'id, trabajador_id' );
 
-		foreach ( array_merge( $marcas, $correcciones ) as $relacionada ) {
+		foreach ( array_merge( $marcas, $correcciones, $ausencias ) as $relacionada ) {
 			$ids['trabajador'][] = (int) $relacionada['trabajador_id'];
 		}
 
@@ -252,6 +274,7 @@ final class Historial {
 			'trabajadores' => $traer( 'trabajadores', $ids['trabajador'], 'id, nombres, apellidos, dni' ),
 			'marcas'       => $marcas,
 			'correcciones' => $correcciones,
+			'ausencias'    => $ausencias,
 			'horarios'     => Trabajadores::horarios(),
 		);
 	}
@@ -305,6 +328,18 @@ final class Historial {
 				}
 
 				return array( 'Solicitud #' . $id, '' );
+
+			case 'ausencia':
+				if ( isset( $contexto['ausencias'][ $id ] ) ) {
+					$tid = (int) $contexto['ausencias'][ $id ]['trabajador_id'];
+
+					return array( $nombre( $tid ), admin_url( 'admin.php?page=pka-ausencias&trabajador=' . $tid ) );
+				}
+
+				return array( 'Ausencia #' . $id, '' );
+
+			case 'calendario':
+				return array( 'Calendario', admin_url( 'admin.php?page=pka-calendario' ) );
 
 			case 'horario':
 				return array( $contexto['horarios'][ $id ] ?? 'Horario #' . $id, admin_url( 'admin.php?page=pka-horarios&vista=editar&id=' . $id ) );

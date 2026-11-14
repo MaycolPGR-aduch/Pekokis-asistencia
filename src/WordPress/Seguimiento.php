@@ -9,7 +9,8 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Días anteriores que necesitan atención: quedaron sin salida (incompletos) o
- * eran laborables y no tienen ninguna marca (posible falta).
+ * eran laborables y no tienen ninguna marca (posible falta). Los feriados y las
+ * ausencias justificadas no cuentan como falta.
  *
  * Se calcula al momento a partir de las marcas, en vez de con un cron de cierre:
  * así nunca queda desactualizado cuando se aprueba una corrección.
@@ -26,6 +27,7 @@ final class Seguimiento {
 		$desde      = ( new DateTimeImmutable( $hoy ) )->modify( '-' . $dias . ' days' )->format( 'Y-m-d' );
 		$hasta      = ( new DateTimeImmutable( $hoy ) )->modify( '-1 day' )->format( 'Y-m-d' );
 		$marcas     = Marcas::delRango( $alcance, $desde, $hasta );
+		$ausencias  = Ausencias::delRango( $alcance, $desde, $hasta );
 		$pendientes = array();
 
 		foreach ( Trabajadores::listar() as $t ) {
@@ -49,7 +51,7 @@ final class Seguimiento {
 
 				if ( $delDia && TotalesDia::calcular( $delDia )->incompleto ) {
 					$pendientes[] = array( 'trabajador' => $t, 'dia' => $dia, 'tipo' => self::INCOMPLETO );
-				} elseif ( ! $delDia && Horarios::delDia( (int) $t['horario_id'], $dia )->laborable ) {
+				} elseif ( ! $delDia && ! isset( $ausencias[ $id ][ $dia ] ) && Horarios::delDia( (int) $t['horario_id'], $dia )->laborable ) {
 					$pendientes[] = array( 'trabajador' => $t, 'dia' => $dia, 'tipo' => self::FALTA );
 				}
 			}

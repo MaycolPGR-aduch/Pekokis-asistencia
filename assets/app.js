@@ -144,8 +144,20 @@
 			return;
 		}
 
-		var boton = el( 'button', { class: 'principal', type: 'button', texto: 'Crear mi llave' } );
+		var boton = el( 'button', { class: 'principal', type: 'button', texto: 'Crear mi llave', disabled: 'disabled' } );
 		var estado = el( 'div', {} );
+		var cajaAviso = el( 'div', { class: 'aviso-datos', tabindex: '0', role: 'region', 'aria-label': 'Aviso de datos personales' }, [ el( 'p', { class: 'cargando', texto: 'Cargando el aviso…' } ) ] );
+		var casilla = el( 'input', { type: 'checkbox', id: 'acepto' } );
+
+		casilla.addEventListener( 'change', function () {
+			boton.disabled = ! casilla.checked;
+		} );
+
+		api( 'aviso', null, 'GET' ).then( function ( a ) {
+			cajaAviso.replaceChildren( textoAviso( a.texto ) );
+		} ).catch( function () {
+			cajaAviso.replaceChildren( aviso( 'error', 'No se pudo cargar el aviso. Recarga la página.' ) );
+		} );
 
 		boton.addEventListener( 'click', function () {
 			boton.disabled = true;
@@ -164,6 +176,7 @@
 					return api( 'activacion/completar', {
 						token: token,
 						reto: r.reto,
+						acepta_aviso: r.aviso.version,
 						credencial: {
 							id: cred.id,
 							clientDataJSON: aBase64Url( cred.response.clientDataJSON ),
@@ -181,7 +194,7 @@
 					} } )
 				);
 			} ).catch( function ( error ) {
-				boton.disabled = false;
+				boton.disabled = ! casilla.checked;
 				estado.replaceChildren( aviso( 'error', mensajePasskey( error ) ) );
 			} );
 		} );
@@ -189,10 +202,77 @@
 		pintar(
 			el( 'h1', {}, [ 'Activa tu ', el( 'em', { texto: 'celular' } ) ] ),
 			el( 'p', { texto: 'Vas a crear una llave que se abre con la huella, el rostro o el PIN de este celular. Con ella marcarás tu asistencia.' } ),
-			el( 'p', { class: 'ayuda', texto: 'Hazlo en tu propio celular: cada persona usa el suyo.' } ),
+			el( 'p', { class: 'ayuda', texto: 'Hazlo en tu propio celular: cada persona usa el suyo. Antes, lee cómo usamos tus datos:' } ),
+			cajaAviso,
+			el( 'label', { class: 'casilla', for: 'acepto' }, [ casilla, ' Leí el aviso de datos personales' ] ),
 			boton,
 			estado
 		);
+	}
+
+	/** Párrafos, viñetas ("- ") y subtítulos (línea corta sin punto final) a partir del texto plano. */
+	function textoAviso( texto ) {
+		var cont = el( 'div', {} );
+		texto.split( /\n\s*\n/ ).forEach( function ( bloque ) {
+			var lineas = bloque.split( '\n' ).map( function ( l ) {
+				return l.trim();
+			} ).filter( Boolean );
+			var lista = null;
+			lineas.forEach( function ( linea, i ) {
+				if ( 0 === linea.indexOf( '- ' ) ) {
+					if ( ! lista ) {
+						lista = el( 'ul', {} );
+						cont.appendChild( lista );
+					}
+					lista.appendChild( el( 'li', { texto: linea.slice( 2 ) } ) );
+					return;
+				}
+				lista = null;
+				var esTitulo = linea.length < 60 && ! /[.:]$/.test( linea ) && 0 === i;
+				cont.appendChild( el( esTitulo ? 'h2' : 'p', { texto: linea } ) );
+			} );
+		} );
+		return cont;
+	}
+
+	/** Si RR.HH. cambió el aviso, se pide aceptarlo antes de seguir. */
+	function vistaAceptarAviso( datos ) {
+		var boton = el( 'button', { class: 'principal', type: 'button', texto: 'Acepto y continúo' } );
+		var estado = el( 'div', {} );
+
+		boton.addEventListener( 'click', function () {
+			boton.disabled = true;
+			api( 'aviso/aceptar', { ticket: sesion.ticket, version: datos.aviso.version } ).then( function ( r ) {
+				datos = Object.assign( {}, datos, r, { aviso: null } );
+				vistaEstado( datos );
+			} ).catch( function ( error ) {
+				if ( 'pka_ticket' === error.codigo ) {
+					vistaInicio( aviso( 'error', error.message ) );
+					return;
+				}
+				boton.disabled = false;
+				estado.replaceChildren( aviso( 'error', error.message ) );
+			} );
+		} );
+
+		pintar(
+			el( 'h1', {}, [ 'Actualizamos el ', el( 'em', { texto: 'aviso' } ) ] ),
+			el( 'p', { class: 'ayuda', texto: 'Cambió el aviso de datos personales. Léelo para seguir marcando.' } ),
+			el( 'div', { class: 'aviso-datos', tabindex: '0', role: 'region', 'aria-label': 'Aviso de datos personales' }, [ textoAviso( datos.aviso.texto ) ] ),
+			boton,
+			estado
+		);
+	}
+
+	function vistaPrivacidad() {
+		api( 'aviso', null, 'GET' ).then( function ( a ) {
+			pintar(
+				el( 'div', { class: 'aviso-datos abierto' }, [ textoAviso( a.texto ) ] ),
+				el( 'a', { class: 'enlace', href: config.inicio, texto: '← Volver a la asistencia' } )
+			);
+		} ).catch( function ( error ) {
+			pintar( aviso( 'error', error.message ) );
+		} );
 	}
 
 	// ---------- marcar ----------
@@ -250,6 +330,10 @@
 			temporizador = setTimeout( function () {
 				vistaInicio( aviso( 'error', 'Pasaron 2 minutos. Vuelve a poner tu huella.' ) );
 			}, datos.segundos * 1000 );
+			if ( datos.aviso ) {
+				vistaAceptarAviso( datos );
+				return;
+			}
 			vistaEstado( datos );
 		} );
 	}
@@ -314,6 +398,12 @@
 			] );
 
 			var lista = el( 'ul', { class: 'lista-mes' }, r.dias.map( function ( d ) {
+				if ( d.nota ) {
+					return el( 'li', { class: 'justificado' }, [
+						el( 'span', { class: 'dia', texto: d.etiqueta } ),
+						el( 'span', { class: 'horas', texto: d.nota } ),
+					] );
+				}
 				var detalle = [ ( d.ingreso || '—' ) + ' – ' + ( d.salida || 'sin salida' ), d.tiempo + ' h' ];
 				return el( 'li', { class: d.incompleto ? 'incompleto' : '' }, [
 					el( 'span', { class: 'dia', texto: d.etiqueta } ),
@@ -672,6 +762,8 @@
 		vistaActivar();
 	} else if ( 'pantalla' === config.vista ) {
 		vistaPantalla();
+	} else if ( 'privacidad' === config.vista ) {
+		vistaPrivacidad();
 	} else {
 		leerQr().then( function ( mensaje ) {
 			vistaInicio( mensaje );

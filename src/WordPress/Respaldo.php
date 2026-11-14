@@ -40,7 +40,10 @@ final class Respaldo {
 			return;
 		}
 
-		if ( true === self::enviar( $anterior, 'Respaldo automático' ) ) {
+		$resultado = self::enviar( $anterior, 'Respaldo automático' );
+
+		// Basta con que haya salido por un canal; el otro queda en el historial como fallido.
+		if ( $resultado['correo'] || true === $resultado['nube'] ) {
 			update_option( self::OPCION_ULTIMO, $anterior, false );
 		}
 	}
@@ -51,13 +54,18 @@ final class Respaldo {
 		return is_email( $correo ) ? $correo : (string) get_option( 'admin_email' );
 	}
 
-	/** @return true|string true si se envió; si no, el motivo. */
-	public static function enviar( string $mes, string $generadoPor ): true|string {
+	/**
+	 * Envía el Excel del mes por correo y, si está configurado, a un webhook
+	 * (por ejemplo un escenario de Make que lo guarda en Google Drive).
+	 *
+	 * @return array{correo: bool, nube: bool|null, mensaje: string} nube = null si no hay webhook.
+	 */
+	public static function enviar( string $mes, string $generadoPor ): array {
 		$archivo = Exportes::registroMensual( $mes, $generadoPor );
 		$carpeta = trailingslashit( wp_upload_dir()['basedir'] ) . 'pka-respaldos';
 
 		if ( ! wp_mkdir_p( $carpeta ) ) {
-			return 'No se pudo crear la carpeta temporal.';
+			return array( 'correo' => false, 'nube' => null, 'mensaje' => 'No se pudo crear la carpeta temporal.' );
 		}
 
 		// La carpeta nunca debe servirse por web.
@@ -83,8 +91,67 @@ final class Respaldo {
 
 		wp_delete_file( $ruta );
 
-		Auditoria::registrar( 'respaldo.enviar', 'respaldo', null, null, array( 'mes' => $mes, 'hash' => $archivo['hash'], 'enviado' => $enviado, 'a' => self::destinatario() ) );
+		$nube = self::alWebhook( $archivo, $mes );
 
-		return $enviado ? true : 'El correo no salió. Revisa la configuración de correo (SMTP) del sitio.';
+		Auditoria::registrar(
+			'respaldo.enviar',
+			'respaldo',
+			null,
+			null,
+			array( 'mes' => $mes, 'hash' => $archivo['hash'], 'enviado' => $enviado, 'a' => self::destinatario() ) + ( null === $nube ? array() : array( 'nube' => $nube ) )
+		);
+
+		$partes = array( $enviado ? 'Correo enviado a ' . self::destinatario() . '.' : 'El correo no salió: revisa la configuración de correo (SMTP) del sitio.' );
+
+		if ( null !== $nube ) {
+			$partes[] = $nube ? 'Copia enviada a la nube.' : 'La copia a la nube falló: revisa el webhook.';
+		}
+
+		return array( 'correo' => $enviado, 'nube' => $nube, 'mensaje' => implode( ' ', $partes ) );
+	}
+
+	/**
+	 * POST multipart al webhook con el archivo (campo "archivo") y sus datos.
+	 * Lleva una firma HMAC del hash en la cabecera X-PKA-Firma para que el
+	 * receptor pueda comprobar que viene de este sistema.
+	 *
+	 * @param array{nombre: string, contenido: string, hash: string, marcas: int} $archivo
+	 * @return bool|null null si no hay webhook configurado.
+	 */
+	private static function alWebhook( array $archivo, string $mes ): ?bool {
+		$url = (string) Ajustes::todos()['webhook_respaldo'];
+
+		// La URL ya se validó al guardarla en Exportar; aquí basta con que sea https.
+		if ( '' === $url || 'https' !== wp_parse_url( $url, PHP_URL_SCHEME ) ) {
+			return null;
+		}
+
+		$limite = 'pka' . bin2hex( random_bytes( 8 ) );
+		$campos = array( 'mes' => $mes, 'hash' => $archivo['hash'], 'marcas' => (string) $archivo['marcas'], 'empresa' => (string) Ajustes::todos()['razon_social'] );
+		$cuerpo = '';
+
+		foreach ( $campos as $nombre => $valor ) {
+			$cuerpo .= "--{$limite}\r\nContent-Disposition: form-data; name=\"{$nombre}\"\r\n\r\n{$valor}\r\n";
+		}
+
+		$cuerpo .= "--{$limite}\r\nContent-Disposition: form-data; name=\"archivo\"; filename=\"{$archivo['nombre']}\"\r\n"
+			. "Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet\r\n\r\n"
+			. $archivo['contenido'] . "\r\n--{$limite}--\r\n";
+
+		$respuesta = wp_remote_post(
+			$url,
+			array(
+				'timeout' => 30,
+				'headers' => array(
+					'Content-Type' => 'multipart/form-data; boundary=' . $limite,
+					'X-PKA-Firma'  => hash_hmac( 'sha256', $archivo['hash'], Secretos::clave() ),
+				),
+				'body'    => $cuerpo,
+			)
+		);
+
+		$codigo = (int) wp_remote_retrieve_response_code( $respuesta );
+
+		return ! is_wp_error( $respuesta ) && $codigo >= 200 && $codigo < 300;
 	}
 }

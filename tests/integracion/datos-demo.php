@@ -20,12 +20,16 @@ if ( 'local' !== wp_get_environment_type() ) {
 
 global $wpdb;
 
-foreach ( array( 'trabajadores', 'marcas', 'auditoria', 'credenciales', 'dispositivos', 'activaciones', 'redes', 'correcciones', 'pantallas', 'revisiones' ) as $tabla ) {
+foreach ( array( 'trabajadores', 'marcas', 'auditoria', 'credenciales', 'dispositivos', 'activaciones', 'redes', 'correcciones', 'pantallas', 'revisiones', 'calendario', 'ausencias' ) as $tabla ) {
 	$wpdb->query( 'TRUNCATE TABLE ' . Tablas::nombre( $tabla ) ); // phpcs:ignore
 }
 
 wp_set_current_user( 1 );
 $_SERVER['REMOTE_ADDR'] = '127.0.0.1';
+
+// El aviso vuelve a su borrador (versión 1) y sin webhook de respaldo.
+$ajustesDemo = \Pekokis\Asistencia\WordPress\Ajustes::todos();
+update_option( \Pekokis\Asistencia\WordPress\Ajustes::OPCION, array( 'aviso_texto' => '', 'aviso_version' => 1, 'webhook_respaldo' => '' ) + $ajustesDemo );
 
 $wpdb->insert( Tablas::nombre( 'redes' ), array( 'red' => '127.0.0.1', 'nombre' => 'Local (pruebas)', 'activa' => 1, 'creada_por' => 1, 'creado_en' => gmdate( 'Y-m-d H:i:s' ) ) );
 $wpdb->insert( Tablas::nombre( 'redes' ), array( 'red' => '::1', 'nombre' => 'Local IPv6 (pruebas)', 'activa' => 1, 'creada_por' => 1, 'creado_en' => gmdate( 'Y-m-d H:i:s' ) ) );
@@ -90,5 +94,17 @@ foreach ( $ids as $i => $tid ) {
 }
 
 \Pekokis\Asistencia\WordPress\Correcciones::solicitar( (int) $ids[0], $ayer, '19:30', \Pekokis\Asistencia\Nucleo\Accion::FIN_JORNADA, null, 'Me fui apurada y no marqué la salida' );
+
+// Feriados del año y Milagros de vacaciones esta semana: así se ven "Ausencia justificada" y el calendario.
+\Pekokis\Asistencia\WordPress\Calendario::cargarFeriadosPeru( (int) substr( $hoy, 0, 4 ) );
+\Pekokis\Asistencia\WordPress\Ausencias::crear(
+	array(
+		'trabajador_id' => (int) $ids[4],
+		'tipo'          => 'vacaciones',
+		'desde'         => ( new DateTimeImmutable( $hoy ) )->modify( '-1 day' )->format( 'Y-m-d' ),
+		'hasta'         => ( new DateTimeImmutable( $hoy ) )->modify( '+5 days' )->format( 'Y-m-d' ),
+		'nota'          => 'Papeleta 2026-031',
+	)
+);
 
 WP_CLI::success( 'Datos de demostración cargados para ' . $hoy . '.' );

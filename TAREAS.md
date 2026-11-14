@@ -3,7 +3,7 @@
 Este archivo lleva lo hecho, lo pendiente y la bitácora del proyecto. Se actualiza cada vez que avanzamos.
 El detalle técnico de cada punto está en [docs/plan-tecnico.md](docs/plan-tecnico.md).
 
-**Estado actual:** el MVP funcional está completo en el WordPress local: perfiles, passkeys, marcas, pantalla QR, panel del día, revisión, correcciones, export mensual y respaldo. También están la app instalable (PWA), "Mis marcas del mes" y la revocación automática del celular anterior. También están el visor del historial, la pantalla de horarios y el aviso de IP nueva. Lo cubren 91 pruebas del núcleo y 98 de punta a punta. El despliegue está preparado (zip 0.5.0, guía paso a paso y diagnóstico en Ajustes). **Siguiente: Maycol monta el sitio en Hostinger** siguiendo [docs/despliegue-hostinger.md](docs/despliegue-hostinger.md), y después se hace el piloto con celulares reales. De calidad queda el respaldo en Google Drive (vía Make).
+**Estado actual:** MVP completo y **desplegado** en `https://asistencia.pekokis.com` (versión 0.5.0). En local está lista la **0.6.0**, que agrega: calendario de feriados, ausencias justificadas, aviso de datos personales, rol Gerencia, "nadie se aprueba a sí mismo" y copia del respaldo en la nube. Lo cubren 99 pruebas del núcleo y 130 de punta a punta. **Siguiente:** subir la 0.6.0, que el abogado revise el aviso, cargar los feriados, terminar el correo SMTP y la red del taller, y hacer el piloto. Después, la **fase 2** (horas y sueldos), que necesita las decisiones de gerencia de la sección 16 del plan.
 
 **Estrategia:** primero un MVP con las fases 0 y 1 del plan (registro de asistencia funcionando y conforme a la norma). Después, mejoras por etapas según lo que opine gerencia.
 
@@ -112,6 +112,19 @@ Leyenda: `[x]` hecho · `[ ]` pendiente · `[~]` en curso
   - enlaces desde la lista de Trabajadores y desde el detalle del día.
 - [x] ~~Cierre del día por cron~~ → se reemplazó por "Días anteriores por revisar" en Hoy (últimos 7 días, sin salida o laborables sin marcas). Se calcula al momento, así que nunca queda desactualizado cuando se aprueba una corrección
 
+### 5-bis. Feriados, ausencias y permisos del panel (versión 0.6.0)
+- [x] Calendario (Asistencia → Calendario):
+  - feriados y días no laborables de la empresa;
+  - botón para cargar la lista sugerida de los 16 feriados nacionales del año, con Jueves y Viernes Santo calculados;
+  - en esos días nadie figura ausente ni con falta, y el Excel los lista.
+- [x] Ausencias justificadas (Asistencia → Ausencias):
+  - vacaciones, descanso médico, licencia, permiso u otra, por rango de fechas, sin cruces;
+  - se anulan con motivo; el panel las muestra como "Ausencia justificada" y no cuentan como falta;
+  - aparecen en "Mis marcas del mes" y en una hoja nueva del Excel;
+  - no se suben certificados médicos: son datos de salud, así que solo se anota su número.
+- [x] Rol **Gerencia** (solo lectura): ve el panel de todos, el historial y descarga el Excel; no aprueba, no corrige ni gestiona personal. Nueva capacidad `pka_exportar`.
+- [x] **Nadie se aprueba a sí mismo:** el perfil se enlaza con su usuario de wp-admin, y ese usuario no puede revisar, aprobar, registrar ni anular sus propias marcas. Tampoco puede ser su propio jefe.
+
 ### 6. Exportes y respaldo
 - [x] Export mensual del registro (Asistencia → Exportar), en Excel con tres hojas:
   - "Registro": empleador, RUC, ingreso y salida por día, refrigerio, salidas y tiempo en el taller;
@@ -119,15 +132,19 @@ Leyenda: `[x]` hecho · `[ ]` pendiente · `[~]` en curso
   - "Integridad": estado de la cadena y último hash.
 
   Cada descarga queda en la auditoría con el SHA-256 del archivo.
-- [~] Respaldo mensual: el día 1 a las 06:00 se envía por correo el Excel del mes anterior (destino configurable), y también se puede enviar a mano. En Hostinger hace falta que el correo del sitio funcione (SMTP) y el cron real. Falta Google Drive vía Make
+- [~] Respaldo mensual: el día 1 a las 06:00 se envía por correo el Excel del mes anterior (destino configurable), y también se puede enviar a mano. En Hostinger hace falta que el correo del sitio funcione (SMTP) y el cron real. **Copia en la nube:** si se configura un webhook (Make o n8n), el Excel también se envía firmado (HMAC); falta crear el escenario de Make con Google Drive
 
 ### 7. Calidad y puesta en marcha
 - [x] Pruebas automáticas:
-  - 91 del núcleo (`composer test`);
-  - 98 de todo el flujo contra el WordPress local, con un autenticador simulado (`tests/integracion/flujo-marcas.php`);
+  - 99 del núcleo (`composer test`);
+  - 130 de todo el flujo contra el WordPress local, con un autenticador simulado (`tests/integracion/flujo-marcas.php`);
   - `tests/integracion/datos-demo.php` carga 5 trabajadores de ejemplo, con casos de hoy y de ayer, para ver el panel.
 - [ ] Pruebas en celulares reales: Android (Chrome) e iPhone (Safari)
-- [ ] Aviso de datos personales para los trabajadores (revisado por el abogado)
+- [~] Aviso de datos personales (Ley 29733):
+  - hecho: un borrador con placeholders del empleador, que se acepta con una casilla al activar el celular;
+  - si cambia el texto se pide aceptarlo de nuevo, y queda la versión y la fecha en el perfil más el registro en el historial;
+  - se puede leer en `/privacidad/` y se edita en Ajustes.
+  - **Falta que lo revise el abogado** antes de activar a nadie.
 - [ ] Piloto: una semana con 3 o 4 trabajadores y una semana con todos, en paralelo con el método actual
 
 ---
@@ -157,6 +174,16 @@ Vienen de la sección 16 del plan; se resuelven con gerencia y el contador.
 ---
 
 ## Bitácora
+
+### 14-11-2026 (tarde) — versión 0.6.0
+- **Feriados, ausencias, aviso de datos, Gerencia, "nadie se aprueba a sí mismo" y respaldo en la nube.**
+  - Base de datos versión 2: tablas `calendario` y `ausencias`, y columnas `aviso_version` y `aviso_aceptado_en` en trabajadores. Al subir el zip se actualiza sola.
+  - En el núcleo: `FeriadosPeru` (lista sugerida, Pascua calculada sin la extensión calendar), `ValidacionAusencia`, y `ResumenDia` con el estado JUSTIFICADO y el detalle. 8 pruebas nuevas, 99 en total.
+  - En WordPress: `Calendario`, `Ausencias`, `Aviso`, `Admin/PantallaCalendario` y `Admin/PantallaAusencias`. `Horarios::delDia` respeta el calendario y `Respaldo` envía a un webhook. Rol `pka_gerencia` y `Trabajadores::esPropio`.
+  - Prueba de punta a punta: 130 comprobaciones (32 nuevas). Ahora deja los ajustes como estaban al terminar; antes dejaba el aviso de prueba guardado.
+  - En el navegador se revisaron Hoy (Milagros como "Ausencia justificada · Vacaciones"), Calendario, Ausencias, el aviso en `/activar/` (con la casilla habilitando el botón) y la sección del aviso en Ajustes.
+  - **Pendientes nuevos:** que el abogado revise el aviso, cargar los feriados en producción y crear el escenario de Make.
+- Zip `dist/pekokis-asistencia-0.6.0.zip`; se borró el 0.5.0. La guía tiene los pasos nuevos del 10 y las filas 13 y 14 del checklist.
 
 ### 14-11-2026
 - **Las tres mejoras para el piloto (versión 0.3.0)**:

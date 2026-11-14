@@ -101,6 +101,7 @@ final class PantallaTrabajadores {
 						<?php else : ?>
 							Cesado el <?php echo esc_html( (string) $t['fecha_cese'] ); ?>
 						<?php endif; ?>
+						| <a href="<?php echo esc_url( PantallaAusencias::url( array( 'trabajador' => $t['id'] ) ) ); ?>">Ausencias</a>
 						<?php if ( current_user_can( Capacidades::AUDITORIA ) ) : ?>
 							| <a href="<?php echo esc_url( PantallaHistorial::url( array( 'trabajador' => $t['id'] ) ) ); ?>">Historial</a>
 						<?php endif; ?>
@@ -118,7 +119,7 @@ final class PantallaTrabajadores {
 		$errores  = is_array( $previo ) ? $previo['errores'] : array();
 		$valores  = is_array( $previo ) ? $previo['valores'] : ( $t ?? array() );
 		$horarios = Trabajadores::horarios();
-		$jefes    = get_users( array( 'role__in' => array( Capacidades::ROL_JEFE, Capacidades::ROL_RRHH, 'administrator' ), 'orderby' => 'display_name' ) );
+		$jefes    = get_users( array( 'role__in' => array( Capacidades::ROL_JEFE, Capacidades::ROL_RRHH, Capacidades::ROL_GERENCIA, 'administrator' ), 'orderby' => 'display_name' ) );
 
 		delete_transient( 'pka_form_' . get_current_user_id() );
 		?>
@@ -160,6 +161,20 @@ final class PantallaTrabajadores {
 								<option value="<?php echo esc_attr( (string) $jefe->ID ); ?>" <?php selected( (int) ( $valores['jefe_user_id'] ?? 0 ), $jefe->ID ); ?>><?php echo esc_html( $jefe->display_name ); ?></option>
 							<?php endforeach; ?>
 						</select>
+						<?php self::error( $errores, 'jefe_user_id' ); ?>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="pka-usuario">Usuario de wp-admin</label></th>
+					<td>
+						<select id="pka-usuario" name="user_id">
+							<option value="0">— No entra al panel —</option>
+							<?php foreach ( $jefes as $u ) : ?>
+								<option value="<?php echo esc_attr( (string) $u->ID ); ?>" <?php selected( (int) ( $valores['user_id'] ?? 0 ), $u->ID ); ?>><?php echo esc_html( $u->display_name ); ?></option>
+							<?php endforeach; ?>
+						</select>
+						<p class="description">Solo si este trabajador también es jefe, RR.HH. o gerencia. Así no puede aprobar ni corregir sus propias marcas.</p>
+						<?php self::error( $errores, 'user_id' ); ?>
 					</td>
 				</tr>
 				<?php if ( $t ) : ?>

@@ -7,6 +7,7 @@ use Pekokis\Asistencia\Nucleo\ModoPresencia;
 use Pekokis\Asistencia\Nucleo\RedAutorizada;
 use Pekokis\Asistencia\WordPress\Ajustes;
 use Pekokis\Asistencia\WordPress\Auditoria;
+use Pekokis\Asistencia\WordPress\Aviso;
 use Pekokis\Asistencia\WordPress\Capacidades;
 use Pekokis\Asistencia\WordPress\Diagnostico;
 use Pekokis\Asistencia\WordPress\Pantallas;
@@ -27,6 +28,100 @@ final class PantallaAjustes {
 		add_action( 'admin_post_pka_agregar_red', array( self::class, 'agregarRed' ) );
 		add_action( 'admin_post_pka_cambiar_red', array( self::class, 'cambiarRed' ) );
 		add_action( 'admin_post_pka_cambiar_pantalla', array( self::class, 'cambiarPantalla' ) );
+		add_action( 'admin_post_pka_guardar_empleador', array( self::class, 'guardarEmpleador' ) );
+		add_action( 'admin_post_pka_guardar_aviso', array( self::class, 'guardarAviso' ) );
+	}
+
+	/** Datos del empleador (salen en el Excel y en el aviso) y el aviso de datos personales. */
+	private static function empleadorYAviso(): void {
+		$a      = Ajustes::todos();
+		$conteo = Aviso::conteo();
+		?>
+		<h2 style="margin-top:32px">Datos del empleador</h2>
+		<p>Aparecen en el registro de asistencia (Excel) y en el aviso de datos personales.</p>
+		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+			<input type="hidden" name="action" value="pka_guardar_empleador">
+			<?php wp_nonce_field( 'pka_guardar_empleador' ); ?>
+			<table class="form-table" role="presentation">
+				<tr><th scope="row"><label for="pka-e-razon">Razón social</label></th><td><input type="text" id="pka-e-razon" name="razon_social" class="regular-text" required value="<?php echo esc_attr( (string) $a['razon_social'] ); ?>"></td></tr>
+				<tr><th scope="row"><label for="pka-e-ruc">RUC</label></th><td><input type="text" id="pka-e-ruc" name="ruc" class="regular-text" required pattern="\d{11}" value="<?php echo esc_attr( (string) $a['ruc'] ); ?>"></td></tr>
+				<tr><th scope="row"><label for="pka-e-dir">Domicilio</label></th><td><input type="text" id="pka-e-dir" name="direccion_empleador" class="large-text" value="<?php echo esc_attr( (string) $a['direccion_empleador'] ); ?>"></td></tr>
+			</table>
+			<?php submit_button( 'Guardar datos del empleador', 'secondary' ); ?>
+		</form>
+
+		<h2 style="margin-top:32px" id="aviso">Aviso de datos personales</h2>
+		<?php if ( Aviso::esBorrador() ) : ?>
+			<div class="notice notice-warning inline"><p><strong>Este texto es un borrador.</strong> Revísalo con el abogado antes de activar a los trabajadores. Cuando lo guardes, queda como texto oficial.</p></div>
+		<?php endif; ?>
+		<p>
+			Versión <?php echo (int) Aviso::version(); ?> · la aceptaron <strong><?php echo (int) $conteo['aceptaron']; ?> de <?php echo (int) $conteo['activos']; ?></strong> trabajadores activos.
+			Se acepta al activar el celular; si cambias el texto, cada uno lo aceptará de nuevo la próxima vez que marque.
+			<a href="<?php echo esc_url( home_url( '/privacidad/' ) ); ?>" target="_blank" rel="noopener">Ver como lo ve el trabajador ↗</a>
+		</p>
+		<p class="description">
+			Puedes usar <code>{razon_social}</code>, <code>{ruc}</code>, <code>{direccion}</code> y <code>{correo_contacto}</code> (el correo de RR.HH. de Exportar).
+			Separa los párrafos con una línea en blanco; las líneas que empiezan con "- " son viñetas.
+		</p>
+		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+			<input type="hidden" name="action" value="pka_guardar_aviso">
+			<?php wp_nonce_field( 'pka_guardar_aviso' ); ?>
+			<label class="screen-reader-text" for="pka-aviso">Texto del aviso</label>
+			<textarea id="pka-aviso" name="texto" rows="22" class="large-text code"><?php echo esc_textarea( Aviso::textoEditable() ); ?></textarea>
+			<p>
+				<button class="button button-primary" name="accion" value="guardar">Guardar texto (se pedirá aceptarlo de nuevo)</button>
+				<?php if ( ! Aviso::esBorrador() ) : ?>
+					<button class="button" name="accion" value="borrador" onclick="return confirm('¿Volver al borrador original? Se pedirá aceptarlo de nuevo.')">Volver al borrador</button>
+				<?php endif; ?>
+			</p>
+		</form>
+		<?php
+	}
+
+	public static function guardarEmpleador(): void {
+		self::exigir( 'pka_guardar_empleador' );
+
+		$antes   = Ajustes::todos();
+		$ajustes = $antes;
+		$ruc     = isset( $_POST['ruc'] ) ? preg_replace( '/\D/', '', (string) wp_unslash( $_POST['ruc'] ) ) : '';
+
+		if ( 11 !== strlen( $ruc ) ) {
+			Avisos::agregar( 'error', 'El RUC debe tener 11 dígitos.' );
+			Menu::volver( self::SLUG );
+		}
+
+		$ajustes['razon_social']        = isset( $_POST['razon_social'] ) ? sanitize_text_field( wp_unslash( $_POST['razon_social'] ) ) : $antes['razon_social'];
+		$ajustes['ruc']                 = $ruc;
+		$ajustes['direccion_empleador'] = isset( $_POST['direccion_empleador'] ) ? sanitize_text_field( wp_unslash( $_POST['direccion_empleador'] ) ) : $antes['direccion_empleador'];
+		update_option( Ajustes::OPCION, $ajustes );
+
+		[ $a, $d ] = Auditoria::diferencias(
+			array_intersect_key( $antes, array_flip( array( 'razon_social', 'ruc', 'direccion_empleador' ) ) ),
+			array_intersect_key( $ajustes, array_flip( array( 'razon_social', 'ruc', 'direccion_empleador' ) ) )
+		);
+
+		if ( $d ) {
+			Auditoria::registrar( 'ajustes.empleador', 'ajustes', null, $a, $d );
+		}
+
+		Avisos::agregar( 'success', 'Datos del empleador guardados.' );
+		Menu::volver( self::SLUG );
+	}
+
+	public static function guardarAviso(): void {
+		self::exigir( 'pka_guardar_aviso' );
+
+		$borrador = isset( $_POST['accion'] ) && 'borrador' === $_POST['accion'];
+		$texto    = isset( $_POST['texto'] ) ? sanitize_textarea_field( wp_unslash( $_POST['texto'] ) ) : '';
+
+		if ( ! $borrador && mb_strlen( trim( $texto ) ) < 100 ) {
+			Avisos::agregar( 'error', 'El aviso es demasiado corto.' );
+			Menu::volver( self::SLUG );
+		}
+
+		Aviso::guardar( $borrador ? '' : $texto );
+		Avisos::agregar( 'success', 'Aviso guardado (versión ' . (int) Aviso::version() . '). Cada trabajador lo aceptará la próxima vez que marque.' );
+		Menu::volver( self::SLUG );
 	}
 
 	/** Sugerencias de red nueva (la IP del taller pudo cambiar). Nunca se agregan solas. */
@@ -203,6 +298,7 @@ final class PantallaAjustes {
 			</table>
 
 			<?php self::pantallas(); ?>
+			<?php self::empleadorYAviso(); ?>
 		</div>
 		<?php
 	}

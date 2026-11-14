@@ -67,6 +67,14 @@ final class PantallaDia {
 				<?php endif; ?>
 			</p>
 
+			<?php
+			$ausencia = \Pekokis\Asistencia\WordPress\Ausencias::delDia( $id, $dia );
+			$feriado  = \Pekokis\Asistencia\WordPress\Calendario::descripcion( $dia );
+			?>
+			<?php if ( null !== $ausencia || '' !== $feriado ) : ?>
+				<div class="notice notice-info inline"><p><strong><?php echo esc_html( null !== $ausencia ? 'Ausencia justificada: ' . $ausencia : $feriado ); ?>.</strong> Este día no cuenta como falta.</p></div>
+			<?php endif; ?>
+
 			<table class="widefat striped">
 				<thead><tr><th>Hora</th><th>Marca</th><th>Prueba</th><th>Origen</th><th>Nota</th><th></th></tr></thead>
 				<tbody>
@@ -218,9 +226,13 @@ final class PantallaDia {
 			$fecha = ( new DateTimeImmutable( $dia ) )->modify( '+1 day' )->format( 'Y-m-d' );
 		}
 
-		$result = self::puedeVer( $id )
-			? Correcciones::marcaManual( $id, $fecha, $hora, $accion, $motivo?->clave, $texto )
-			: new WP_Error( 'pka_alcance', 'Ese trabajador no es de tu equipo.' );
+		if ( ! self::puedeVer( $id ) ) {
+			$result = new WP_Error( 'pka_alcance', 'Ese trabajador no es de tu equipo.' );
+		} elseif ( Trabajadores::esPropio( $id ) ) {
+			$result = new WP_Error( 'pka_propia', 'No puedes registrar marcas manuales para ti: pídeselo a otra persona con permiso.' );
+		} else {
+			$result = Correcciones::marcaManual( $id, $fecha, $hora, $accion, $motivo?->clave, $texto );
+		}
 
 		self::avisar( $result, 'Marca registrada.' );
 		Menu::volverA( self::url( $id, $dia ) );
@@ -241,6 +253,11 @@ final class PantallaDia {
 			Menu::volver( Menu::SLUG );
 		}
 
+		if ( Trabajadores::esPropio( (int) $fila['trabajador_id'] ) ) {
+			Avisos::agregar( 'error', 'No puedes anular tus propias marcas: pídeselo a otra persona con permiso.' );
+			Menu::volverA( self::url( (int) $fila['trabajador_id'], $fila['dia_laboral'] ) );
+		}
+
 		self::avisar( Correcciones::anular( $marca, $texto ), 'Marca anulada.' );
 		Menu::volverA( self::url( (int) $fila['trabajador_id'], $fila['dia_laboral'] ) );
 	}
@@ -255,6 +272,8 @@ final class PantallaDia {
 
 		if ( ! $propia ) {
 			$result = new WP_Error( 'pka_alcance', 'Esa solicitud ya se resolvió o no es de tu equipo.' );
+		} elseif ( Trabajadores::esPropio( (int) array_values( $propia )[0]['trabajador_id'] ) ) {
+			$result = new WP_Error( 'pka_propia', 'No puedes aprobar tus propias solicitudes: lo hace otra persona con permiso.' );
 		} else {
 			$result = 'aprobar' === $decision ? Correcciones::aprobar( $id, $nota ) : Correcciones::rechazar( $id, $nota );
 		}
