@@ -3,7 +3,7 @@
 Este archivo lleva lo hecho, lo pendiente y la bitácora del proyecto. Se actualiza cada vez que avanzamos.
 El detalle técnico de cada punto está en [docs/plan-tecnico.md](docs/plan-tecnico.md).
 
-**Estado actual:** **versión 0.8.1 en producción** (`https://asistencia.pekokis.com`, subida el 14-11). Incluye el MVP, la 0.6.0 (feriados, ausencias, aviso de datos, Gerencia, copia en la nube), la **fase 2** (horas extra, sueldos y pre-planilla) y la **fase 3** (Resumen del mes con gráficos, Informe por trabajador en Excel y PDF, y el calendario de colores en la app del trabajador). La cubren 123 pruebas del núcleo y 161 de punta a punta. **Siguiente:** pegar el webhook de Make en Exportar y probar el respaldo, cargar los feriados, terminar el SMTP y la red del taller, que el abogado revise el aviso, hacer el piloto y revisar con el contador las reglas de horas. Después, la fase 4 (notificaciones).
+**Estado actual:** **versión 0.8.1 en producción** (`https://asistencia.pekokis.com`, subida el 14-11). Incluye el MVP, la 0.6.0 (feriados, ausencias, aviso de datos, Gerencia, copia en la nube), la **fase 2** (horas extra, sueldos y pre-planilla) y la **fase 3** (Resumen del mes con gráficos, Informe por trabajador en Excel y PDF, y el calendario de colores en la app del trabajador). La cubren 123 pruebas del núcleo y 161 de punta a punta. El respaldo ya llega a Google Drive y los feriados de 2026 y 2027 están cargados. **Siguiente:** terminar el SMTP y la red del taller, que el abogado revise el aviso, hacer el piloto y revisar con el contador las reglas de horas. Después, la fase 4 (notificaciones).
 
 **Estrategia:** primero un MVP con las fases 0 y 1 del plan (registro de asistencia funcionando y conforme a la norma). Después, mejoras por etapas según lo que opine gerencia.
 
@@ -133,7 +133,7 @@ Leyenda: `[x]` hecho · `[ ]` pendiente · `[~]` en curso
 
   Cada descarga queda en la auditoría con el SHA-256 del archivo.
 - [~] Respaldo mensual: el día 1 a las 06:00 se envía por correo el Excel del mes anterior (destino configurable), y también se puede enviar a mano. En Hostinger hace falta que el correo del sitio funcione (SMTP) y el cron real.
-- [x] **Copia en la nube:** el Excel también se envía firmado (HMAC) a un webhook. El escenario de Make **"Respaldo asistencia → Google Drive"** (webhook → Google Drive, carpeta "Respaldos asistencia Pekokis" de admin1@pekokis.com) está activo y probado desde local. **Falta** pegar su URL en Exportar en producción.
+- [x] **Copia en la nube:** el Excel también se envía firmado (HMAC) a un webhook. El escenario de Make **"Respaldo asistencia → Google Drive"** (webhook → Google Drive, carpeta "Respaldos asistencia Pekokis" de admin1@pekokis.com) está activo, conectado en producción y probado el 14-11.
 
 ### 7. Calidad y puesta en marcha
 - [x] Pruebas automáticas:
@@ -207,11 +207,11 @@ Vienen de la sección 16 del plan; se resuelven con gerencia y el contador.
 ### 14-11-2026 (noche, 4) — 0.8.1 en producción
 - Maycol subió `pekokis-asistencia-0.8.1.zip` por wp-admin, encima de la 0.5.0. La base de datos pasa sola a la versión 3.
 - Lo verifiqué desde fuera: `sw.js` dice `pka-0.8.1`; `/`, `/activar/`, `/privacidad/`, el manifest y `wp-json/asistencia/v1/aviso` responden 200; el `app.js` publicado ya trae el calendario.
-- **Pendiente:**
-  - pegar el webhook de Make en Exportar y pulsar "Enviar respaldo" (Make todavía no recibió nada de producción);
-  - revisar el Estado del sistema en wp-admin;
-  - cargar los feriados de 2026 y 2027;
-  - cambiar `PKA_SECRETO`, si no se hizo, porque se pegó en el chat.
+- Después lo hice desde el Chrome de Maycol, con su sesión de wp-admin:
+  - **Estado del sistema:** 11 puntos en verde. Siguen pendientes "Correo del respaldo" (falta el correo de RR.HH.) y "Presencia" (no hay red ni pantalla).
+  - **Webhook de Make** guardado en Exportar. "Enviar respaldo" de 2026-11 respondió "Correo enviado a maycolacunadiaz@gmail.com. Copia enviada a la nube". En Make, el escenario lo procesó bien (2 operaciones, 16 KB), así que el Excel llegó a la carpeta "Respaldos asistencia Pekokis" de Drive.
+  - **Feriados:** se cargaron los 16 sugeridos de 2026 y los 16 de 2027.
+- **Pendiente:** cambiar `PKA_SECRETO` (se pegó en el chat), el correo de RR.HH., la red del WiFi o la pantalla QR del taller, que el abogado revise el aviso y que el contador revise las reglas.
 
 ### 14-11-2026 (noche, 3) — versión 0.8.1: calendario en la app y gráficos
 - **App:** `yo/mes` devuelve `calendario` (los días vacíos al inicio de la semana, cada día con su estado, rótulo corto, horas y tardanza, y la leyenda).
