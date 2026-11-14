@@ -3,7 +3,7 @@
 Este archivo lleva lo hecho, lo pendiente y la bitácora del proyecto. Se actualiza cada vez que avanzamos.
 El detalle técnico de cada punto está en [docs/plan-tecnico.md](docs/plan-tecnico.md).
 
-**Estado actual:** MVP completo y **desplegado** en `https://asistencia.pekokis.com` (versión 0.5.0). En local está lista la **0.8.1**, que suma tres entregas: la 0.6.0 (feriados, ausencias, aviso de datos, Gerencia, copia en la nube), la **fase 2** (horas extra, sueldos y pre-planilla) y la **fase 3** (Resumen del mes con gráficos, Informe por trabajador en Excel y PDF, y el calendario de colores en la app del trabajador). La cubren 123 pruebas del núcleo y 161 de punta a punta. El escenario de Make del respaldo ya está activo. **Siguiente:** la fase 4 (notificaciones) y luego subir la versión a producción y pegar el webhook. También falta que el abogado revise el aviso, terminar el SMTP y la red del taller, hacer el piloto y revisar con el contador las reglas de horas.
+**Estado actual:** **versión 0.8.1 en producción** (`https://asistencia.pekokis.com`, subida el 14-11). Incluye el MVP, la 0.6.0 (feriados, ausencias, aviso de datos, Gerencia, copia en la nube), la **fase 2** (horas extra, sueldos y pre-planilla) y la **fase 3** (Resumen del mes con gráficos, Informe por trabajador en Excel y PDF, y el calendario de colores en la app del trabajador). La cubren 123 pruebas del núcleo y 161 de punta a punta. **Siguiente:** pegar el webhook de Make en Exportar y probar el respaldo, cargar los feriados, terminar el SMTP y la red del taller, que el abogado revise el aviso, hacer el piloto y revisar con el contador las reglas de horas. Después, la fase 4 (notificaciones).
 
 **Estrategia:** primero un MVP con las fases 0 y 1 del plan (registro de asistencia funcionando y conforme a la norma). Después, mejoras por etapas según lo que opine gerencia.
 
@@ -203,6 +203,15 @@ Vienen de la sección 16 del plan; se resuelven con gerencia y el contador.
 ---
 
 ## Bitácora
+
+### 14-11-2026 (noche, 4) — 0.8.1 en producción
+- Maycol subió `pekokis-asistencia-0.8.1.zip` por wp-admin, encima de la 0.5.0. La base de datos pasa sola a la versión 3.
+- Lo verifiqué desde fuera: `sw.js` dice `pka-0.8.1`; `/`, `/activar/`, `/privacidad/`, el manifest y `wp-json/asistencia/v1/aviso` responden 200; el `app.js` publicado ya trae el calendario.
+- **Pendiente:**
+  - pegar el webhook de Make en Exportar y pulsar "Enviar respaldo" (Make todavía no recibió nada de producción);
+  - revisar el Estado del sistema en wp-admin;
+  - cargar los feriados de 2026 y 2027;
+  - cambiar `PKA_SECRETO`, si no se hizo, porque se pegó en el chat.
 
 ### 14-11-2026 (noche, 3) — versión 0.8.1: calendario en la app y gráficos
 - **App:** `yo/mes` devuelve `calendario` (los días vacíos al inicio de la semana, cada día con su estado, rótulo corto, horas y tardanza, y la leyenda).
