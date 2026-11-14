@@ -3,7 +3,7 @@
 Este archivo lleva lo hecho, lo pendiente y la bitácora del proyecto. Se actualiza cada vez que avanzamos.
 El detalle técnico de cada punto está en [docs/plan-tecnico.md](docs/plan-tecnico.md).
 
-**Estado actual:** el MVP funcional está completo en el WordPress local: perfiles, passkeys, marcas, pantalla QR, panel del día, revisión, correcciones, export mensual y respaldo. También están la app instalable (PWA), "Mis marcas del mes" y la revocación automática del celular anterior. Lo cubren 81 pruebas del núcleo y 75 de punta a punta. El despliegue está preparado (zip 0.3.0, guía paso a paso y diagnóstico en Ajustes). **Siguiente: Maycol monta el sitio en Hostinger** siguiendo [docs/despliegue-hostinger.md](docs/despliegue-hostinger.md), y después se hace el piloto con celulares reales. Queda de calidad: visor de auditoría, aviso de IP nueva y pantalla de horarios.
+**Estado actual:** el MVP funcional está completo en el WordPress local: perfiles, passkeys, marcas, pantalla QR, panel del día, revisión, correcciones, export mensual y respaldo. También están la app instalable (PWA), "Mis marcas del mes" y la revocación automática del celular anterior. También está el visor del historial de cambios. Lo cubren 81 pruebas del núcleo y 86 de punta a punta. El despliegue está preparado (zip 0.4.0, guía paso a paso y diagnóstico en Ajustes). **Siguiente: Maycol monta el sitio en Hostinger** siguiendo [docs/despliegue-hostinger.md](docs/despliegue-hostinger.md), y después se hace el piloto con celulares reales. Queda de calidad: aviso de IP nueva y pantalla de horarios.
 
 **Estrategia:** primero un MVP con las fases 0 y 1 del plan (registro de asistencia funcionando y conforme a la norma). Después, mejoras por etapas según lo que opine gerencia.
 
@@ -85,7 +85,12 @@ Leyenda: `[x]` hecho · `[ ]` pendiente · `[~]` en curso
   - antes de aplicar, se revisa que el día quede lógico (no dos entradas seguidas, no salidas sin entrada);
   - no se aceptan horas futuras ni de hace más de un mes;
   - la marca anulada queda en la tabla, tachada.
-- [ ] Visor de auditoría
+- [x] Visor del historial (Asistencia → Historial, rol RR.HH. o administrador):
+  - quién hizo qué, cuándo, sobre quién, qué cambió ("antes → después", con horas de Lima y nombres en lugar de claves) y el motivo;
+  - filtros por fechas, tipo, trabajador, quién lo hizo y texto, con páginas de 50 registros;
+  - avisa si la cadena del historial fue alterada;
+  - descarga en CSV para Excel (UTF-8, separado por punto y coma), y la descarga también queda registrada;
+  - enlaces desde la lista de Trabajadores y desde el detalle del día.
 - [x] ~~Cierre del día por cron~~ → se reemplazó por "Días anteriores por revisar" en Hoy (últimos 7 días, sin salida o laborables sin marcas). Se calcula al momento, así que nunca queda desactualizado cuando se aprueba una corrección
 
 ### 6. Exportes y respaldo
@@ -100,7 +105,7 @@ Leyenda: `[x]` hecho · `[ ]` pendiente · `[~]` en curso
 ### 7. Calidad y puesta en marcha
 - [x] Pruebas automáticas:
   - 81 del núcleo (`composer test`);
-  - 75 de todo el flujo contra el WordPress local, con un autenticador simulado (`tests/integracion/flujo-marcas.php`);
+  - 86 de todo el flujo contra el WordPress local, con un autenticador simulado (`tests/integracion/flujo-marcas.php`);
   - `tests/integracion/datos-demo.php` carga 5 trabajadores de ejemplo, con casos de hoy y de ayer, para ver el panel.
 - [ ] Pruebas en celulares reales: Android (Chrome) e iPhone (Safari)
 - [ ] Aviso de datos personales para los trabajadores (revisado por el abogado)
@@ -148,6 +153,14 @@ Vienen de la sección 16 del plan; se resuelven con gerencia y el contador.
 
   Las dos cosas quedan en el checklist del piloto (filas 2, 11 y 12).
 - Zip nuevo: `dist/pekokis-asistencia-0.3.0.zip` (203 archivos). Se borró el 0.2.0 y la guía apunta al nuevo.
+
+- **Visor del historial (versión 0.4.0)**:
+  - Clases `Historial` (consulta y texto legible) y `Admin/PantallaHistorial` (pantalla y CSV).
+  - El filtro por trabajador incluye lo que hizo él mismo, lo que se hizo sobre su perfil y sobre sus marcas y solicitudes.
+  - **Bug encontrado por la prueba:** lo que el trabajador hace desde su celular quedaba a nombre del usuario de wp-admin si en ese navegador había una sesión abierta. Ahora siempre queda a nombre del trabajador.
+  - Pruebas: 86 de punta a punta (11 nuevas, del historial), 81 del núcleo y `debug.log` vacío.
+  - En el navegador se revisaron la pantalla, el filtro por trabajador y el CSV, que trae BOM para que Excel lea bien las tildes.
+  - Zip `dist/pekokis-asistencia-0.4.0.zip`; se borró el 0.3.0.
 
 ### 13-11-2026
 - Plan técnico escrito en `docs/plan-tecnico.md`: 7 módulos, 4 fases, modelo de datos, API, seguridad y aspectos legales.

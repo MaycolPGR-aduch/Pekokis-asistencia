@@ -62,6 +62,9 @@ final class PantallaDia {
 			<p>
 				<a href="<?php echo esc_url( self::url( $id, $antes ) ); ?>">← Día anterior</a> ·
 				<a href="<?php echo esc_url( self::url( $id, $despues ) ); ?>">Día siguiente →</a>
+				<?php if ( current_user_can( Capacidades::AUDITORIA ) ) : ?>
+					· <a href="<?php echo esc_url( PantallaHistorial::url( array( 'trabajador' => $id ) ) ); ?>">Historial de este trabajador</a>
+				<?php endif; ?>
 			</p>
 
 			<table class="widefat striped">

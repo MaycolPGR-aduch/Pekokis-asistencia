@@ -305,6 +305,36 @@ $comprobar( 'auditoría registra alta, edición, enlace, passkey y cese', array(
 $wpdb->query( $wpdb->prepare( 'UPDATE ' . Tablas::nombre( 'marcas' ) . " SET marcado_utc = DATE_SUB(marcado_utc, INTERVAL 30 MINUTE) WHERE id = %d", 1 ) ); // phpcs:ignore
 $comprobar( 'si alguien edita una marca en la base, la cadena lo detecta', 1 === InsercionEncadenada::verificar( 'marcas' ) );
 
+// ---- 6. Historial (visor de auditoría).
+WP_CLI::line( '6. Historial' );
+$H = \Pekokis\Asistencia\WordPress\Historial::class;
+[ $deAna, $totalAna ] = $H::buscar( array( 'trabajador' => $id ), 1, 500 );
+$accionesAna          = array_column( $deAna, 'accion' );
+$comprobar( 'por trabajador: perfil, celular, marcas, solicitudes y cese', ! array_diff( array( 'trabajador.crear', 'passkey.registrar', 'marca.manual', 'marca.anular', 'correccion.solicitar', 'correccion.aprobar', 'trabajador.cesar' ), $accionesAna ), implode( ', ', array_unique( $accionesAna ) ) );
+[ , $totalLuis ] = $H::buscar( array( 'trabajador' => $id2 ) );
+$comprobar( 'no mezcla trabajadores', $totalLuis > 0 && $totalLuis < $totalAna, $totalLuis . ' / ' . $totalAna );
+
+$legible = $H::describir( $deAna );
+$porAccion = array();
+foreach ( $legible as $i => $item ) {
+	$porAccion[ $deAna[ $i ]['accion'] ][] = $item;
+}
+$comprobar( 'acciones en español', 'Marca anulada' === $porAccion['marca.anular'][0]['accion'] && 'Cese' === $porAccion['trabajador.cesar'][0]['accion'] );
+$comprobar( 'la solicitud la hizo Ana desde su celular', str_contains( $porAccion['correccion.solicitar'][0]['quien'], '(desde su celular)' ), $porAccion['correccion.solicitar'][0]['quien'] );
+$comprobar( 'la marca manual muestra la hora en Lima y el motivo', (bool) array_filter( $porAccion['marca.manual'], static fn( $x ) => in_array( 'Motivo: Fin de jornada', $x['cambios'], true ) && (bool) preg_grep( '/^Hora: \d\d\/\d\d 19:3[05]$/', $x['cambios'] ) ), wp_json_encode( $porAccion['marca.manual'][0]['cambios'] ) );
+$comprobar( 'la edición muestra antes → después', in_array( 'Apellidos: Quispe → Quispe Rojas', $porAccion['trabajador.editar'][0]['cambios'], true ), wp_json_encode( $porAccion['trabajador.editar'][0]['cambios'] ) );
+$comprobar( 'enlaza la marca con el día del trabajador', str_contains( $porAccion['marca.anular'][0]['url'], 'vista=dia' ) );
+
+[ , $deAjustes ] = $H::buscar( array( 'grupo' => 'ajustes' ) );
+$comprobar( 'filtro por tipo (pantallas y redes)', $deAjustes >= 2, (string) $deAjustes );
+$manana = ( new DateTimeImmutable( $hoy ) )->modify( '+1 day' )->format( 'Y-m-d' );
+[ , $futuro ] = $H::buscar( array( 'desde' => $manana ) );
+$comprobar( 'filtro por fecha', 0 === $futuro );
+[ $conTexto ] = $H::buscar( array( 'texto' => 'Hora equivocada' ) );
+$comprobar( 'búsqueda en motivos', 1 === count( $conTexto ) && 'marca.anular' === $conTexto[0]['accion'] );
+[ $pag, $totalPag ] = $H::buscar( array(), 2, 3 );
+$comprobar( 'paginación', 3 === count( $pag ) && $totalPag > 6 );
+
 $comprobar( 'presencia por IP del taller', ( $_SERVER['REMOTE_ADDR'] = '203.0.113.10' ) && Presencia::enRedDelTaller() );
 
 if ( $fallos ) {

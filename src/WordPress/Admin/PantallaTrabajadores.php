@@ -101,6 +101,9 @@ final class PantallaTrabajadores {
 						<?php else : ?>
 							Cesado el <?php echo esc_html( (string) $t['fecha_cese'] ); ?>
 						<?php endif; ?>
+						<?php if ( current_user_can( Capacidades::AUDITORIA ) ) : ?>
+							| <a href="<?php echo esc_url( PantallaHistorial::url( array( 'trabajador' => $t['id'] ) ) ); ?>">Historial</a>
+						<?php endif; ?>
 					</td>
 				</tr>
 			<?php endforeach; ?>

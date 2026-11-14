@@ -22,7 +22,9 @@ final class Auditoria {
 		string $motivo = '',
 		?int $actorTrabajador = null
 	): void {
-		$usuario = get_current_user_id();
+		// Lo que hace el trabajador desde su celular es suyo, aunque en ese navegador
+		// haya una sesión de wp-admin abierta (por ejemplo, un jefe probando).
+		$usuario = null === $actorTrabajador ? get_current_user_id() : 0;
 
 		InsercionEncadenada::insertar(
 			'auditoria',

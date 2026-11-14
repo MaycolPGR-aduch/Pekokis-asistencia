@@ -17,6 +17,7 @@ final class Menu {
 		PantallaHoy::registrar();
 		PantallaDia::registrar();
 		PantallaExportar::registrar();
+		PantallaHistorial::registrar();
 		PantallaTrabajadores::registrar();
 		PantallaAjustes::registrar();
 	}
@@ -27,6 +28,7 @@ final class Menu {
 		add_submenu_page( self::SLUG, 'Asistencia de hoy', 'Hoy', Capacidades::VER_EQUIPO, self::SLUG, array( PantallaHoy::class, 'pintar' ) );
 		add_submenu_page( self::SLUG, 'Trabajadores', 'Trabajadores', Capacidades::GESTIONAR_PERSONAL, PantallaTrabajadores::SLUG, array( PantallaTrabajadores::class, 'pintar' ) );
 		add_submenu_page( self::SLUG, 'Exportar registro', 'Exportar', Capacidades::GESTIONAR_PERSONAL, PantallaExportar::SLUG, array( PantallaExportar::class, 'pintar' ) );
+		add_submenu_page( self::SLUG, 'Historial de cambios', 'Historial', Capacidades::AUDITORIA, PantallaHistorial::SLUG, array( PantallaHistorial::class, 'pintar' ) );
 		add_submenu_page( self::SLUG, 'Ajustes de asistencia', 'Ajustes', Capacidades::AJUSTES, PantallaAjustes::SLUG, array( PantallaAjustes::class, 'pintar' ) );
 	}
 
