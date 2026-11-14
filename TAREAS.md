@@ -25,9 +25,12 @@ Leyenda: `[x]` hecho · `[ ]` pendiente · `[~]` en curso
   - "Estado del sistema" en Ajustes, que revisa 13 puntos.
 - [~] **(Maycol)** Crear el sitio en Hostinger, aparte del staging. Pasos 1 a 9 de la guía
   - [x] WordPress instalado desde cero. Por ahora está en el dominio temporal `papayawhip-caribou-477306.hostingersite.com`
-  - [ ] Conectar `asistencia.pekokis.com`: verificación en Hostinger, registro A en Cloudflare con nube gris, SSL
+  - [x] `asistencia.pekokis.com` conectado y con SSL:
+    - Cloudflare: registro A a `157.173.214.139` y CNAME `www.asistencia`, los dos con nube gris;
+    - certificado Let's Encrypt para los dos nombres, válido hasta el 12-02-2027;
+    - `http` y `www` redirigen a `https://asistencia.pekokis.com`, y WordPress ya usa ese dominio.
   - [ ] Pasos 3 a 9 de la guía (PHP, caché, plugins, wp-config, zip 0.5.0, cron, correo, usuarios)
-- [ ] **(Maycol)** Subdominio `asistencia.pekokis.com` en Cloudflare en modo solo DNS, más SSL de Hostinger. Paso 2 de la guía
+- [x] **(Maycol)** Subdominio `asistencia.pekokis.com` en Cloudflare en modo solo DNS, más SSL de Hostinger. Paso 2 de la guía
 - [ ] **(Maycol)** En el taller: agregar la red del WiFi y activar la pantalla. Paso 10 de la guía
 - [x] Entorno local con Laragon:
   - WordPress 7.1 en español en `C:\laragon\www\asistencia` (`https://asistencia.test`; las passkeys exigen HTTPS, así que hay que activar el SSL de Laragon para abrirlo en el navegador), con base de datos `pka_asistencia` y WP-CLI en `C:\laragon\bin\wp-cli\wp-cli.phar`.
@@ -188,6 +191,12 @@ Vienen de la sección 16 del plan; se resuelven con gerencia y el contador.
   - Con esa base libre, WordPress se instaló desde cero. Por ahora responde en el dominio temporal de Hostinger.
   - Con esto el plan queda con sus 2 bases ocupadas (staging y asistencia): un sitio más con base de datos exigiría liberar otra o subir de plan.
   - **Las passkeys se atan al dominio:** no se activa ningún celular hasta tener `asistencia.pekokis.com` con SSL.
+- **Dominio y SSL listos**:
+  - Los 3 primeros intentos de SSL fallaron porque el subdominio todavía no existía en el DNS.
+  - El sitio venía con el **CDN de Hostinger activado**: se apaga y se deja apagado, porque ocultaría la IP real de los celulares y el control del WiFi no funcionaría. Lo mismo con la caché de LiteSpeed.
+  - La IP del servidor sale en Hosting → Detalles del plan → "Dirección IP del sitio web": `157.173.214.139`.
+  - Comprobado desde aquí: certificado válido para `asistencia` y `www.asistencia`, redirecciones a https y WordPress con el dominio correcto.
+  - La portada carga un script de `cdn-reach.hostinger.com` (plugin "Reach" de Hostinger): se quita al borrar los plugins de Hostinger en el paso 4.
 
 ### 13-11-2026
 - Plan técnico escrito en `docs/plan-tecnico.md`: 7 módulos, 4 fases, modelo de datos, API, seguridad y aspectos legales.
