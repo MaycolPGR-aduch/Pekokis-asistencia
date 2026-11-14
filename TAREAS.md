@@ -23,7 +23,10 @@ Leyenda: `[x]` hecho · `[ ]` pendiente · `[~]` en curso
   - `scripts/empaquetar.php` genera un zip con las librerías de producción (sin pruebas ni PHPUnit), que se sube desde wp-admin sin necesidad de SSH. Probado: el plugin empaquetado pasó la prueba de punta a punta;
   - guía paso a paso en `docs/despliegue-hostinger.md`;
   - "Estado del sistema" en Ajustes, que revisa 13 puntos.
-- [ ] **(Maycol)** Crear el sitio en Hostinger, aparte del staging. Pasos 1 a 9 de la guía
+- [~] **(Maycol)** Crear el sitio en Hostinger, aparte del staging. Pasos 1 a 9 de la guía
+  - [x] WordPress instalado desde cero. Por ahora está en el dominio temporal `papayawhip-caribou-477306.hostingersite.com`
+  - [ ] Conectar `asistencia.pekokis.com`: verificación en Hostinger, registro A en Cloudflare con nube gris, SSL
+  - [ ] Pasos 3 a 9 de la guía (PHP, caché, plugins, wp-config, zip 0.5.0, cron, correo, usuarios)
 - [ ] **(Maycol)** Subdominio `asistencia.pekokis.com` en Cloudflare en modo solo DNS, más SSL de Hostinger. Paso 2 de la guía
 - [ ] **(Maycol)** En el taller: agregar la red del WiFi y activar la pantalla. Paso 10 de la guía
 - [x] Entorno local con Laragon:
@@ -177,6 +180,14 @@ Vienen de la sección 16 del plan; se resuelven con gerencia y el contador.
   - Pruebas: 91 del núcleo y 98 de punta a punta (12 nuevas), con `debug.log` vacío. La prueba de punta a punta ahora borra el horario que crea.
   - En el navegador se revisaron el aviso en Hoy, el botón en Ajustes (agrega la red) y la lista y el formulario de Horarios.
   - Zip `dist/pekokis-asistencia-0.5.0.zip`; se borró el 0.4.0.
+
+- **Hostinger: el sitio ya existe**:
+  - Al instalar WordPress, Hostinger respondió "You cannot create any more databases": el plan permite **2 bases de datos** y estaban ocupadas.
+    - `u412994707_dObeD`: la del staging pekokis.com.mx; no se tocó.
+    - `u412994707_SotTt` (889 MB): no estaba asignada a ningún sitio y era de la landing antigua **cuponesvueltaalcole.com**. Maycol la borró.
+  - Con esa base libre, WordPress se instaló desde cero. Por ahora responde en el dominio temporal de Hostinger.
+  - Con esto el plan queda con sus 2 bases ocupadas (staging y asistencia): un sitio más con base de datos exigiría liberar otra o subir de plan.
+  - **Las passkeys se atan al dominio:** no se activa ningún celular hasta tener `asistencia.pekokis.com` con SSL.
 
 ### 13-11-2026
 - Plan técnico escrito en `docs/plan-tecnico.md`: 7 módulos, 4 fases, modelo de datos, API, seguridad y aspectos legales.
