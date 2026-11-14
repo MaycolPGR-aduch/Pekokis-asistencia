@@ -335,6 +335,53 @@ $comprobar( 'búsqueda en motivos', 1 === count( $conTexto ) && 'marca.anular' =
 [ $pag, $totalPag ] = $H::buscar( array(), 2, 3 );
 $comprobar( 'paginación', 3 === count( $pag ) && $totalPag > 6 );
 
+// ---- 7. IP nueva del taller.
+WP_CLI::line( '7. IP nueva' );
+$comprobar( 'con marcas por QR de una sola persona no se sugiere nada', array() === Presencia::redesCandidatas(), wp_json_encode( Presencia::redesCandidatas() ) );
+$_SERVER['REMOTE_ADDR'] = '198.51.100.7'; // La misma red desde la que Ana marcó por QR.
+foreach ( array( 'entrada', 'salida' ) as $tipo ) {
+	\Pekokis\Asistencia\WordPress\Marcas::registrar(
+		array(
+			'trabajador_id' => $id2, 'tipo' => \Pekokis\Asistencia\Nucleo\TipoMarca::from( $tipo ), 'motivo_clave' => 'salida' === $tipo ? 'refrigerio' : null, 'nota' => '',
+			'marcado' => new DateTimeImmutable( 'now', new DateTimeZone( 'UTC' ) ), 'prueba' => \Pekokis\Asistencia\Nucleo\PruebaPresencia::QR, 'requiere_revision' => false,
+			'dispositivo_id' => null, 'credencial_id' => null, 'pantalla_id' => $pantalla, 'origen' => 'trabajador',
+		)
+	);
+}
+$candidatas = Presencia::redesCandidatas();
+$comprobar( 'con 4 marcas por QR de 2 personas desde la misma red, se sugiere', 1 === count( $candidatas ) && '198.51.100.7' === $candidatas[0]['red'] && 2 === $candidatas[0]['trabajadores'], wp_json_encode( $candidatas ) );
+$wpdb->insert( Tablas::nombre( 'redes' ), array( 'red' => '198.51.100.7', 'nombre' => 'IP nueva', 'activa' => 1, 'creada_por' => 1, 'creado_en' => gmdate( 'Y-m-d H:i:s' ) ) );
+$comprobar( 'una vez autorizada, deja de sugerirse', array() === Presencia::redesCandidatas() );
+$_SERVER['REMOTE_ADDR'] = '203.0.113.10';
+
+// ---- 8. Horarios.
+WP_CLI::line( '8. Horarios' );
+$H2   = \Pekokis\Asistencia\WordPress\Horarios::class;
+$dias = array();
+for ( $n = 1; $n <= 7; $n++ ) {
+	$dias[ $n ] = 6 === $n ? array( 'laborable' => '1', 'entrada' => '13:00', 'salida' => '09:00' ) : array();
+}
+$mal = $H2::guardar( array( 'nombre' => 'Sábados', 'tolerancia_min' => 5, 'refrigerio_min' => 0, 'dias' => $dias ), null );
+$comprobar( 'horario con salida antes de la entrada se rechaza', is_wp_error( $mal ) && isset( $mal->get_error_data()['errores']['dia_6'] ) );
+$dias[6] = array( 'laborable' => '1', 'entrada' => '09:00', 'salida' => '13:00' );
+$sab     = $H2::guardar( array( 'nombre' => 'Sábados', 'tolerancia_min' => 5, 'refrigerio_min' => 0, 'dias' => $dias ), null );
+$comprobar( 'se crea un horario de sábados', is_int( $sab ) );
+$sabado = ( new DateTimeImmutable( 'next saturday', $zonaLima ) )->format( 'Y-m-d' );
+$comprobar( 'el sábado es laborable de 9 a 13', $H2::delDia( $sab, $sabado )->laborable && '09:00:00' === $H2::delDia( $sab, $sabado )->entrada );
+$dias[6] = array( 'laborable' => '1', 'entrada' => '08:00', 'salida' => '13:00' );
+$sinMotivo = $H2::guardar( array( 'nombre' => 'Sábados', 'tolerancia_min' => 10, 'refrigerio_min' => 0, 'dias' => $dias ), $sab );
+$comprobar( 'editar exige motivo', is_wp_error( $sinMotivo ) );
+$comprobar( 'se edita con motivo', $sab === $H2::guardar( array( 'nombre' => 'Sábados', 'tolerancia_min' => 10, 'refrigerio_min' => 0, 'dias' => $dias ), $sab, 'Entran más temprano' ) );
+$comprobar( 'el cambio se aplica al momento', '08:00:00' === $H2::delDia( $sab, $sabado )->entrada );
+[ $deHorario ] = \Pekokis\Asistencia\WordPress\Historial::buscar( array( 'grupo' => 'ajustes', 'texto' => 'Entran más temprano' ) );
+$cambiosHorario = \Pekokis\Asistencia\WordPress\Historial::describir( $deHorario )[0]['cambios'] ?? array();
+$comprobar( 'el historial muestra el cambio legible', in_array( 'Sábado: 09:00–13:00 → 08:00–13:00', $cambiosHorario, true ) && in_array( 'Tolerancia (min): 5 → 10', $cambiosHorario, true ), wp_json_encode( $cambiosHorario ) );
+$comprobar( 'no se desactiva un horario en uso', is_wp_error( $H2::cambiarEstado( $horario, false ) ) );
+$comprobar( 'sí se desactiva uno sin trabajadores', true === $H2::cambiarEstado( $sab, false ) );
+// Limpieza: la tabla de horarios no se vacía al empezar, así que no se deja el de prueba.
+$wpdb->delete( Tablas::nombre( 'horario_dias' ), array( 'horario_id' => $sab ) );
+$wpdb->delete( Tablas::nombre( 'horarios' ), array( 'id' => $sab ) );
+
 $comprobar( 'presencia por IP del taller', ( $_SERVER['REMOTE_ADDR'] = '203.0.113.10' ) && Presencia::enRedDelTaller() );
 
 if ( $fallos ) {

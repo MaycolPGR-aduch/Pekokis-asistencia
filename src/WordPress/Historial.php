@@ -19,7 +19,7 @@ final class Historial {
 	public const GRUPOS = array(
 		'trabajadores' => array( 'Trabajadores y celulares', array( 'trabajador.', 'activacion.', 'passkey.' ) ),
 		'marcas'       => array( 'Marcas y correcciones', array( 'marca.', 'correccion.' ) ),
-		'ajustes'      => array( 'Ajustes, redes y pantallas', array( 'ajustes.', 'red.', 'pantalla.' ) ),
+		'ajustes'      => array( 'Ajustes, horarios, redes y pantallas', array( 'ajustes.', 'horario.', 'red.', 'pantalla.' ) ),
 		'exportes'     => array( 'Descargas y respaldos', array( 'registro.', 'respaldo.', 'historial.' ) ),
 	);
 
@@ -40,6 +40,10 @@ final class Historial {
 		'red.agregar'            => 'Red del WiFi agregada',
 		'red.activar'            => 'Red del WiFi activada',
 		'red.desactivar'         => 'Red del WiFi desactivada',
+		'horario.crear'          => 'Horario creado',
+		'horario.editar'         => 'Horario modificado',
+		'horario.activar'        => 'Horario activado',
+		'horario.desactivar'     => 'Horario desactivado',
 		'ajustes.modo_presencia' => 'Cambio del modo de presencia',
 		'ajustes.correo_rrhh'    => 'Cambio del correo del respaldo',
 		'registro.descargar'     => 'Excel del registro descargado',
@@ -74,6 +78,8 @@ final class Historial {
 		'enviado'                     => 'Enviado',
 		'a'                           => 'Para',
 		'llaves_anteriores_revocadas' => 'Llaves anteriores revocadas',
+		'tolerancia_min'              => 'Tolerancia (min)',
+		'refrigerio_min'              => 'Refrigerio (min)',
 		'marca_id'                    => 'Marca',
 		'correccion_id'               => 'Corrección',
 		'credencial_id'               => 'Llave',
@@ -299,6 +305,9 @@ final class Historial {
 				}
 
 				return array( 'Solicitud #' . $id, '' );
+
+			case 'horario':
+				return array( $contexto['horarios'][ $id ] ?? 'Horario #' . $id, admin_url( 'admin.php?page=pka-horarios&vista=editar&id=' . $id ) );
 
 			case 'pantalla':
 				return array( 'Pantalla #' . $id, admin_url( 'admin.php?page=pka-ajustes' ) );

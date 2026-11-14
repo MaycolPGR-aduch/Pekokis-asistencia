@@ -4,6 +4,7 @@ namespace Pekokis\Asistencia\WordPress;
 
 use InvalidArgumentException;
 use Pekokis\Asistencia\Nucleo\ContextoPresencia;
+use Pekokis\Asistencia\Nucleo\DeteccionRedNueva;
 use Pekokis\Asistencia\Nucleo\PasePresencia;
 use Pekokis\Asistencia\Nucleo\RedAutorizada;
 
@@ -48,6 +49,25 @@ final class Presencia {
 		$where = $soloActivas ? 'WHERE activa = 1' : '';
 
 		return $wpdb->get_results( "SELECT * FROM {$tabla} {$where} ORDER BY activa DESC, id DESC", ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+	}
+
+	/**
+	 * Redes no autorizadas desde las que hoy llegaron varias marcas por QR de más de
+	 * una persona: probablemente la IP del taller cambió.
+	 *
+	 * @return array<int, array{red: string, marcas: int, trabajadores: int, cgnat: bool}>
+	 */
+	public static function redesCandidatas(): array {
+		global $wpdb;
+
+		$hoy   = Ajustes::diaLaboral()->de( new \DateTimeImmutable( 'now', new \DateTimeZone( 'UTC' ) ) );
+		$m     = Tablas::nombre( 'marcas' );
+		$filas = $wpdb->get_results( $wpdb->prepare( "SELECT ip, trabajador_id FROM {$m} WHERE dia_laboral = %s AND prueba = 'qr' AND ip <> ''", $hoy ), ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+		return DeteccionRedNueva::candidatas(
+			array_map( static fn( array $f ): array => array( 'ip' => $f['ip'], 'trabajador' => (int) $f['trabajador_id'] ), $filas ),
+			self::redes()
+		);
 	}
 
 	public static function pases(): PasePresencia {

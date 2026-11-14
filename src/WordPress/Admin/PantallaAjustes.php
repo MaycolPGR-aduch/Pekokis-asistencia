@@ -29,6 +29,32 @@ final class PantallaAjustes {
 		add_action( 'admin_post_pka_cambiar_pantalla', array( self::class, 'cambiarPantalla' ) );
 	}
 
+	/** Sugerencias de red nueva (la IP del taller pudo cambiar). Nunca se agregan solas. */
+	private static function redesCandidatas(): void {
+		foreach ( Presencia::redesCandidatas() as $c ) {
+			?>
+			<div class="notice notice-warning inline" style="padding:8px 12px">
+				<p>
+					<strong>¿Es la nueva IP del taller?</strong> Hoy llegaron <?php echo (int) $c['marcas']; ?> marcas por QR de <?php echo (int) $c['trabajadores']; ?> personas desde
+					<code><?php echo esc_html( $c['red'] ); ?></code>, que no está autorizada. Suele pasar cuando el proveedor de internet cambia la IP del router.
+				</p>
+				<?php if ( $c['cgnat'] ) : ?>
+					<p><strong>No la agregues:</strong> es una IP compartida del proveedor (CGNAT). Usa el modo "Solo QR" o pide una IP fija.</p>
+				<?php else : ?>
+					<p>Agrégala solo si estás seguro de que es el WiFi del taller (por ejemplo, si coincide con "Tu IP ahora" estando allí): podría ser la red de datos móviles de un operador.</p>
+					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+						<input type="hidden" name="action" value="pka_agregar_red">
+						<input type="hidden" name="red" value="<?php echo esc_attr( $c['red'] ); ?>">
+						<input type="hidden" name="nombre" value="WiFi del taller (IP nueva)">
+						<?php wp_nonce_field( 'pka_agregar_red' ); ?>
+						<button class="button button-primary">Sí, es la nueva IP del taller</button>
+					</form>
+				<?php endif; ?>
+			</div>
+			<?php
+		}
+	}
+
 	/** Estado del sistema: sirve para comprobar el despliegue. */
 	private static function diagnostico(): void {
 		$puntos   = Diagnostico::revisar();
@@ -131,6 +157,7 @@ final class PantallaAjustes {
 			</form>
 
 			<h2>Redes del WiFi del taller</h2>
+			<?php self::redesCandidatas(); ?>
 			<p>
 				Tu IP ahora: <code><?php echo esc_html( '' !== $ip ? $ip : 'desconocida' ); ?></code>
 				<?php echo $enLaRed ? '— ✔ está autorizada.' : '— no está autorizada.'; ?>

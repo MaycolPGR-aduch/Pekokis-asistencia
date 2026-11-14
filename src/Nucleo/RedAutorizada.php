@@ -44,7 +44,8 @@ final class RedAutorizada {
 			throw new InvalidArgumentException( sprintf( '"%s" no es un rango válido.', $red ) );
 		}
 
-		$texto = inet_ntop( $binario ) . ( $bits < $maximo ? '/' . $bits : '' );
+		// El texto guarda la dirección de red: "2800:200:e840:1a42:abcd::1/64" → "2800:200:e840:1a42::/64".
+		$texto = inet_ntop( self::prefijo( $binario, $bits ) ) . ( $bits < $maximo ? '/' . $bits : '' );
 
 		return new self( self::prefijo( $binario, $bits ), $bits, $texto );
 	}

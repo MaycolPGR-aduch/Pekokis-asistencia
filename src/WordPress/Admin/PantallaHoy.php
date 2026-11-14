@@ -146,8 +146,15 @@ final class PantallaHoy {
 			$avisos[] = 'No hay redes del WiFi ni pantallas activas: nadie puede marcar. Configúralas en <strong>Asistencia → Ajustes</strong>.';
 		}
 
+		if ( current_user_can( Capacidades::AJUSTES ) ) {
+			foreach ( Presencia::redesCandidatas() as $c ) {
+				$avisos[] = '¿Cambió la IP del taller? Hoy llegaron <strong>' . (int) $c['marcas'] . ' marcas por QR</strong> de ' . (int) $c['trabajadores'] . ' personas desde <strong>' . esc_html( $c['red'] ) . '</strong>, que no está autorizada. '
+					. 'Revísalo en <a href="' . esc_url( admin_url( 'admin.php?page=' . PantallaAjustes::SLUG ) ) . '">Asistencia → Ajustes</a>.';
+			}
+		}
+
 		foreach ( $avisos as $aviso ) {
-			echo '<div class="notice notice-warning inline"><p>' . wp_kses( $aviso, array( 'strong' => array() ) ) . '</p></div>';
+			echo '<div class="notice notice-warning inline"><p>' . wp_kses( $aviso, array( 'strong' => array(), 'a' => array( 'href' => array() ) ) ) . '</p></div>';
 		}
 	}
 

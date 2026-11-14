@@ -3,7 +3,7 @@
 Este archivo lleva lo hecho, lo pendiente y la bitácora del proyecto. Se actualiza cada vez que avanzamos.
 El detalle técnico de cada punto está en [docs/plan-tecnico.md](docs/plan-tecnico.md).
 
-**Estado actual:** el MVP funcional está completo en el WordPress local: perfiles, passkeys, marcas, pantalla QR, panel del día, revisión, correcciones, export mensual y respaldo. También están la app instalable (PWA), "Mis marcas del mes" y la revocación automática del celular anterior. También está el visor del historial de cambios. Lo cubren 81 pruebas del núcleo y 86 de punta a punta. El despliegue está preparado (zip 0.4.0, guía paso a paso y diagnóstico en Ajustes). **Siguiente: Maycol monta el sitio en Hostinger** siguiendo [docs/despliegue-hostinger.md](docs/despliegue-hostinger.md), y después se hace el piloto con celulares reales. Queda de calidad: aviso de IP nueva y pantalla de horarios.
+**Estado actual:** el MVP funcional está completo en el WordPress local: perfiles, passkeys, marcas, pantalla QR, panel del día, revisión, correcciones, export mensual y respaldo. También están la app instalable (PWA), "Mis marcas del mes" y la revocación automática del celular anterior. También están el visor del historial, la pantalla de horarios y el aviso de IP nueva. Lo cubren 91 pruebas del núcleo y 98 de punta a punta. El despliegue está preparado (zip 0.5.0, guía paso a paso y diagnóstico en Ajustes). **Siguiente: Maycol monta el sitio en Hostinger** siguiendo [docs/despliegue-hostinger.md](docs/despliegue-hostinger.md), y después se hace el piloto con celulares reales. De calidad queda el respaldo en Google Drive (vía Make).
 
 **Estrategia:** primero un MVP con las fases 0 y 1 del plan (registro de asistencia funcionando y conforme a la norma). Después, mejoras por etapas según lo que opine gerencia.
 
@@ -39,7 +39,12 @@ Leyenda: `[x]` hecho · `[ ]` pendiente · `[~]` en curso
   - alta y edición con motivo, todo registrado en la auditoría;
   - cese, que revoca el celular y la llave;
   - búsqueda y lista de activos y cesados.
-- [~] Horario base 9:00–19:30 con 5 min de tolerancia y 60 min de refrigerio: se crea al instalar, pero falta su pantalla
+- [x] Horarios (Asistencia → Horarios):
+  - crear y editar: días laborables, entrada y salida por día, tolerancia y refrigerio (mínimo legal de 45 min, o 0);
+  - muestra las horas por semana (el máximo legal es 48) y cuántos trabajadores usa cada horario;
+  - editar exige un motivo y queda en el historial como "Sábado: 09:00–13:00 → 08:00–13:00";
+  - no se puede desactivar un horario en uso;
+  - avisa que editar cambia también los días anteriores; para un cambio "desde una fecha", conviene crear otro horario.
 - [x] Motivos de salida por defecto (catálogo en el núcleo; se cargan al instalar)
 
 ### 2. Identidad (passkeys)
@@ -56,7 +61,11 @@ Leyenda: `[x]` hecho · `[ ]` pendiente · `[~]` en curso
   - mantiene la pantalla encendida (Wake Lock);
   - las pantallas se pueden desactivar en Ajustes.
 - [x] Pase de presencia: `/m?q=…` (el QR escaneado) o el código de 6 dígitos que se escribe en la app cuando no está en el WiFi; luego se reintenta la marca sin volver a poner la huella. Límite de 5 códigos fallidos por IP cada 15 min
-- [~] Alertas en el panel: pantalla sin conexión hecha (más de 5 min); falta el aviso de IP nueva
+- [x] Alertas en el panel: pantalla sin conexión (más de 5 min) e **IP nueva**:
+  - si hoy llegan 3 o más marcas por QR de 2 o más personas desde una red no autorizada, "Hoy" lo avisa;
+  - Ajustes ofrece el botón "Sí, es la nueva IP del taller" (o desaconseja agregarla si es CGNAT);
+  - en IPv6 agrupa por prefijo /64;
+  - nunca la agrega sola.
 
 ### 4. Marcas
 - [x] Máquina de estados, validación en el servidor, antirrebote y cadena de hashes. Usa un candado por trabajador y otro para la cadena en MySQL. API: `/identificar`, `/marcas` y `/presencia`
@@ -104,8 +113,8 @@ Leyenda: `[x]` hecho · `[ ]` pendiente · `[~]` en curso
 
 ### 7. Calidad y puesta en marcha
 - [x] Pruebas automáticas:
-  - 81 del núcleo (`composer test`);
-  - 86 de todo el flujo contra el WordPress local, con un autenticador simulado (`tests/integracion/flujo-marcas.php`);
+  - 91 del núcleo (`composer test`);
+  - 98 de todo el flujo contra el WordPress local, con un autenticador simulado (`tests/integracion/flujo-marcas.php`);
   - `tests/integracion/datos-demo.php` carga 5 trabajadores de ejemplo, con casos de hoy y de ayer, para ver el panel.
 - [ ] Pruebas en celulares reales: Android (Chrome) e iPhone (Safari)
 - [ ] Aviso de datos personales para los trabajadores (revisado por el abogado)
@@ -161,6 +170,13 @@ Vienen de la sección 16 del plan; se resuelven con gerencia y el contador.
   - Pruebas: 86 de punta a punta (11 nuevas, del historial), 81 del núcleo y `debug.log` vacío.
   - En el navegador se revisaron la pantalla, el filtro por trabajador y el CSV, que trae BOM para que Excel lea bien las tildes.
   - Zip `dist/pekokis-asistencia-0.4.0.zip`; se borró el 0.3.0.
+
+- **IP nueva y horarios (versión 0.5.0)**:
+  - En el núcleo: `DeteccionRedNueva` y `ValidacionHorario` (10 pruebas). `RedAutorizada` ahora guarda los rangos como dirección de red (`190.42.10.77/24` → `190.42.10.0/24`).
+  - En WordPress: `Presencia::redesCandidatas`, `Horarios` (listar, completo, guardar, cambiarEstado) y `Admin/PantallaHorarios`. El historial reconoce `horario.*`.
+  - Pruebas: 91 del núcleo y 98 de punta a punta (12 nuevas), con `debug.log` vacío. La prueba de punta a punta ahora borra el horario que crea.
+  - En el navegador se revisaron el aviso en Hoy, el botón en Ajustes (agrega la red) y la lista y el formulario de Horarios.
+  - Zip `dist/pekokis-asistencia-0.5.0.zip`; se borró el 0.4.0.
 
 ### 13-11-2026
 - Plan técnico escrito en `docs/plan-tecnico.md`: 7 módulos, 4 fases, modelo de datos, API, seguridad y aspectos legales.
