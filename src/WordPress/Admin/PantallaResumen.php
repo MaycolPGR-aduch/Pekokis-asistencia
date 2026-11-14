@@ -81,6 +81,8 @@ final class PantallaResumen {
 				?>
 			</div>
 
+			<?php self::graficos( $mes, $historico, $datos ); ?>
+
 			<h2>Comparación con los meses anteriores</h2>
 			<table class="widefat striped" style="max-width:1100px">
 				<thead><tr>
@@ -111,7 +113,7 @@ final class PantallaResumen {
 			<p class="description">▲ subió y ▼ bajó respecto al mes anterior. En rojo, lo que empeoró.</p>
 
 			<h2>Por trabajador</h2>
-			<table class="widefat striped">
+			<div style="overflow-x:auto"><table class="widefat striped">
 				<thead><tr>
 					<th>Trabajador</th><th>Días trabajados</th><th>Horas</th><th>Tardanzas</th><th>Faltas</th><th>Justificados</th><th>Horas extra</th><th>Descanso/feriado</th><th>Sin autorizar</th><th>Puntualidad</th>
 					<?php if ( $sueldos ) : ?><th>Costo extra (S/)</th><?php endif; ?>
@@ -137,9 +139,65 @@ final class PantallaResumen {
 					</tr>
 				<?php endforeach; ?>
 				</tbody>
-			</table>
+			</table></div>
 		</div>
 		<?php
+	}
+
+	/**
+	 * Tres gráficos por mes (horas trabajadas, horas extra y faltas, cada uno con
+	 * su propio eje) y uno por trabajador con las horas del mes elegido.
+	 *
+	 * @param array<string, PrePlanilla> $historico
+	 * @param array{filas: array<int, PrePlanilla>, personas: array<int, array<string, mixed>>} $datos
+	 */
+	private static function graficos( string $mes, array $historico, array $datos ): void {
+		$corto  = static fn( string $m ): string => wp_date( 'M', strtotime( $m . '-15 12:00:00' ) );
+		$horas  = static fn( int $min ): float => round( $min / 60, 1 );
+		$meses  = array_reverse( $historico, true );
+		$series = array(
+			'Horas trabajadas por mes' => static fn( PrePlanilla $t ): int => $t->minutos['trabajados'],
+			'Horas extra autorizadas por mes' => static fn( PrePlanilla $t ): int => $t->minutos['extra_1'] + $t->minutos['extra_2'],
+		);
+
+		echo '<h2>Cómo va el mes</h2><div class="pka-graficos">';
+
+		foreach ( $series as $titulo => $valor ) {
+			$puntos = array();
+
+			foreach ( $meses as $m => $t ) {
+				$min      = $valor( $t );
+				$puntos[] = array( 'etiqueta' => $corto( $m ), 'valor' => $horas( $min ), 'texto' => PrePlanilla::horas( $min ) . ' h', 'detalle' => self::nombreMes( $m ) . ': ' . PrePlanilla::horas( $min ) . ' h' );
+			}
+
+			echo Graficos::columnas( $titulo, $puntos, $corto( $mes ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- SVG armado y escapado en Graficos.
+		}
+
+		$faltas = array();
+
+		foreach ( $meses as $m => $t ) {
+			$faltas[] = array( 'etiqueta' => $corto( $m ), 'valor' => (float) $t->dias['faltas'], 'texto' => (string) $t->dias['faltas'], 'detalle' => self::nombreMes( $m ) . ': ' . self::plural( $t->dias['faltas'], 'falta', 'faltas' ) . ', ' . self::plural( $t->dias['con_tardanza'], 'tardanza', 'tardanzas' ) );
+		}
+
+		echo Graficos::columnas( 'Faltas por mes', $faltas, $corto( $mes ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+
+		$porPersona = array();
+
+		foreach ( $datos['personas'] as $p ) {
+			$f            = $datos['filas'][ (int) $p['id'] ] ?? new PrePlanilla();
+			$porPersona[] = array(
+				'etiqueta' => $p['apellidos'] . ', ' . $p['nombres'],
+				'valor'    => $horas( $f->minutos['trabajados'] ),
+				'texto'    => PrePlanilla::horas( $f->minutos['trabajados'] ) . ' h',
+				'detalle'  => $p['nombres'] . ' ' . $p['apellidos'] . ': ' . PrePlanilla::horas( $f->minutos['trabajados'] ) . ' h en ' . self::plural( $f->dias['trabajados'], 'día', 'días' ) . ( $f->dias['faltas'] ? ', ' . self::plural( $f->dias['faltas'], 'falta', 'faltas' ) : '' ),
+			);
+		}
+
+		if ( $porPersona ) {
+			echo Graficos::barras( 'Horas trabajadas por persona · ' . self::nombreMes( $mes ), $porPersona ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+		}
+
+		echo '</div>';
 	}
 
 	/** "1 día justificado", "3 días justificados". */

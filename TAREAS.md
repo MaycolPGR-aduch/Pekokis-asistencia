@@ -3,7 +3,7 @@
 Este archivo lleva lo hecho, lo pendiente y la bitácora del proyecto. Se actualiza cada vez que avanzamos.
 El detalle técnico de cada punto está en [docs/plan-tecnico.md](docs/plan-tecnico.md).
 
-**Estado actual:** MVP completo y **desplegado** en `https://asistencia.pekokis.com` (versión 0.5.0). En local está lista la **0.8.0**, que suma tres entregas: la 0.6.0 (feriados, ausencias, aviso de datos, Gerencia, copia en la nube), la **fase 2** (horas extra, sueldos y pre-planilla) y la **fase 3** (Resumen del mes e Informe por trabajador en Excel y PDF). La cubren 123 pruebas del núcleo y 160 de punta a punta. El escenario de Make del respaldo ya está activo. **Siguiente:** la fase 4 (notificaciones) y luego subir la versión a producción y pegar el webhook. También falta que el abogado revise el aviso, terminar el SMTP y la red del taller, hacer el piloto y revisar con el contador las reglas de horas.
+**Estado actual:** MVP completo y **desplegado** en `https://asistencia.pekokis.com` (versión 0.5.0). En local está lista la **0.8.1**, que suma tres entregas: la 0.6.0 (feriados, ausencias, aviso de datos, Gerencia, copia en la nube), la **fase 2** (horas extra, sueldos y pre-planilla) y la **fase 3** (Resumen del mes con gráficos, Informe por trabajador en Excel y PDF, y el calendario de colores en la app del trabajador). La cubren 123 pruebas del núcleo y 161 de punta a punta. El escenario de Make del respaldo ya está activo. **Siguiente:** la fase 4 (notificaciones) y luego subir la versión a producción y pegar el webhook. También falta que el abogado revise el aviso, terminar el SMTP y la red del taller, hacer el piloto y revisar con el contador las reglas de horas.
 
 **Estrategia:** primero un MVP con las fases 0 y 1 del plan (registro de asistencia funcionando y conforme a la norma). Después, mejoras por etapas según lo que opine gerencia.
 
@@ -138,7 +138,7 @@ Leyenda: `[x]` hecho · `[ ]` pendiente · `[~]` en curso
 ### 7. Calidad y puesta en marcha
 - [x] Pruebas automáticas:
   - 123 del núcleo (`composer test`);
-  - 160 de todo el flujo contra el WordPress local, con un autenticador simulado (`tests/integracion/flujo-marcas.php`);
+  - 161 de todo el flujo contra el WordPress local, con un autenticador simulado (`tests/integracion/flujo-marcas.php`);
   - `tests/integracion/datos-demo.php` carga 5 trabajadores de ejemplo, con casos de hoy y de ayer, para ver el panel.
 - [ ] Pruebas en celulares reales: Android (Chrome) e iPhone (Safari)
 - [~] Aviso de datos personales (Ley 29733):
@@ -173,8 +173,15 @@ Leyenda: `[x]` hecho · `[ ]` pendiente · `[~]` en curso
     - el detalle de cada día con sus marcas (las anuladas tachadas, y si es manual o corrección);
     - totales.
   - [x] Exportes del informe: Excel (resumen, días y marcas) y una vista para imprimir o "Guardar como PDF" desde el navegador. Las dos descargas quedan en el historial.
-  - [ ] Vista del trabajador con su propio calendario en la app (hoy tiene "Mis marcas del mes", sin colores).
-  - [ ] Gráficos, si gerencia los pide (por ahora son tablas con tendencia).
+  - [x] **Calendario en la app del trabajador** ("Mis marcas del mes", versión 0.8.1):
+    - los mismos estados y colores que el informe del panel, con rótulos cortos para que entren en el celular (OK, Tarde, Falta, Just., Desc.) y la leyenda abajo;
+    - hoy va con borde rosa, y hay modo oscuro;
+    - cada día dice su estado completo a los lectores de pantalla.
+  - [x] **Gráficos en el Resumen del mes** (0.8.1):
+    - horas trabajadas, horas extra autorizadas y faltas de los últimos 6 meses, cada uno con su propio eje;
+    - horas trabajadas por persona en el mes;
+    - SVG propio sin librerías, un solo color validado (azul #2a78d6) y un tooltip al pasar el mouse o con el teclado;
+    - la tabla de comparación sigue debajo como vista de datos.
 - [ ] **Fase 4 — Notificaciones:** correo y luego WhatsApp
 
 ---
@@ -196,6 +203,15 @@ Vienen de la sección 16 del plan; se resuelven con gerencia y el contador.
 ---
 
 ## Bitácora
+
+### 14-11-2026 (noche, 3) — versión 0.8.1: calendario en la app y gráficos
+- **App:** `yo/mes` devuelve `calendario` (los días vacíos al inicio de la semana, cada día con su estado, rótulo corto, horas y tardanza, y la leyenda).
+  - `app.js` lo pinta como una grilla de 7 columnas, y `app.css` le da los colores con clases, porque la CSP de la app no permite estilos en línea. Tiene modo oscuro.
+  - Lo revisé en una página temporal con los datos reales de la API (vista de celular, en claro y oscuro). La primera versión cortaba palabras ("Desca nso"), así que pasé a rótulos cortos.
+- **Panel:** `Admin/Graficos` (columnas y barras en SVG) en el Resumen del mes.
+  - Validé el color con el script de la guía de visualización: pasa todas las comprobaciones contra la superficie clara.
+  - Arreglé un desborde horizontal de la tabla "Por trabajador" a 1024 px: ahora se desplaza dentro de su caja.
+- Prueba de punta a punta: 161 comprobaciones (una nueva, para el calendario de `yo/mes`).
 
 ### 14-11-2026 (noche, 2) — versión 0.8.0 (fase 3)
 - **Dashboard e informes:**

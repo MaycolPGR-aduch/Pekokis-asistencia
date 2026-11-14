@@ -273,6 +273,9 @@ $comprobar( 'mis marcas: 10 h 35 min en el taller ayer', '10:35' === ( $diaAyer[
 $comprobar( 'mis marcas no gasta el ticket', null !== \Pekokis\Asistencia\WordPress\Temporales::leer( 'ticket', $id9['ticket'] ) );
 [ $st, $viejo ] = $api( 'POST', 'yo/mes', array( 'ticket' => $id9['ticket'], 'mes' => '2020-01' ) );
 $comprobar( 'un mes muy antiguo devuelve el mes actual', 200 === $st && substr( $hoy, 0, 7 ) === $viejo['mes'], (string) ( $viejo['mes'] ?? '' ) );
+$cal    = $viejo['calendario'] ?? array();
+$diaHoy = array_values( array_filter( $cal['dias'] ?? array(), static fn( $d ) => $hoy === $d['fecha'] ) )[0] ?? array();
+$comprobar( 'mis marcas trae el calendario del mes, con hoy marcado', (int) ( new DateTimeImmutable( $hoy ) )->format( 't' ) === count( $cal['dias'] ?? array() ) && 'hoy' === ( $diaHoy['estado'] ?? '' ) && (int) ( new DateTimeImmutable( substr( $hoy, 0, 7 ) . '-01' ) )->format( 'N' ) - 1 === ( $cal['vacios'] ?? -1 ), wp_json_encode( $diaHoy ) );
 
 // ---- 3e. Export y respaldo.
 WP_CLI::line( '3e. Export y respaldo' );

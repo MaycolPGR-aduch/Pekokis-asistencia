@@ -416,6 +416,7 @@
 			pintar(
 				el( 'h1', {}, [ 'Mis marcas · ', el( 'em', { texto: r.etiqueta } ) ] ),
 				resumen,
+				r.calendario ? calendarioMes( r.calendario ) : null,
 				r.pendientes ? aviso( 'ok', 'Tienes ' + r.pendientes + ( 1 === r.pendientes ? ' solicitud pendiente' : ' solicitudes pendientes' ) + ' de aprobar.' ) : null,
 				r.dias.length ? lista : el( 'p', { class: 'ayuda', texto: 'No hay marcas este mes.' } ),
 				el( 'button', { class: 'secundario', type: 'button', texto: r.otro.etiqueta, alHacerClic: function () {
@@ -432,6 +433,33 @@
 			}
 			vistaEstado( datos, aviso( 'error', error.message ) );
 		} );
+	}
+
+	/** Calendario del mes con un color por estado (los mismos del informe del panel). */
+	function calendarioMes( cal ) {
+		var celdas = [ 'L', 'M', 'M', 'J', 'V', 'S', 'D' ].map( function ( d ) {
+			return el( 'span', { class: 'cal-cabecera', texto: d, 'aria-hidden': 'true' } );
+		} );
+
+		for ( var i = 0; i < cal.vacios; i++ ) {
+			celdas.push( el( 'span', { class: 'cal-vacio', 'aria-hidden': 'true' } ) );
+		}
+
+		cal.dias.forEach( function ( d ) {
+			var nombre = d.n + ': ' + ( d.texto || 'sin datos' ) + ( d.horas ? ', ' + d.horas + ' h' : '' ) + ( d.tardanza ? ', ' + d.tardanza + ' min tarde' : '' );
+			celdas.push( el( 'span', { class: 'cal-dia cal-' + d.estado, role: 'listitem', 'aria-label': nombre, title: nombre }, [
+				el( 'strong', { texto: String( d.n ) } ),
+				d.corto ? el( 'small', { texto: d.corto, 'aria-hidden': 'true' } ) : null,
+				d.horas ? el( 'small', { class: 'cal-horas', texto: d.horas, 'aria-hidden': 'true' } ) : null,
+			] ) );
+		} );
+
+		return el( 'div', { class: 'tarjeta calendario' }, [
+			el( 'div', { class: 'cal-grilla', role: 'list', 'aria-label': 'Calendario del mes' }, celdas ),
+			cal.leyenda.length ? el( 'div', { class: 'cal-leyenda' }, cal.leyenda.map( function ( l ) {
+				return el( 'span', { class: 'cal-' + l.estado, texto: l.texto } );
+			} ) ) : null,
+		] );
 	}
 
 	function dato( valor, etiqueta, nota ) {

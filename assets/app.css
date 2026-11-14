@@ -321,6 +321,76 @@ input[type="text"][inputmode="numeric"] {
 .etiqueta.tarde { background: #fff1db; color: #8a4b00; }
 .etiqueta.falta { background: var(--error-suave); color: var(--error); }
 
+/* Calendario del mes (mismos estados que el informe del panel) */
+.calendario { padding: 12px; }
+
+.cal-grilla {
+	display: grid;
+	grid-template-columns: repeat(7, minmax(0, 1fr));
+	gap: 4px;
+}
+
+.cal-cabecera {
+	text-align: center;
+	font-size: .75rem;
+	font-weight: 700;
+	color: var(--gris);
+}
+
+.cal-dia {
+	display: flex;
+	flex-direction: column;
+	min-height: 54px;
+	padding: 3px 4px;
+	border-radius: 8px;
+	border: 1px solid transparent;
+	background: var(--cal-fondo, transparent);
+	color: var(--cal-tinta, var(--gris));
+	overflow: hidden;
+}
+
+.cal-dia strong { font-size: .85rem; color: var(--tinta); }
+.cal-dia small { font-size: .62rem; font-weight: 700; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: clip; }
+.cal-dia .cal-horas { font-weight: 400; color: var(--gris); font-variant-numeric: tabular-nums; }
+.cal-pendiente { border-color: color-mix(in srgb, var(--gris) 25%, transparent); }
+.cal-hoy { border: 2px solid var(--rosa); --cal-tinta: var(--rosa); }
+
+.cal-completo { --cal-fondo: #e7f5ec; --cal-tinta: #00733a; }
+.cal-tarde { --cal-fondo: #fdf1dc; --cal-tinta: #8a4b00; }
+.cal-falta { --cal-fondo: #fbe7e7; --cal-tinta: #b32d2e; }
+.cal-justificado { --cal-fondo: #e5f0fa; --cal-tinta: #1d5f99; }
+.cal-descanso { --cal-fondo: #f0f0f1; --cal-tinta: #50575e; }
+.cal-descanso_trabajado { --cal-fondo: #f1eafa; --cal-tinta: #6b3fa0; }
+.cal-revisar, .cal-incompleto { --cal-fondo: #fff4d6; --cal-tinta: #8a4b00; }
+.cal-incompleto { --cal-tinta: #b32d2e; }
+
+@media (prefers-color-scheme: dark) {
+	.cal-completo { --cal-fondo: #12352a; --cal-tinta: #7fd8ac; }
+	.cal-tarde { --cal-fondo: #3b2a10; --cal-tinta: #f2bf6b; }
+	.cal-falta { --cal-fondo: #3d1717; --cal-tinta: #f28b8b; }
+	.cal-justificado { --cal-fondo: #142c42; --cal-tinta: #8cc2f0; }
+	.cal-descanso { --cal-fondo: #2a2432; --cal-tinta: #b7aecb; }
+	.cal-descanso_trabajado { --cal-fondo: #2c1f42; --cal-tinta: #c6a8f0; }
+	.cal-revisar, .cal-incompleto { --cal-fondo: #3b2f10; --cal-tinta: #f2cf6b; }
+	.cal-incompleto { --cal-tinta: #f28b8b; }
+}
+
+.cal-leyenda {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin-top: 10px;
+}
+
+.cal-leyenda span {
+	font-size: .75rem;
+	font-weight: 700;
+	padding: 2px 8px;
+	border-radius: 999px;
+	background: var(--cal-fondo);
+	color: var(--cal-tinta);
+}
+
 /* Pantalla de la entrada (tablet) */
 .vista-pantalla .app { max-width: 720px; text-align: center; }
 .vista-pantalla .presencia { display: none; }

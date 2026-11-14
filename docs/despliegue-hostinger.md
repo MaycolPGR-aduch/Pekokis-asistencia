@@ -11,7 +11,7 @@ Lo que tienes que hacer tú está marcado con ☐. Los nombres de los menús de 
 ## 0. Antes de empezar
 
 - ☐ **Recursos del plan.** En hPanel, revisa qué mide el 77 % de "Uso de recursos". Este sitio consume poco, pero suma archivos (unos 3.000 de WordPress y 200 del plugin) y un cron cada 5 minutos.
-- ☐ **El zip del plugin.** Ya está en `dist/pekokis-asistencia-0.8.0.zip`. Si cambia el código, se vuelve a generar con:
+- ☐ **El zip del plugin.** Ya está en `dist/pekokis-asistencia-0.8.1.zip`. Si cambia el código, se vuelve a generar con:
   ```bash
   php scripts/empaquetar.php
   ```
@@ -74,7 +74,7 @@ No lo compartas ni lo subas a git. Si algún día cambia, solo se invalidan los 
 
 ## 6. Instalar el plugin y el tema
 
-1. ☐ **Plugins → Añadir nuevo → Subir plugin:** sube `pekokis-asistencia-0.8.0.zip` y actívalo. Al activarse crea sus tablas, roles, motivos y el horario base.
+1. ☐ **Plugins → Añadir nuevo → Subir plugin:** sube `pekokis-asistencia-0.8.1.zip` y actívalo. Al activarse crea sus tablas, roles, motivos y el horario base.
 2. ☐ **Apariencia → Temas:** activa **"Pekokis Asistencia (vacío)"** y borra los demás temas, salvo uno por defecto como respaldo.
 3. ☐ Revisa **Asistencia → Ajustes → Estado del sistema.**
 
@@ -135,7 +135,7 @@ Es igual que en producción: **nunca** se llama a `wp-cron.php` por URL.
 | 8 | "Olvidé marcar" y que el jefe lo apruebe en Hoy | ☐ | ☐ |
 | 9 | Intentar activar a otra persona en el mismo celular (debe negarlo) | ☐ | ☐ |
 | 10 | En wp-admin: Hoy muestra a todos bien; descargar el Excel del mes | ☐ | — |
-| 11 | "Mis marcas del mes": ver los días, tardanzas y horas, y el mes anterior | ☐ | ☐ |
+| 11 | "Mis marcas del mes": ver el calendario de colores (hoy con borde rosa), los días, tardanzas y horas, y el mes anterior | ☐ | ☐ |
 | 12 | Cambio de celular: generar un enlace nuevo, activarlo en otro celular y comprobar que el anterior ya no entra | ☐ | ☐ |
 | 13 | Al activar: se ve el aviso de datos y "Crear mi llave" no funciona hasta marcar la casilla | ☐ | ☐ |
 | 14 | Registrar vacaciones a alguien: en Hoy aparece como "Ausencia justificada" y en su app, en "Mis marcas del mes" | ☐ | — |

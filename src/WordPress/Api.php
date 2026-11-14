@@ -461,10 +461,76 @@ final class Api {
 				'etiqueta'   => wp_date( 'F Y', $pedido->getTimestamp(), $zona ),
 				'otro'       => $pedido == $actual ? array( 'mes' => $anterior->format( 'Y-m' ), 'etiqueta' => 'Mes anterior' ) : array( 'mes' => $actual->format( 'Y-m' ), 'etiqueta' => 'Este mes' ), // phpcs:ignore Universal.Operators.StrictComparisons.LooseEqual
 				'dias'       => $dias,
+				'calendario' => self::calendarioDelMes( $trabajador, $pedido->format( 'Y-m' ) ),
 				'totales'    => array( 'tiempo' => $hm( $totales['minutos'] ) ) + $totales,
 				'pendientes' => $pendientes,
 			)
 		);
+	}
+
+	private const CORTOS = array(
+		'hoy'                => 'Hoy',
+		'completo'           => 'OK',
+		'tarde'              => 'Tarde',
+		'falta'              => 'Falta',
+		'justificado'        => 'Just.',
+		'descanso'           => 'Desc.',
+		'descanso_trabajado' => 'Desc.+',
+		'revisar'            => 'Revisar',
+		'incompleto'         => 'S/salida',
+	);
+
+	/**
+	 * Calendario del mes para la app: cada día con su estado (los mismos colores
+	 * que el informe del panel), las horas y la tardanza. Hoy y los días futuros
+	 * todavía no tienen estado.
+	 *
+	 * @param array<string, mixed>|null $trabajador
+	 * @return array{vacios: int, dias: array<int, array<string, mixed>>, leyenda: array<int, array{estado: string, texto: string}>}
+	 */
+	private static function calendarioDelMes( ?array $trabajador, string $mes ): array {
+		$primero = new DateTimeImmutable( $mes . '-01' );
+		$hoy     = Ajustes::diaLaboral()->de( new DateTimeImmutable( 'now', new DateTimeZone( 'UTC' ) ) );
+		$calculo = $trabajador ? Informes::diasDe( $trabajador, $mes ) : array();
+		$dias    = array();
+		$usados  = array();
+
+		for ( $d = 1; $d <= (int) $primero->format( 't' ); $d++ ) {
+			$fecha = $primero->format( 'Y-m-' ) . str_pad( (string) $d, 2, '0', STR_PAD_LEFT );
+			$j     = $calculo[ $fecha ] ?? null;
+			$clave = $fecha === $hoy ? 'hoy' : Informes::estadoVisual( $j );
+			$texto = 'hoy' === $clave ? 'Hoy' : ( 'pendiente' === $clave ? '' : Informes::COLORES[ $clave ][0] );
+
+			if ( $j && in_array( $clave, array( 'justificado', 'descanso' ), true ) && '' !== $j->detalle ) {
+				$texto = preg_replace( '/^(Feriado|Día no laborable de la empresa): /u', '', $j->detalle );
+			}
+
+			if ( ! in_array( $clave, array( 'hoy', 'pendiente' ), true ) ) {
+				$usados[ $clave ] = true;
+			}
+
+			$dias[] = array(
+				'fecha'    => $fecha,
+				'n'        => $d,
+				'estado'   => $clave,
+				'texto'    => $texto,
+				// En el celular la celda es angosta: un rótulo corto, el texto completo va en la etiqueta accesible.
+				'corto'    => self::CORTOS[ $clave ] ?? '',
+				'horas'    => $j && $j->minutosTrabajados ? \Pekokis\Asistencia\Nucleo\PrePlanilla::horas( $j->minutosTrabajados ) : '',
+				'tardanza' => $j ? $j->minutosTardanza : 0,
+			);
+		}
+
+		$leyenda = array();
+
+		foreach ( Informes::COLORES as $clave => [ $etiqueta ] ) {
+			if ( isset( $usados[ $clave ] ) ) {
+				$corto     = self::CORTOS[ $clave ] ?? $etiqueta;
+				$leyenda[] = array( 'estado' => $clave, 'texto' => $corto === $etiqueta ? $etiqueta : $corto . ' = ' . $etiqueta );
+			}
+		}
+
+		return array( 'vacios' => (int) $primero->format( 'N' ) - 1, 'dias' => $dias, 'leyenda' => $leyenda );
 	}
 
 	public static function aviso(): WP_REST_Response {
