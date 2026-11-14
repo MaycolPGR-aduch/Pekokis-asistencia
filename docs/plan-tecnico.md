@@ -438,6 +438,8 @@ Con la fase 1 ya se cumple el registro de asistencia que pide la norma. La fase 
 
 **14-11-2026:** la fase 2 empezó con la versión 0.7.0 (cálculo del día, horas extra autorizadas, sueldos con historial y pre-planilla). Las reglas de la sección 6.5 quedaron configurables en Ajustes, a la espera del contador. Todavía no se guardan los días en `pka_dias`: se calculan al vuelo.
 
+**14-11-2026:** la fase 3 llegó con la versión 0.8.0: Resumen del mes (dashboard con comparación de 6 meses) e Informe por trabajador (calendario, detalle, Excel y vista para imprimir o guardar como PDF). El PDF sale del navegador, sin librerías en el servidor.
+
 **Decisión del 13-11-2026:** el MVP son las fases 0 y 1. Las fases 2, 3 y 4 se harán por etapas, según lo que pida gerencia. El avance se lleva en [TAREAS.md](../TAREAS.md).
 
 ---

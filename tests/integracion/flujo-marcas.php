@@ -570,6 +570,30 @@ $comprobar( 'la base de datos está en la versión 3', '3' === get_option( 'pka_
 wp_delete_user( $gerente2 );
 wp_delete_user( $jefe2 );
 
+// ---- 12. Dashboard e informe por trabajador (fase 3).
+WP_CLI::line( '12. Dashboard e informes' );
+$INF   = \Pekokis\Asistencia\WordPress\Informes::class;
+$datos = $INF::mes( $mesExtra, null );
+$comprobar( 'el resumen del mes incluye a Luis y suma al equipo', isset( $datos['filas'][ $id2 ] ) && $datos['total']->dias['faltas'] >= $datos['filas'][ $id2 ]->dias['faltas'] && $datos['total']->minutos['trabajados'] >= 600 );
+$comprobar( 'cuenta los días con tardanza y la puntualidad', 1 === $datos['filas'][ $id2 ]->dias['con_tardanza'] && 0 === $datos['filas'][ $id2 ]->puntualidad() );
+$comprobar( 'compara 6 meses, el pedido primero', 6 === count( $INF::comparacion( $mesExtra, null ) ) && array_key_first( $INF::comparacion( $mesExtra, null ) ) === $mesExtra );
+$comprobar( 'un jefe solo ve a su equipo', array( $id2 ) === array_map( static fn( $p ) => (int) $p['id'], $INF::personas( $mesExtra, array( $id2 ) ) ) && array() === $INF::personas( $mesExtra, array() ) );
+$diasLuis = $INF::diasDe( $luis, $mesExtra );
+$comprobar( 'el calendario pinta cada día según su estado', 'tarde' === $INF::estadoVisual( $diasLuis[ $diaExtra ] ?? null ) && 'falta' === $INF::estadoVisual( $diasLuis[ $antes[1] ] ?? null ) && 'pendiente' === $INF::estadoVisual( null ) );
+$comprobar( 'las marcas del mes incluyen las anuladas', count( $INF::marcasDelMes( $id2, $mesExtra )[ $diaExtra ] ?? array() ) >= 4 );
+$xlsInf = $INF::excelTrabajador( $luis, $mesExtra, false, 'Prueba' );
+if ( class_exists( 'ZipArchive' ) ) {
+	$tmp = wp_tempnam( 'pka4.xlsx' );
+	file_put_contents( $tmp, $xlsInf['contenido'] ); // phpcs:ignore
+	$zip = new ZipArchive();
+	$zip->open( $tmp );
+	$textos = (string) $zip->getFromName( 'xl/sharedStrings.xml' );
+	$zip->close();
+	wp_delete_file( $tmp );
+	$comprobar( 'el Excel del informe trae resumen, días y marcas, sin montos si no ve sueldos', str_contains( $textos, 'Informe de asistencia' ) && str_contains( $textos, 'Entrada (manual)' ) && str_contains( $textos, 'Tarde' ) && ! str_contains( $textos, 'Costo estimado' ) );
+}
+$comprobar( 'el nombre del archivo no lleva tildes', str_starts_with( $xlsInf['nombre'], 'informe-perez-luis-' ), $xlsInf['nombre'] );
+
 $comprobar( 'presencia por IP del taller', ( $_SERVER['REMOTE_ADDR'] = '203.0.113.10' ) && Presencia::enRedDelTaller() );
 
 // Deja los ajustes como estaban (la prueba cambia el aviso y el webhook).

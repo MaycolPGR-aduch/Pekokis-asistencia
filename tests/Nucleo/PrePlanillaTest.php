@@ -87,6 +87,43 @@ final class PrePlanillaTest extends TestCase {
 		$this->assertSame( 0, $sinDescuento->montos['descuento'] );
 	}
 
+	public function test_suma_del_equipo_y_puntualidad(): void {
+		$rosa = PrePlanilla::calcular(
+			array(
+				'2026-11-16' => $this->trabajado( '2026-11-16', '21:30', true ),
+				'2026-11-17' => $this->falta( '2026-11-17' ),
+			),
+			array( $this->mensual() ),
+			new ReglasPago()
+		);
+		$tarde = CalculoJornada::calcular(
+			array( Fabrica::entrada( '2026-11-16 09:20', 1 ), Fabrica::salida( '2026-11-16 19:30', 'fin_jornada', 2 ) ),
+			$this->laborable(),
+			'2026-11-16',
+			$this->zona(),
+			new ReglasPago()
+		);
+		$luis = PrePlanilla::calcular(
+			array( '2026-11-16' => $tarde, '2026-11-17' => $this->trabajado( '2026-11-17' ) ),
+			array(),
+			new ReglasPago()
+		);
+
+		$this->assertSame( 100, $rosa->puntualidad() );
+		$this->assertSame( 50, $luis->puntualidad(), 'Un día tarde de dos' );
+		$this->assertSame( 1, $luis->dias['con_tardanza'] );
+		$this->assertSame( 3125, $rosa->costoExtra() );
+
+		$equipo = PrePlanilla::sumar( array( $rosa, $luis ) );
+		$this->assertSame( 3, $equipo->dias['trabajados'] );
+		$this->assertSame( 1, $equipo->dias['faltas'] );
+		$this->assertSame( 120, $equipo->minutos['extra_1'] );
+		$this->assertSame( 690 + 610 + 570, $equipo->minutos['trabajados'] );
+		$this->assertSame( 67, $equipo->puntualidad() );
+		$this->assertSame( 2, $equipo->diasSinSueldo, 'Luis no tiene sueldo' );
+		$this->assertNull( ( new PrePlanilla() )->puntualidad() );
+	}
+
 	public function test_dia_incompleto_no_se_descuenta(): void {
 		$dia  = '2026-11-16';
 		$j    = CalculoJornada::calcular( array( Fabrica::entrada( $dia . ' 09:00', 1 ) ), $this->laborable(), $dia, $this->zona(), new ReglasPago() );

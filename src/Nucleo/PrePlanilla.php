@@ -23,11 +23,13 @@ final class PrePlanilla {
 		'incompletos'  => 0,
 		'por_revisar'  => 0,
 		'descanso_trabajados' => 0,
+		'con_tardanza'        => 0,
 	);
 
 	/** @var array<string, int> */
 	public array $minutos = array(
 		'esperados'       => 0,
+		'trabajados'      => 0,
 		'ordinarios'      => 0,
 		'salidas_pagadas' => 0,
 		'tardanza'        => 0,
@@ -131,7 +133,12 @@ final class PrePlanilla {
 			default                     => null,
 		};
 
+		if ( $j->minutosTardanza > 0 ) {
+			++$this->dias['con_tardanza'];
+		}
+
 		$this->minutos['esperados']         += $j->minutosEsperados;
+		$this->minutos['trabajados']        += $j->minutosTrabajados;
 		$this->minutos['ordinarios']        += $j->minutosOrdinarios;
 		$this->minutos['salidas_pagadas']   += $j->minutosSalidasPagadas;
 		$this->minutos['tardanza']          += $j->minutosTardanza;
@@ -143,6 +150,39 @@ final class PrePlanilla {
 		$this->minutos['descanso']          += $j->minutosDescansoTrabajado;
 		$this->minutos['compensables']      += $j->minutosCompensables;
 		$this->minutos['sin_autorizar']     += $j->minutosSinAutorizar;
+	}
+
+	/**
+	 * Suma varias filas (un equipo, o todo el taller) para el dashboard.
+	 *
+	 * @param PrePlanilla[] $filas
+	 */
+	public static function sumar( array $filas ): self {
+		$total = new self();
+
+		foreach ( $filas as $f ) {
+			foreach ( array( 'dias', 'minutos', 'montos' ) as $grupo ) {
+				foreach ( $f->{$grupo} as $clave => $valor ) {
+					$total->{$grupo}[ $clave ] += $valor;
+				}
+			}
+
+			$total->diasSinSueldo += $f->diasSinSueldo;
+		}
+
+		return $total;
+	}
+
+	/** Porcentaje de días trabajados en horario que llegó a tiempo (null si no trabajó días laborables). */
+	public function puntualidad(): ?int {
+		return $this->dias['trabajados'] > 0
+			? (int) round( 100 * ( $this->dias['trabajados'] - $this->dias['con_tardanza'] ) / $this->dias['trabajados'] )
+			: null;
+	}
+
+	/** Costo estimado de las horas extra y del descanso o feriado trabajado, en céntimos. */
+	public function costoExtra(): int {
+		return $this->montos['extra_1'] + $this->montos['extra_2'] + $this->montos['descanso'];
 	}
 
 	private static function diasDelMes( string $dia ): int {

@@ -21,7 +21,7 @@ final class Historial {
 		'marcas'       => array( 'Marcas y correcciones', array( 'marca.', 'correccion.' ) ),
 		'pagos'        => array( 'Horas extra y sueldos', array( 'sobretiempo.', 'sueldo.', 'preplanilla.' ) ),
 		'ajustes'      => array( 'Ajustes, horarios, calendario, redes y pantallas', array( 'ajustes.', 'horario.', 'calendario.', 'red.', 'pantalla.' ) ),
-		'exportes'     => array( 'Descargas y respaldos', array( 'registro.', 'respaldo.', 'historial.' ) ),
+		'exportes'     => array( 'Descargas y respaldos', array( 'registro.', 'respaldo.', 'historial.', 'informe.' ) ),
 	);
 
 	private const ACCIONES = array(
@@ -64,6 +64,7 @@ final class Historial {
 		'sueldo.anular'          => 'Sueldo anulado',
 		'ajustes.reglas'         => 'Cambio de las reglas de horas',
 		'preplanilla.descargar'  => 'Pre-planilla descargada',
+		'informe.descargar'      => 'Informe por trabajador descargado',
 	);
 
 	private const CAMPOS = array(
@@ -124,6 +125,7 @@ final class Historial {
 		'descontar_no_trabajado'      => 'Descontar lo no trabajado',
 		'tardanza_desde'              => 'Tardanza desde',
 		'aviso_permanencia_min'       => 'Aviso de permanencia (min)',
+		'formato'                     => 'Formato',
 	);
 
 	/**

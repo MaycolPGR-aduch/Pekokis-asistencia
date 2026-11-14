@@ -3,7 +3,7 @@
 Este archivo lleva lo hecho, lo pendiente y la bitácora del proyecto. Se actualiza cada vez que avanzamos.
 El detalle técnico de cada punto está en [docs/plan-tecnico.md](docs/plan-tecnico.md).
 
-**Estado actual:** MVP completo y **desplegado** en `https://asistencia.pekokis.com` (versión 0.5.0). En local está lista la **0.7.0**: trae lo de la 0.6.0 (feriados, ausencias, aviso de datos, Gerencia, "nadie se aprueba a sí mismo", copia en la nube) y la primera entrega de la **fase 2**: cálculo del día, horas extra autorizadas, sueldos con historial y pre-planilla en Excel. La cubren 122 pruebas del núcleo y 152 de punta a punta. El escenario de Make que guarda el respaldo en Google Drive ya está activo. **Siguiente:** subir la 0.7.0, pegar el webhook de Make en producción, que el abogado revise el aviso, terminar el SMTP y la red del taller, hacer el piloto y revisar con el contador las reglas de horas.
+**Estado actual:** MVP completo y **desplegado** en `https://asistencia.pekokis.com` (versión 0.5.0). En local está lista la **0.8.0**, que suma tres entregas: la 0.6.0 (feriados, ausencias, aviso de datos, Gerencia, copia en la nube), la **fase 2** (horas extra, sueldos y pre-planilla) y la **fase 3** (Resumen del mes e Informe por trabajador en Excel y PDF). La cubren 123 pruebas del núcleo y 160 de punta a punta. El escenario de Make del respaldo ya está activo. **Siguiente:** la fase 4 (notificaciones) y luego subir la versión a producción y pegar el webhook. También falta que el abogado revise el aviso, terminar el SMTP y la red del taller, hacer el piloto y revisar con el contador las reglas de horas.
 
 **Estrategia:** primero un MVP con las fases 0 y 1 del plan (registro de asistencia funcionando y conforme a la norma). Después, mejoras por etapas según lo que opine gerencia.
 
@@ -137,8 +137,8 @@ Leyenda: `[x]` hecho · `[ ]` pendiente · `[~]` en curso
 
 ### 7. Calidad y puesta en marcha
 - [x] Pruebas automáticas:
-  - 122 del núcleo (`composer test`);
-  - 152 de todo el flujo contra el WordPress local, con un autenticador simulado (`tests/integracion/flujo-marcas.php`);
+  - 123 del núcleo (`composer test`);
+  - 160 de todo el flujo contra el WordPress local, con un autenticador simulado (`tests/integracion/flujo-marcas.php`);
   - `tests/integracion/datos-demo.php` carga 5 trabajadores de ejemplo, con casos de hoy y de ayer, para ver el panel.
 - [ ] Pruebas en celulares reales: Android (Chrome) e iPhone (Safari)
 - [~] Aviso de datos personales (Ley 29733):
@@ -163,7 +163,18 @@ Leyenda: `[x]` hecho · `[ ]` pendiente · `[~]` en curso
   - [ ] Guardar los días calculados (`pka_dias`) si el cálculo al vuelo se vuelve lento.
   - [ ] Permisos por horas con sustento y la regla de lactancia por fecha de nacimiento.
   - [ ] Que Gerencia vea la pre-planilla (hoy solo RR.HH. y administradores, porque trae sueldos).
-- [ ] **Fase 3 — Dashboard e informes:** dashboard general, informe por trabajador, Excel y PDF
+- [x] **Fase 3 — Dashboard e informes** (versión 0.8.0):
+  - [x] **Resumen del mes** (Asistencia → Resumen del mes):
+    - tarjetas con horas trabajadas, horas extra (y su costo estimado si ve sueldos), descanso o feriado trabajado, tardanzas, faltas, puntualidad, tiempo sin autorizar y días por revisar;
+    - comparación con los 5 meses anteriores, con flechas ▲▼ (en rojo lo que empeoró);
+    - tabla por trabajador. Un jefe solo ve a su equipo.
+  - [x] **Informe por trabajador** (Asistencia → Informe):
+    - calendario del mes con colores por estado (completo, tarde, falta, justificado, descanso, descanso trabajado, por revisar, incompleto);
+    - el detalle de cada día con sus marcas (las anuladas tachadas, y si es manual o corrección);
+    - totales.
+  - [x] Exportes del informe: Excel (resumen, días y marcas) y una vista para imprimir o "Guardar como PDF" desde el navegador. Las dos descargas quedan en el historial.
+  - [ ] Vista del trabajador con su propio calendario en la app (hoy tiene "Mis marcas del mes", sin colores).
+  - [ ] Gráficos, si gerencia los pide (por ahora son tablas con tendencia).
 - [ ] **Fase 4 — Notificaciones:** correo y luego WhatsApp
 
 ---
@@ -185,6 +196,15 @@ Vienen de la sección 16 del plan; se resuelven con gerencia y el contador.
 ---
 
 ## Bitácora
+
+### 14-11-2026 (noche, 2) — versión 0.8.0 (fase 3)
+- **Dashboard e informes:**
+  - En el núcleo, `PrePlanilla` ahora cuenta los días con tardanza y los minutos trabajados, y tiene `sumar()`, `puntualidad()` y `costoExtra()`. Una prueba nueva, 123 en total.
+  - En WordPress: `Informes` (mes, comparación, días y marcas del mes, Excel por trabajador, colores por estado), `Admin/PantallaResumen` y `Admin/PantallaInforme` (con la vista para imprimir en admin-post). No hay tablas nuevas: todo se calcula a partir de `Jornadas`.
+  - El detalle del día tiene un enlace a "Informe del mes". El historial registra `informe.descargar`.
+  - Prueba de punta a punta: 160 comprobaciones (8 nuevas).
+  - En el navegador revisé el Resumen del mes, el Informe de Carlos (calendario, Excel de 6 KB) y la vista para imprimir. También corregí los plurales ("1 día justificado").
+- **PDF:** sale de "Imprimir → Guardar como PDF" del navegador, sin librerías en el servidor (dompdf pesaba demasiado para un PDF opcional).
 
 ### 14-11-2026 (noche) — escenario de Make y versión 0.7.0 (fase 2)
 - **Make:** carpeta "Respaldos asistencia Pekokis" en el Drive de admin1@pekokis.com (creada con un escenario temporal que luego se borró), webhook "Respaldo asistencia Pekokis" y escenario **"Respaldo asistencia → Google Drive"** (Custom webhook → Upload a file, nombre y datos del campo `archivo`), activo. Prueba desde el WordPress local: llegó y se subió (2 operaciones). Dejé un Excel de demostración en esa carpeta: se puede borrar.

@@ -23,7 +23,7 @@ defined( 'ABSPATH' ) || exit;
  * anulación; y la bandeja de solicitudes "olvidé marcar" y de días pendientes.
  */
 final class PantallaDia {
-	private const ORIGENES = array(
+	public const ORIGENES = array(
 		'trabajador' => 'Celular',
 		'manual'     => 'Manual del jefe',
 		'correccion' => 'Corrección aprobada',
@@ -105,7 +105,8 @@ final class PantallaDia {
 			<h1><?php echo esc_html( Trabajadores::nombreCompleto( $t ) ); ?> · <?php echo esc_html( wp_date( 'l j \d\e F', ( new DateTimeImmutable( $dia . ' 12:00', $zona ) )->getTimestamp(), $zona ) ); ?></h1>
 			<p>
 				<a href="<?php echo esc_url( self::url( $id, $antes ) ); ?>">← Día anterior</a> ·
-				<a href="<?php echo esc_url( self::url( $id, $despues ) ); ?>">Día siguiente →</a>
+				<a href="<?php echo esc_url( self::url( $id, $despues ) ); ?>">Día siguiente →</a> ·
+				<a href="<?php echo esc_url( PantallaInforme::url( $id, substr( $dia, 0, 7 ) ) ); ?>">Informe del mes</a>
 				<?php if ( current_user_can( Capacidades::AUDITORIA ) ) : ?>
 					· <a href="<?php echo esc_url( PantallaHistorial::url( array( 'trabajador' => $id ) ) ); ?>">Historial de este trabajador</a>
 				<?php endif; ?>
