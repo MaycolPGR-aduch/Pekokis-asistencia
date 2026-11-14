@@ -2,8 +2,10 @@
 
 namespace Pekokis\Asistencia\WordPress\Admin;
 
+use Pekokis\Asistencia\Nucleo\Sueldo;
 use Pekokis\Asistencia\WordPress\Activaciones;
 use Pekokis\Asistencia\WordPress\Capacidades;
+use Pekokis\Asistencia\WordPress\Sueldos;
 use Pekokis\Asistencia\WordPress\Trabajadores;
 use WP_Error;
 
@@ -30,6 +32,8 @@ final class PantallaTrabajadores {
 		add_action( 'admin_post_pka_guardar_trabajador', array( self::class, 'guardar' ) );
 		add_action( 'admin_post_pka_enlace_activacion', array( self::class, 'enlace' ) );
 		add_action( 'admin_post_pka_cesar_trabajador', array( self::class, 'cesar' ) );
+		add_action( 'admin_post_pka_sueldo_agregar', array( self::class, 'agregarSueldo' ) );
+		add_action( 'admin_post_pka_sueldo_anular', array( self::class, 'anularSueldo' ) );
 	}
 
 	public static function pintar(): void {
@@ -187,6 +191,132 @@ final class PantallaTrabajadores {
 			<?php submit_button( $t ? 'Guardar cambios' : 'Agregar trabajador' ); ?>
 		</form>
 		<?php
+		if ( $t && current_user_can( Capacidades::VER_SUELDOS ) ) {
+			self::remuneracion( $t );
+		}
+	}
+
+	/** Sueldo vigente e historial. Solo para quien tiene pka_ver_sueldos. */
+	private static function remuneracion( array $t ): void {
+		$historial = Sueldos::historial( (int) $t['id'] );
+		$previo    = get_transient( 'pka_form_sueldo_' . get_current_user_id() );
+		$errores   = is_array( $previo ) ? $previo['errores'] : array();
+		$valores   = is_array( $previo ) ? $previo['valores'] : array( 'modalidad' => Sueldo::MENSUAL );
+		$propio    = Trabajadores::esPropio( (int) $t['id'] );
+
+		delete_transient( 'pka_form_sueldo_' . get_current_user_id() );
+		?>
+		<h2 id="remuneracion" style="margin-top:32px">Remuneración</h2>
+		<p class="description">Solo lo ven RR.HH. y los administradores. Sirve para estimar la pre-planilla; la boleta la hace el contador.</p>
+		<table class="widefat striped" style="max-width:900px">
+			<thead><tr><th>Sueldo</th><th>Desde</th><th>Hasta</th><th>Nota</th><th>Registró</th><th></th></tr></thead>
+			<tbody>
+			<?php if ( ! $historial ) : ?>
+				<tr><td colspan="6">Todavía no tiene sueldo registrado: en la pre-planilla sus montos saldrán en blanco.</td></tr>
+			<?php endif; ?>
+			<?php foreach ( $historial as $s ) : ?>
+				<?php $quien = get_userdata( (int) $s['creado_por'] ); ?>
+				<tr<?php echo 'anulado' === $s['estado'] ? ' style="opacity:.6"' : ''; ?>>
+					<td><strong><?php echo esc_html( Sueldos::etiqueta( $s ) ); ?></strong></td>
+					<td><?php echo esc_html( $s['vigente_desde'] ); ?></td>
+					<td><?php echo esc_html( $s['vigente_hasta'] ? $s['vigente_hasta'] : ( 'anulado' === $s['estado'] ? '—' : 'Vigente' ) ); ?></td>
+					<td><?php echo esc_html( $s['nota'] ); ?><?php echo 'anulado' === $s['estado'] ? '<br><em>Anulado: ' . esc_html( $s['motivo_anulacion'] ) . '</em>' : ''; ?></td>
+					<td><?php echo esc_html( $quien ? $quien->display_name : '—' ); ?></td>
+					<td>
+						<?php if ( 'vigente' === $s['estado'] && null === $s['vigente_hasta'] && ! $propio ) : ?>
+							<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:flex;gap:6px">
+								<input type="hidden" name="action" value="pka_sueldo_anular">
+								<input type="hidden" name="id" value="<?php echo esc_attr( $s['id'] ); ?>">
+								<input type="hidden" name="trabajador_id" value="<?php echo esc_attr( $t['id'] ); ?>">
+								<?php wp_nonce_field( 'pka_sueldo_anular' ); ?>
+								<label class="screen-reader-text" for="pka-sueldo-anular-<?php echo esc_attr( $s['id'] ); ?>">Motivo de la anulación</label>
+								<input type="text" id="pka-sueldo-anular-<?php echo esc_attr( $s['id'] ); ?>" name="motivo" placeholder="Por qué se anula (error de tipeo…)" required>
+								<button class="button">Anular</button>
+							</form>
+						<?php endif; ?>
+					</td>
+				</tr>
+			<?php endforeach; ?>
+			</tbody>
+		</table>
+
+		<?php if ( $propio ) : ?>
+			<p><em>Es tu propio perfil: otra persona de RR.HH. o un administrador tiene que registrar tu sueldo.</em></p>
+			<?php
+			return;
+		endif;
+		?>
+		<h3><?php echo $historial ? 'Registrar un cambio de sueldo' : 'Registrar el sueldo'; ?></h3>
+		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+			<input type="hidden" name="action" value="pka_sueldo_agregar">
+			<input type="hidden" name="trabajador_id" value="<?php echo esc_attr( $t['id'] ); ?>">
+			<?php wp_nonce_field( 'pka_sueldo_agregar' ); ?>
+			<table class="form-table" role="presentation">
+				<tr>
+					<th scope="row">Modalidad</th>
+					<td>
+						<?php foreach ( Sueldo::MODALIDADES as $clave => $etiqueta ) : ?>
+							<label style="margin-right:16px"><input type="radio" name="modalidad" value="<?php echo esc_attr( $clave ); ?>" <?php checked( (string) ( $valores['modalidad'] ?? '' ), $clave ); ?>> <?php echo esc_html( $etiqueta ); ?></label>
+						<?php endforeach; ?>
+						<?php self::error( $errores, 'modalidad' ); ?>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="pka-sueldo-monto">Monto (S/)</label></th>
+					<td>
+						<input type="text" inputmode="decimal" id="pka-sueldo-monto" name="monto" required value="<?php echo esc_attr( (string) ( $valores['monto'] ?? '' ) ); ?>" placeholder="1500.00">
+						<p class="description">Sueldo mensual bruto, o el precio de una hora si cobra por hora.</p>
+						<?php self::error( $errores, 'monto' ); ?>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="pka-sueldo-desde">Rige desde</label></th>
+					<td><input type="date" id="pka-sueldo-desde" name="vigente_desde" required value="<?php echo esc_attr( (string) ( $valores['vigente_desde'] ?? ( $t['fecha_ingreso'] ?? '' ) ) ); ?>"><?php self::error( $errores, 'vigente_desde' ); ?></td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="pka-sueldo-nota">Nota</label></th>
+					<td><input type="text" id="pka-sueldo-nota" name="nota" class="regular-text" maxlength="255" value="<?php echo esc_attr( (string) ( $valores['nota'] ?? '' ) ); ?>" placeholder="Aumento anual, contrato nuevo…"></td>
+				</tr>
+			</table>
+			<?php submit_button( 'Guardar sueldo', 'secondary' ); ?>
+		</form>
+		<?php
+	}
+
+	public static function agregarSueldo(): void {
+		self::exigirSueldos( 'pka_sueldo_agregar' );
+
+		$id      = isset( $_POST['trabajador_id'] ) ? absint( $_POST['trabajador_id'] ) : 0;
+		$entrada = map_deep( wp_unslash( $_POST ), 'sanitize_text_field' );
+		$result  = Sueldos::agregar( $id, $entrada );
+
+		if ( $result instanceof WP_Error ) {
+			set_transient( 'pka_form_sueldo_' . get_current_user_id(), array( 'errores' => $result->get_error_data()['errores'] ?? array(), 'valores' => $entrada ), 5 * MINUTE_IN_SECONDS );
+			Avisos::agregar( 'error', esc_html( $result->get_error_message() ) );
+		} else {
+			Avisos::agregar( 'success', 'Sueldo registrado.' );
+		}
+
+		Menu::volverA( add_query_arg( array( 'page' => self::SLUG, 'vista' => 'editar', 'id' => $id ), admin_url( 'admin.php' ) ) . '#remuneracion' );
+	}
+
+	public static function anularSueldo(): void {
+		self::exigirSueldos( 'pka_sueldo_anular' );
+
+		$id     = isset( $_POST['trabajador_id'] ) ? absint( $_POST['trabajador_id'] ) : 0;
+		$motivo = isset( $_POST['motivo'] ) ? sanitize_text_field( wp_unslash( $_POST['motivo'] ) ) : '';
+		$result = Sueldos::anular( isset( $_POST['id'] ) ? absint( $_POST['id'] ) : 0, $motivo );
+
+		Avisos::agregar( $result instanceof WP_Error ? 'error' : 'success', esc_html( $result instanceof WP_Error ? $result->get_error_message() : 'Sueldo anulado. Rige otra vez el anterior, si lo había.' ) );
+		Menu::volverA( add_query_arg( array( 'page' => self::SLUG, 'vista' => 'editar', 'id' => $id ), admin_url( 'admin.php' ) ) . '#remuneracion' );
+	}
+
+	private static function exigirSueldos( string $accion ): void {
+		if ( ! current_user_can( Capacidades::GESTIONAR_PERSONAL ) || ! current_user_can( Capacidades::VER_SUELDOS ) ) {
+			wp_die( 'No tienes permiso para hacer esto.', 403 );
+		}
+
+		check_admin_referer( $accion );
 	}
 
 	/** @param array<string, mixed>|null $t */

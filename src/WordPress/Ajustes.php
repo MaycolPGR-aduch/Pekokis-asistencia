@@ -6,6 +6,7 @@ use DateTimeZone;
 use Exception;
 use Pekokis\Asistencia\Nucleo\DiaLaboral;
 use Pekokis\Asistencia\Nucleo\ModoPresencia;
+use Pekokis\Asistencia\Nucleo\ReglasPago;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -35,6 +36,15 @@ final class Ajustes {
 			// Aviso de datos personales: vacío = borrador por defecto (Aviso::borrador()).
 			'aviso_texto'     => '',
 			'aviso_version'   => 1,
+			// Reglas de horas y pre-planilla (fase 2). POR CONFIRMAR CON EL CONTADOR.
+			'tasa_extra_1'           => 25,
+			'tasa_extra_2'           => 35,
+			'tramo_extra_1_min'      => 120,
+			'tasa_descanso'          => 100,
+			'horas_jornada_valor'    => 8,
+			'descontar_no_trabajado' => 1,
+			'tardanza_desde'         => ReglasPago::TARDANZA_DESDE_ENTRADA,
+			'aviso_permanencia_min'  => 30,
 		);
 	}
 
@@ -55,6 +65,10 @@ final class Ajustes {
 		} catch ( Exception $e ) {
 			return new DateTimeZone( 'America/Lima' );
 		}
+	}
+
+	public static function reglasPago(): ReglasPago {
+		return ReglasPago::desdeAjustes( self::todos() );
 	}
 
 	public static function diaLaboral(): DiaLaboral {

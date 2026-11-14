@@ -5,6 +5,7 @@ namespace Pekokis\Asistencia\WordPress\Admin;
 use InvalidArgumentException;
 use Pekokis\Asistencia\Nucleo\ModoPresencia;
 use Pekokis\Asistencia\Nucleo\RedAutorizada;
+use Pekokis\Asistencia\Nucleo\ReglasPago;
 use Pekokis\Asistencia\WordPress\Ajustes;
 use Pekokis\Asistencia\WordPress\Auditoria;
 use Pekokis\Asistencia\WordPress\Aviso;
@@ -30,9 +31,85 @@ final class PantallaAjustes {
 		add_action( 'admin_post_pka_cambiar_pantalla', array( self::class, 'cambiarPantalla' ) );
 		add_action( 'admin_post_pka_guardar_empleador', array( self::class, 'guardarEmpleador' ) );
 		add_action( 'admin_post_pka_guardar_aviso', array( self::class, 'guardarAviso' ) );
+		add_action( 'admin_post_pka_guardar_reglas', array( self::class, 'guardarReglas' ) );
 	}
 
 	/** Datos del empleador (salen en el Excel y en el aviso) y el aviso de datos personales. */
+	/** Campos numéricos de las reglas de horas: clave => [etiqueta, mínimo, máximo, ayuda]. */
+	private const REGLAS = array(
+		'tasa_extra_1'          => array( 'Sobretasa de las primeras horas extra (%)', 0, 300, 'Mínimo legal: 25 %.' ),
+		'tramo_extra_1_min'     => array( 'Minutos del día que van a esa sobretasa', 0, 1440, 'Por ley, las 2 primeras horas (120 min).' ),
+		'tasa_extra_2'          => array( 'Sobretasa de las horas extra siguientes (%)', 0, 300, 'Mínimo legal: 35 %.' ),
+		'tasa_descanso'         => array( 'Sobretasa por trabajar en descanso o feriado (%)', 0, 300, 'Sin descanso sustitutorio: 100 % (D. Leg. 713).' ),
+		'horas_jornada_valor'   => array( 'Horas de la jornada para el valor hora', 1, 24, 'Valor hora = sueldo mensual ÷ 30 ÷ estas horas.' ),
+		'aviso_permanencia_min' => array( 'Avisar desde (minutos fuera de horario sin autorizar)', 1, 600, 'Por debajo de esto no se avisa al jefe, pero igual queda en la pre-planilla.' ),
+	);
+
+	private static function reglas(): void {
+		$a = Ajustes::todos();
+		?>
+		<h2 style="margin-top:32px" id="reglas">Reglas de horas y pre-planilla</h2>
+		<div class="notice notice-warning inline"><p><strong>Por confirmar con el contador.</strong> Los valores iniciales siguen la norma peruana, pero la fórmula del valor hora y la política de descuentos las decide la empresa. Los montos de la pre-planilla son estimados.</p></div>
+		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+			<input type="hidden" name="action" value="pka_guardar_reglas">
+			<?php wp_nonce_field( 'pka_guardar_reglas' ); ?>
+			<table class="form-table" role="presentation">
+				<?php foreach ( self::REGLAS as $clave => [ $etiqueta, $min, $max, $ayuda ] ) : ?>
+					<tr>
+						<th scope="row"><label for="pka-r-<?php echo esc_attr( $clave ); ?>"><?php echo esc_html( $etiqueta ); ?></label></th>
+						<td>
+							<input type="number" id="pka-r-<?php echo esc_attr( $clave ); ?>" name="<?php echo esc_attr( $clave ); ?>" class="small-text" min="<?php echo (int) $min; ?>" max="<?php echo (int) $max; ?>" required value="<?php echo esc_attr( (string) $a[ $clave ] ); ?>">
+							<p class="description"><?php echo esc_html( $ayuda ); ?></p>
+						</td>
+					</tr>
+				<?php endforeach; ?>
+				<tr>
+					<th scope="row">La tardanza se cuenta</th>
+					<td>
+						<label><input type="radio" name="tardanza_desde" value="<?php echo esc_attr( ReglasPago::TARDANZA_DESDE_ENTRADA ); ?>" <?php checked( (string) $a['tardanza_desde'], ReglasPago::TARDANZA_DESDE_ENTRADA ); ?>> Desde la hora de entrada (llegó 9:14 → 14 min)</label><br>
+						<label><input type="radio" name="tardanza_desde" value="<?php echo esc_attr( ReglasPago::TARDANZA_DESDE_TOLERANCIA ); ?>" <?php checked( (string) $a['tardanza_desde'], ReglasPago::TARDANZA_DESDE_TOLERANCIA ); ?>> Desde el fin de la tolerancia (llegó 9:14 con 5 min → 9 min)</label>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row">Descuentos</th>
+					<td>
+						<label><input type="checkbox" name="descontar_no_trabajado" value="1" <?php checked( ! empty( $a['descontar_no_trabajado'] ) ); ?>> Descontar en la pre-planilla el tiempo no trabajado (faltas, tardanzas, salidas sin goce)</label>
+						<p class="description">Solo a quienes tienen sueldo mensual. No se aplican multas: se descuenta el tiempo, nada más.</p>
+					</td>
+				</tr>
+			</table>
+			<?php submit_button( 'Guardar reglas', 'secondary' ); ?>
+		</form>
+		<?php
+	}
+
+	public static function guardarReglas(): void {
+		self::exigir( 'pka_guardar_reglas' );
+
+		$antes   = Ajustes::todos();
+		$ajustes = $antes;
+
+		foreach ( self::REGLAS as $clave => [ , $min, $max ] ) {
+			if ( isset( $_POST[ $clave ] ) ) {
+				$ajustes[ $clave ] = max( $min, min( $max, (int) $_POST[ $clave ] ) );
+			}
+		}
+
+		$ajustes['tardanza_desde']         = isset( $_POST['tardanza_desde'] ) && ReglasPago::TARDANZA_DESDE_TOLERANCIA === $_POST['tardanza_desde'] ? ReglasPago::TARDANZA_DESDE_TOLERANCIA : ReglasPago::TARDANZA_DESDE_ENTRADA;
+		$ajustes['descontar_no_trabajado'] = empty( $_POST['descontar_no_trabajado'] ) ? 0 : 1;
+		update_option( Ajustes::OPCION, $ajustes );
+
+		$claves    = array_merge( array_keys( self::REGLAS ), array( 'tardanza_desde', 'descontar_no_trabajado' ) );
+		[ $a, $d ] = Auditoria::diferencias( array_intersect_key( $antes, array_flip( $claves ) ), array_intersect_key( $ajustes, array_flip( $claves ) ) );
+
+		if ( $d ) {
+			Auditoria::registrar( 'ajustes.reglas', 'ajustes', null, $a, $d );
+		}
+
+		Avisos::agregar( 'success', 'Reglas de horas guardadas.' );
+		Menu::volverA( admin_url( 'admin.php?page=' . self::SLUG ) . '#reglas' );
+	}
+
 	private static function empleadorYAviso(): void {
 		$a      = Ajustes::todos();
 		$conteo = Aviso::conteo();
@@ -298,6 +375,7 @@ final class PantallaAjustes {
 			</table>
 
 			<?php self::pantallas(); ?>
+			<?php self::reglas(); ?>
 			<?php self::empleadorYAviso(); ?>
 		</div>
 		<?php

@@ -11,7 +11,7 @@ Lo que tienes que hacer tú está marcado con ☐. Los nombres de los menús de 
 ## 0. Antes de empezar
 
 - ☐ **Recursos del plan.** En hPanel, revisa qué mide el 77 % de "Uso de recursos". Este sitio consume poco, pero suma archivos (unos 3.000 de WordPress y 200 del plugin) y un cron cada 5 minutos.
-- ☐ **El zip del plugin.** Ya está en `dist/pekokis-asistencia-0.6.0.zip`. Si cambia el código, se vuelve a generar con:
+- ☐ **El zip del plugin.** Ya está en `dist/pekokis-asistencia-0.7.0.zip`. Si cambia el código, se vuelve a generar con:
   ```bash
   php scripts/empaquetar.php
   ```
@@ -74,7 +74,7 @@ No lo compartas ni lo subas a git. Si algún día cambia, solo se invalidan los 
 
 ## 6. Instalar el plugin y el tema
 
-1. ☐ **Plugins → Añadir nuevo → Subir plugin:** sube `pekokis-asistencia-0.6.0.zip` y actívalo. Al activarse crea sus tablas, roles, motivos y el horario base.
+1. ☐ **Plugins → Añadir nuevo → Subir plugin:** sube `pekokis-asistencia-0.7.0.zip` y actívalo. Al activarse crea sus tablas, roles, motivos y el horario base.
 2. ☐ **Apariencia → Temas:** activa **"Pekokis Asistencia (vacío)"** y borra los demás temas, salvo uno por defecto como respaldo.
 3. ☐ Revisa **Asistencia → Ajustes → Estado del sistema.**
 
@@ -115,7 +115,11 @@ Es igual que en producción: **nunca** se llama a `wp-cron.php` por URL.
 4. ☐ **Aviso de datos personales:** en Asistencia → Ajustes, al final, está el borrador. **Revísalo con el abogado** y guárdalo antes de activar a nadie: cada trabajador lo acepta al activar su celular. Confirma también la razón social, el RUC y el domicilio.
 5. ☐ **Trabajadores:** en Asistencia → Trabajadores, agrega a las 2 o 3 personas del piloto y genera su **enlace de activación**. Cada una lo abre en su propio celular. Si un jefe o alguien de RR.HH. también marca, enlaza su perfil con su usuario de wp-admin ("Usuario de wp-admin"): así no puede aprobar sus propias marcas.
 6. ☐ **Gerencia (opcional):** crea su usuario con el rol **"Gerencia (asistencia, solo lectura)"**: ve el panel, el historial y descarga el Excel, pero no corrige nada.
-7. ☐ **Copia en la nube (opcional):** en Make, crea un escenario "Webhooks → Custom webhook" + "Google Drive → Upload a file" (el archivo llega en el campo `archivo`). Pega la URL del webhook en Asistencia → Exportar y pulsa "Enviar respaldo" para probar.
+7. ☐ **Copia en la nube:** el escenario de Make **"Respaldo asistencia → Google Drive"** ya está creado y activo (equipo de Pekokis en Make). Guarda cada Excel en la carpeta **"Respaldos asistencia Pekokis"** del Drive de admin1@pekokis.com. Copia la URL de su webhook (Make → Webhooks → "Respaldo asistencia Pekokis"), pégala en Asistencia → Exportar y pulsa "Enviar respaldo" para probar. La URL es un secreto: no la compartas ni la subas a git.
+8. ☐ **Sueldos y reglas (fase 2, cuando se use la pre-planilla):**
+   - En Asistencia → Ajustes → "Reglas de horas y pre-planilla", revisa los valores **con el contador** (sobretasas, valor hora, desde cuándo cuenta la tardanza, si se descuenta lo no trabajado).
+   - En la ficha de cada trabajador, sección **Remuneración**, registra su sueldo mensual o su pago por hora y desde cuándo rige. Solo lo ven RR.HH. y los administradores.
+   - Las horas extra se autorizan en **Asistencia → Horas extra** (los jefes, para su equipo). Sin autorización, el tiempo fuera de horario no se paga y queda marcado para revisar.
 
 ## 11. Checklist del piloto
 
@@ -135,6 +139,8 @@ Es igual que en producción: **nunca** se llama a `wp-cron.php` por URL.
 | 12 | Cambio de celular: generar un enlace nuevo, activarlo en otro celular y comprobar que el anterior ya no entra | ☐ | ☐ |
 | 13 | Al activar: se ve el aviso de datos y "Crear mi llave" no funciona hasta marcar la casilla | ☐ | ☐ |
 | 14 | Registrar vacaciones a alguien: en Hoy aparece como "Ausencia justificada" y en su app, en "Mis marcas del mes" | ☐ | — |
+| 15 | Alguien se queda después de su hora: al día siguiente sale en Asistencia → Horas extra; autorizar la franja y ver el cálculo en el detalle del día | ☐ | — |
+| 16 | Descargar la pre-planilla del mes y revisarla con el contador (sueldos, faltas, horas extra) | ☐ | — |
 
 Anota en [TAREAS.md](../TAREAS.md) lo que falle, con el celular y el navegador.
 

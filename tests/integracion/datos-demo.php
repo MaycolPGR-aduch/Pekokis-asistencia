@@ -20,7 +20,7 @@ if ( 'local' !== wp_get_environment_type() ) {
 
 global $wpdb;
 
-foreach ( array( 'trabajadores', 'marcas', 'auditoria', 'credenciales', 'dispositivos', 'activaciones', 'redes', 'correcciones', 'pantallas', 'revisiones', 'calendario', 'ausencias' ) as $tabla ) {
+foreach ( array( 'trabajadores', 'marcas', 'auditoria', 'credenciales', 'dispositivos', 'activaciones', 'redes', 'correcciones', 'pantallas', 'revisiones', 'calendario', 'ausencias', 'sueldos', 'sobretiempo' ) as $tabla ) {
 	$wpdb->query( 'TRUNCATE TABLE ' . Tablas::nombre( $tabla ) ); // phpcs:ignore
 }
 
@@ -89,7 +89,8 @@ foreach ( $ids as $i => $tid ) {
 	\Pekokis\Asistencia\WordPress\Correcciones::marcaManual( (int) $tid, $ayer, $entrada, \Pekokis\Asistencia\Nucleo\Accion::ENTRADA, null, 'Demo' );
 
 	if ( 0 !== $i ) { // Rosa queda sin salida.
-		\Pekokis\Asistencia\WordPress\Correcciones::marcaManual( (int) $tid, $ayer, '19:31', \Pekokis\Asistencia\Nucleo\Accion::FIN_JORNADA, null, 'Demo' );
+		// Carlos se quedó hasta las 21:15 sin horas extra autorizadas: aparece en "Horas extra".
+		\Pekokis\Asistencia\WordPress\Correcciones::marcaManual( (int) $tid, $ayer, 1 === $i ? '21:15' : '19:31', \Pekokis\Asistencia\Nucleo\Accion::FIN_JORNADA, null, 'Demo' );
 	}
 }
 
@@ -106,5 +107,15 @@ foreach ( $ids as $i => $tid ) {
 		'nota'          => 'Papeleta 2026-031',
 	)
 );
+
+// Sueldos de ejemplo (fase 2): mensual para todos menos Jorge, que cobra por hora.
+foreach ( $ids as $i => $tid ) {
+	\Pekokis\Asistencia\WordPress\Sueldos::agregar(
+		(int) $tid,
+		3 === $i
+			? array( 'modalidad' => 'por_hora', 'monto' => '9.50', 'vigente_desde' => '2026-01-01', 'nota' => 'Demo' )
+			: array( 'modalidad' => 'mensual', 'monto' => (string) ( 1500 + 250 * $i ), 'vigente_desde' => '2026-01-01', 'nota' => 'Demo' )
+	);
+}
 
 WP_CLI::success( 'Datos de demostración cargados para ' . $hoy . '.' );

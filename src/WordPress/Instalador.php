@@ -13,7 +13,7 @@ defined( 'ABSPATH' ) || exit;
  * lo que RR.HH. haya cambiado.
  */
 final class Instalador {
-	public const VERSION_BD = '2';
+	public const VERSION_BD = '3';
 
 	private const OPCION_VERSION = 'pka_version_bd';
 
@@ -56,7 +56,7 @@ final class Instalador {
 		$c = $wpdb->get_charset_collate();
 		$t = array();
 
-		foreach ( array( 'trabajadores', 'horarios', 'horario_dias', 'motivos', 'marcas', 'revisiones', 'correcciones', 'credenciales', 'dispositivos', 'activaciones', 'redes', 'pantallas', 'auditoria', 'calendario', 'ausencias' ) as $tabla ) {
+		foreach ( array( 'trabajadores', 'horarios', 'horario_dias', 'motivos', 'marcas', 'revisiones', 'correcciones', 'credenciales', 'dispositivos', 'activaciones', 'redes', 'pantallas', 'auditoria', 'calendario', 'ausencias', 'sueldos', 'sobretiempo' ) as $tabla ) {
 			$t[ $tabla ] = Tablas::nombre( $tabla );
 		}
 
@@ -271,6 +271,45 @@ final class Instalador {
 				PRIMARY KEY  (id),
 				KEY trabajador_periodo (trabajador_id,estado,desde,hasta),
 				KEY periodo (desde,hasta)
+			) {$c};",
+
+			// Historial de sueldos (versión 3). Un cambio cierra el anterior; un error se anula, no se edita.
+			"CREATE TABLE {$t['sueldos']} (
+				id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+				trabajador_id bigint(20) unsigned NOT NULL,
+				modalidad varchar(12) NOT NULL,
+				monto_centimos int(10) unsigned NOT NULL,
+				vigente_desde date NOT NULL,
+				vigente_hasta date NULL,
+				nota varchar(255) NOT NULL DEFAULT '',
+				estado varchar(12) NOT NULL DEFAULT 'vigente',
+				creado_por bigint(20) unsigned NOT NULL,
+				creado_en datetime NOT NULL,
+				anulado_por bigint(20) unsigned NULL,
+				anulado_en datetime NULL,
+				motivo_anulacion varchar(255) NOT NULL DEFAULT '',
+				PRIMARY KEY  (id),
+				KEY trabajador (trabajador_id,estado,vigente_desde)
+			) {$c};",
+
+			// Horas extra autorizadas: una franja de un día y cómo se compensa (versión 3).
+			"CREATE TABLE {$t['sobretiempo']} (
+				id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+				trabajador_id bigint(20) unsigned NOT NULL,
+				fecha date NOT NULL,
+				desde time NOT NULL,
+				hasta time NOT NULL,
+				compensacion varchar(12) NOT NULL DEFAULT 'pago',
+				motivo varchar(255) NOT NULL DEFAULT '',
+				estado varchar(12) NOT NULL DEFAULT 'vigente',
+				autorizado_por bigint(20) unsigned NOT NULL,
+				autorizado_en datetime NOT NULL,
+				anulado_por bigint(20) unsigned NULL,
+				anulado_en datetime NULL,
+				motivo_anulacion varchar(255) NOT NULL DEFAULT '',
+				PRIMARY KEY  (id),
+				KEY trabajador_fecha (trabajador_id,estado,fecha),
+				KEY fecha (fecha)
 			) {$c};",
 
 			// Solo inserciones, con cadena de hashes igual que las marcas.

@@ -7,6 +7,7 @@ use Pekokis\Asistencia\WordPress\Auditoria;
 use Pekokis\Asistencia\WordPress\Capacidades;
 use Pekokis\Asistencia\WordPress\Exportes;
 use Pekokis\Asistencia\WordPress\InsercionEncadenada;
+use Pekokis\Asistencia\WordPress\PrePlanillas;
 use Pekokis\Asistencia\WordPress\Respaldo;
 
 defined( 'ABSPATH' ) || exit;
@@ -19,6 +20,7 @@ final class PantallaExportar {
 
 	public static function registrar(): void {
 		add_action( 'admin_post_pka_descargar_registro', array( self::class, 'descargar' ) );
+		add_action( 'admin_post_pka_descargar_preplanilla', array( self::class, 'descargarPrePlanilla' ) );
 		add_action( 'admin_post_pka_enviar_respaldo', array( self::class, 'enviar' ) );
 		add_action( 'admin_post_pka_correo_respaldo', array( self::class, 'guardarCorreo' ) );
 		add_action( 'admin_post_pka_webhook_respaldo', array( self::class, 'guardarWebhook' ) );
@@ -55,6 +57,22 @@ final class PantallaExportar {
 				</select>
 				<button class="button button-primary">Descargar Excel</button>
 			</form>
+
+			<?php if ( current_user_can( Capacidades::VER_SUELDOS ) ) : ?>
+				<h2 style="margin-top:32px">Pre-planilla (para el contador)</h2>
+				<p>Días trabajados, faltas, tardanzas, horas extra autorizadas y horas en descanso o feriado, con montos <strong>estimados</strong> según el sueldo de cada uno y las <a href="<?php echo esc_url( admin_url( 'admin.php?page=' . PantallaAjustes::SLUG ) . '#reglas' ); ?>">reglas de horas</a>. Solo cuenta los días ya terminados. Contiene sueldos: no la compartas fuera de RR.HH. y el contador.</p>
+				<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+					<input type="hidden" name="action" value="pka_descargar_preplanilla">
+					<?php wp_nonce_field( 'pka_descargar_preplanilla' ); ?>
+					<label for="pka-mes-pp">Mes</label>
+					<select id="pka-mes-pp" name="mes">
+						<?php foreach ( $meses as $mes ) : ?>
+							<option value="<?php echo esc_attr( $mes ); ?>"><?php echo esc_html( $mes ); ?></option>
+						<?php endforeach; ?>
+					</select>
+					<button class="button">Descargar pre-planilla</button>
+				</form>
+			<?php endif; ?>
 
 			<h2 style="margin-top:32px">Respaldo por correo</h2>
 			<p>Cada mes, el día 1 a las 06:00, se envía el registro del mes anterior a <strong><?php echo esc_html( Respaldo::destinatario() ); ?></strong>. La norma pide guardarlo 5 años: archívalo fuera del hosting.</p>
@@ -108,6 +126,26 @@ final class PantallaExportar {
 		header( 'Content-Disposition: attachment; filename="' . $xls['nombre'] . '"' );
 		header( 'Content-Length: ' . strlen( $xls['contenido'] ) );
 		header( 'X-Content-SHA256: ' . $xls['hash'] );
+		echo $xls['contenido']; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- archivo binario.
+		exit;
+	}
+
+	public static function descargarPrePlanilla(): void {
+		self::exigir( 'pka_descargar_preplanilla' );
+
+		if ( ! current_user_can( Capacidades::VER_SUELDOS ) ) {
+			wp_die( 'No tienes permiso para ver sueldos.', 403 );
+		}
+
+		$mes = self::mes();
+		$xls = PrePlanillas::excel( $mes, wp_get_current_user()->display_name );
+
+		Auditoria::registrar( 'preplanilla.descargar', 'registro', null, null, array( 'mes' => $mes, 'trabajadores' => $xls['trabajadores'], 'hash' => $xls['hash'] ) );
+
+		nocache_headers();
+		header( 'Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' );
+		header( 'Content-Disposition: attachment; filename="' . $xls['nombre'] . '"' );
+		header( 'Content-Length: ' . strlen( $xls['contenido'] ) );
 		echo $xls['contenido']; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- archivo binario.
 		exit;
 	}

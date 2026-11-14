@@ -3,7 +3,7 @@
 Este archivo lleva lo hecho, lo pendiente y la bitácora del proyecto. Se actualiza cada vez que avanzamos.
 El detalle técnico de cada punto está en [docs/plan-tecnico.md](docs/plan-tecnico.md).
 
-**Estado actual:** MVP completo y **desplegado** en `https://asistencia.pekokis.com` (versión 0.5.0). En local está lista la **0.6.0**, que agrega: calendario de feriados, ausencias justificadas, aviso de datos personales, rol Gerencia, "nadie se aprueba a sí mismo" y copia del respaldo en la nube. Lo cubren 99 pruebas del núcleo y 130 de punta a punta. **Siguiente:** subir la 0.6.0, que el abogado revise el aviso, cargar los feriados, terminar el correo SMTP y la red del taller, y hacer el piloto. Después, la **fase 2** (horas y sueldos), que necesita las decisiones de gerencia de la sección 16 del plan.
+**Estado actual:** MVP completo y **desplegado** en `https://asistencia.pekokis.com` (versión 0.5.0). En local está lista la **0.7.0**: trae lo de la 0.6.0 (feriados, ausencias, aviso de datos, Gerencia, "nadie se aprueba a sí mismo", copia en la nube) y la primera entrega de la **fase 2**: cálculo del día, horas extra autorizadas, sueldos con historial y pre-planilla en Excel. La cubren 122 pruebas del núcleo y 152 de punta a punta. El escenario de Make que guarda el respaldo en Google Drive ya está activo. **Siguiente:** subir la 0.7.0, pegar el webhook de Make en producción, que el abogado revise el aviso, terminar el SMTP y la red del taller, hacer el piloto y revisar con el contador las reglas de horas.
 
 **Estrategia:** primero un MVP con las fases 0 y 1 del plan (registro de asistencia funcionando y conforme a la norma). Después, mejoras por etapas según lo que opine gerencia.
 
@@ -132,12 +132,13 @@ Leyenda: `[x]` hecho · `[ ]` pendiente · `[~]` en curso
   - "Integridad": estado de la cadena y último hash.
 
   Cada descarga queda en la auditoría con el SHA-256 del archivo.
-- [~] Respaldo mensual: el día 1 a las 06:00 se envía por correo el Excel del mes anterior (destino configurable), y también se puede enviar a mano. En Hostinger hace falta que el correo del sitio funcione (SMTP) y el cron real. **Copia en la nube:** si se configura un webhook (Make o n8n), el Excel también se envía firmado (HMAC); falta crear el escenario de Make con Google Drive
+- [~] Respaldo mensual: el día 1 a las 06:00 se envía por correo el Excel del mes anterior (destino configurable), y también se puede enviar a mano. En Hostinger hace falta que el correo del sitio funcione (SMTP) y el cron real.
+- [x] **Copia en la nube:** el Excel también se envía firmado (HMAC) a un webhook. El escenario de Make **"Respaldo asistencia → Google Drive"** (webhook → Google Drive, carpeta "Respaldos asistencia Pekokis" de admin1@pekokis.com) está activo y probado desde local. **Falta** pegar su URL en Exportar en producción.
 
 ### 7. Calidad y puesta en marcha
 - [x] Pruebas automáticas:
-  - 99 del núcleo (`composer test`);
-  - 130 de todo el flujo contra el WordPress local, con un autenticador simulado (`tests/integracion/flujo-marcas.php`);
+  - 122 del núcleo (`composer test`);
+  - 152 de todo el flujo contra el WordPress local, con un autenticador simulado (`tests/integracion/flujo-marcas.php`);
   - `tests/integracion/datos-demo.php` carga 5 trabajadores de ejemplo, con casos de hoy y de ayer, para ver el panel.
 - [ ] Pruebas en celulares reales: Android (Chrome) e iPhone (Safari)
 - [~] Aviso de datos personales (Ley 29733):
@@ -151,7 +152,17 @@ Leyenda: `[x]` hecho · `[ ]` pendiente · `[~]` en curso
 
 ## Después del MVP (según lo que pida gerencia)
 
-- [ ] **Fase 2 — Horas y sueldos:** varios horarios, calendario y feriados, cálculo del día, horas extra autorizadas, sábados, domingos y feriados, sueldos con historial, valor hora, permisos y sustentos, pre-planilla
+- [~] **Fase 2 — Horas y sueldos** (versión 0.7.0):
+  - [x] Varios horarios, calendario y feriados, ausencias justificadas (ya venían de la 0.4.0 y la 0.6.0).
+  - [x] Cálculo del día (`CalculoJornada`): tiempo trabajado, salidas pagadas, tardanza, exceso de refrigerio, salida anticipada, lo no trabajado, horas extra al 25 % y 35 %, descanso o feriado trabajado, horas a compensar con descanso y permanencia sin autorizar. Estado del día: completo, incompleto, por revisar, falta, justificado o descanso.
+  - [x] Horas extra autorizadas (Asistencia → Horas extra): el jefe autoriza una franja de su equipo, antes o después del día, con pago o descanso; nunca para sí mismo. Lo trabajado fuera de horario sin autorizar se avisa en Hoy y se muestra en el detalle del día.
+  - [x] Sueldos con historial (ficha del trabajador → Remuneración): mensual o por hora, con fecha de vigencia; un cambio cierra el anterior y un error se anula. Solo con `pka_ver_sueldos`; el historial de cambios oculta los sueldos a quien no los puede ver. Nadie registra su propio sueldo.
+  - [x] Reglas en Ajustes (sobretasas, tramo de 2 h, valor hora = sueldo ÷ 30 ÷ 8, tardanza desde la entrada o la tolerancia, descontar o no lo no trabajado, umbral del aviso).
+  - [x] Pre-planilla en Excel (Exportar): resumen por trabajador con montos estimados, detalle por día y hoja de reglas.
+  - [ ] **Revisar las reglas con el contador** (todas están marcadas como "por confirmar").
+  - [ ] Guardar los días calculados (`pka_dias`) si el cálculo al vuelo se vuelve lento.
+  - [ ] Permisos por horas con sustento y la regla de lactancia por fecha de nacimiento.
+  - [ ] Que Gerencia vea la pre-planilla (hoy solo RR.HH. y administradores, porque trae sueldos).
 - [ ] **Fase 3 — Dashboard e informes:** dashboard general, informe por trabajador, Excel y PDF
 - [ ] **Fase 4 — Notificaciones:** correo y luego WhatsApp
 
@@ -162,10 +173,10 @@ Leyenda: `[x]` hecho · `[ ]` pendiente · `[~]` en curso
 Vienen de la sección 16 del plan; se resuelven con gerencia y el contador.
 
 - [ ] Jornada: ¿lunes a viernes? ¿Sábados? ¿Cuánto dura el refrigerio y en qué franja?
-- [ ] Tolerancia y desde cuándo se cuenta la tardanza
+- [ ] Tolerancia y desde cuándo se cuenta la tardanza (ya es configurable en Ajustes)
 - [ ] Qué salidas cuentan como tiempo trabajado
-- [ ] Fórmula del valor hora y quién cobra por hora
-- [ ] Horas extra: quién las autoriza; ¿pago o descanso?
+- [ ] Fórmula del valor hora y quién cobra por hora (configurable; por defecto sueldo ÷ 30 ÷ 8)
+- [ ] Horas extra: quién las autoriza; ¿pago o descanso? (el sistema permite las dos por franja)
 - [ ] Qué jefe aprueba las solicitudes de quién
 - [ ] ¿Todos tienen smartphone con bloqueo de pantalla?
 - [ ] Texto del aviso de datos personales
@@ -174,6 +185,21 @@ Vienen de la sección 16 del plan; se resuelven con gerencia y el contador.
 ---
 
 ## Bitácora
+
+### 14-11-2026 (noche) — escenario de Make y versión 0.7.0 (fase 2)
+- **Make:** carpeta "Respaldos asistencia Pekokis" en el Drive de admin1@pekokis.com (creada con un escenario temporal que luego se borró), webhook "Respaldo asistencia Pekokis" y escenario **"Respaldo asistencia → Google Drive"** (Custom webhook → Upload a file, nombre y datos del campo `archivo`), activo. Prueba desde el WordPress local: llegó y se subió (2 operaciones). Dejé un Excel de demostración en esa carpeta: se puede borrar.
+  - La URL del webhook es el secreto. Make no verifica la firma `X-PKA-Firma`, porque para eso tendría que conocer la clave del plugin.
+- **Fase 2, versión 0.7.0:**
+  - En el núcleo: `ReglasPago`, `AutorizacionSobretiempo`, `CalculoJornada`, `Sueldo`, `ValidacionPago` y `PrePlanilla`. 23 pruebas nuevas, 122 en total.
+  - Base de datos versión 3: tablas `sueldos` y `sobretiempo`, más 8 reglas nuevas en los ajustes.
+  - En WordPress: `Jornadas` (junta marcas, horarios, calendario, ausencias, revisiones y sobretiempo), `Sueldos`, `Sobretiempo` y `PrePlanillas`. Las salidas que no pasaron por revisión, como las manuales del jefe, cuentan como aprobadas.
+  - Pantallas: Horas extra, Remuneración en la ficha, reglas en Ajustes, pre-planilla en Exportar, aviso en Hoy y resumen del cálculo en el detalle del día.
+  - El historial oculta los sueldos a quien no puede verlos, y tiene un grupo nuevo, "Horas extra y sueldos".
+  - Un día incompleto (sin salida) no se descuenta hasta corregirlo: se avisa en Observaciones.
+  - Prueba de punta a punta: 152 comprobaciones (22 nuevas).
+  - En el navegador revisé: Horas extra (con "Autorizar" rellenando la franja), detalle del día, Remuneración (un cambio cierra el sueldo anterior), reglas en Ajustes (queda en el historial), el aviso de Hoy y la descarga de la pre-planilla.
+- Zip `dist/pekokis-asistencia-0.7.0.zip` (226 archivos). La guía tiene el paso 10.7 actualizado, el 10.8 nuevo y las filas 15 y 16 del checklist.
+  - **Ojo:** `scripts/empaquetar.php` solo toma lo que está en git (`git ls-files`). El primer zip salió sin las clases nuevas: hay que hacer `git add` antes de empaquetar.
 
 ### 14-11-2026 (tarde) — versión 0.6.0
 - **Feriados, ausencias, aviso de datos, Gerencia, "nadie se aprueba a sí mismo" y respaldo en la nube.**

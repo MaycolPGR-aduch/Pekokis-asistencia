@@ -19,6 +19,7 @@ final class Historial {
 	public const GRUPOS = array(
 		'trabajadores' => array( 'Trabajadores, celulares y ausencias', array( 'trabajador.', 'activacion.', 'passkey.', 'ausencia.', 'aviso.' ) ),
 		'marcas'       => array( 'Marcas y correcciones', array( 'marca.', 'correccion.' ) ),
+		'pagos'        => array( 'Horas extra y sueldos', array( 'sobretiempo.', 'sueldo.', 'preplanilla.' ) ),
 		'ajustes'      => array( 'Ajustes, horarios, calendario, redes y pantallas', array( 'ajustes.', 'horario.', 'calendario.', 'red.', 'pantalla.' ) ),
 		'exportes'     => array( 'Descargas y respaldos', array( 'registro.', 'respaldo.', 'historial.' ) ),
 	);
@@ -57,6 +58,12 @@ final class Historial {
 		'registro.descargar'     => 'Excel del registro descargado',
 		'respaldo.enviar'        => 'Respaldo enviado por correo',
 		'historial.exportar'     => 'Historial descargado',
+		'sobretiempo.autorizar'  => 'Horas extra autorizadas',
+		'sobretiempo.anular'     => 'Horas extra anuladas',
+		'sueldo.agregar'         => 'Sueldo registrado',
+		'sueldo.anular'          => 'Sueldo anulado',
+		'ajustes.reglas'         => 'Cambio de las reglas de horas',
+		'preplanilla.descargar'  => 'Pre-planilla descargada',
 	);
 
 	private const CAMPOS = array(
@@ -104,6 +111,19 @@ final class Historial {
 		'dispositivo_id'              => 'Celular',
 		'ip'                          => 'IP',
 		'filas'                       => 'Filas',
+		'franja'                      => 'Franja',
+		'compensacion'                => 'Compensación',
+		'sueldo'                      => 'Sueldo',
+		'vigente_desde'               => 'Rige desde',
+		'trabajadores'                => 'Trabajadores',
+		'tasa_extra_1'                => 'Sobretasa primeras horas extra (%)',
+		'tasa_extra_2'                => 'Sobretasa siguientes horas extra (%)',
+		'tramo_extra_1_min'           => 'Minutos a la primera sobretasa',
+		'tasa_descanso'               => 'Sobretasa descanso o feriado (%)',
+		'horas_jornada_valor'         => 'Horas para el valor hora',
+		'descontar_no_trabajado'      => 'Descontar lo no trabajado',
+		'tardanza_desde'              => 'Tardanza desde',
+		'aviso_permanencia_min'       => 'Aviso de permanencia (min)',
 	);
 
 	/**
@@ -178,6 +198,11 @@ final class Historial {
 
 		$c    = array( '1=1' );
 		$zona = Ajustes::zona();
+
+		// Los sueldos solo los ve quien puede ver sueldos (Gerencia y jefes, no).
+		if ( ! current_user_can( Capacidades::VER_SUELDOS ) ) {
+			$c[] = $wpdb->prepare( 'accion NOT LIKE %s', 'sueldo.%' );
+		}
 		$utc  = new DateTimeZone( 'UTC' );
 
 		if ( ! empty( $filtros['desde'] ) && ValidacionTrabajador::esFecha( $filtros['desde'] ) ) {

@@ -39,6 +39,50 @@ final class PantallaDia {
 		return add_query_arg( array( 'page' => Menu::SLUG, 'vista' => 'dia', 'trabajador' => $trabajadorId, 'dia' => $dia ), admin_url( 'admin.php' ) );
 	}
 
+	/** Resumen del cálculo del día (fase 2): horas, tardanza, horas extra y tiempo sin autorizar. */
+	private static function calculo( array $t, string $dia ): void {
+		$j = \Pekokis\Asistencia\WordPress\Jornadas::delDia( $t, $dia );
+
+		if ( ! $j || ( ! $j->trabajoAlgo() && \Pekokis\Asistencia\Nucleo\CalculoJornada::DESCANSO === $j->estado ) ) {
+			return;
+		}
+
+		$h      = static fn( int $m ): string => \Pekokis\Asistencia\Nucleo\PrePlanilla::horas( $m );
+		$partes = array( 'Trabajó ' . $h( $j->minutosTrabajados ) . ' h' );
+
+		if ( $j->laborable ) {
+			$partes[] = 'dentro del horario ' . $h( $j->minutosOrdinarios ) . ' h (se esperaban ' . $h( $j->minutosEsperados ) . ' h, sin el refrigerio)';
+		}
+
+		foreach ( array(
+			'tardanza'          => array( $j->minutosTardanza, 'tardanza' ),
+			'refrigerio'        => array( $j->minutosExcesoRefrigerio, 'de más en el refrigerio' ),
+			'anticipada'        => array( $j->minutosSalidaAnticipada, 'de salida anticipada' ),
+			'pagadas'           => array( $j->minutosSalidasPagadas, 'en salidas pagadas' ),
+			'extra'             => array( $j->minutosExtra1 + $j->minutosExtra2, 'de horas extra autorizadas' ),
+			'descanso'          => array( $j->minutosDescansoTrabajado, 'en descanso o feriado, autorizado' ),
+			'compensables'      => array( $j->minutosCompensables, 'a compensar con descanso' ),
+		) as [ $min, $texto ] ) {
+			if ( $min > 0 ) {
+				$partes[] = $min . ' min ' . $texto;
+			}
+		}
+		?>
+		<div class="notice notice-<?php echo $j->minutosSinAutorizar >= \Pekokis\Asistencia\WordPress\Ajustes::reglasPago()->avisoPermanenciaMin || \Pekokis\Asistencia\Nucleo\CalculoJornada::FALTA === $j->estado ? 'warning' : 'info'; ?> inline">
+			<p>
+				<strong><?php echo esc_html( \Pekokis\Asistencia\Nucleo\CalculoJornada::ESTADOS[ $j->estado ] ?? $j->estado ); ?>.</strong>
+				<?php echo esc_html( implode( ' · ', $partes ) . '.' ); ?>
+				<?php if ( $j->minutosSinAutorizar > 0 ) : ?>
+					<br><strong><?php echo (int) $j->minutosSinAutorizar; ?> min fuera de su horario sin autorizar.</strong>
+					<?php if ( current_user_can( Capacidades::APROBAR ) && ! Trabajadores::esPropio( (int) $t['id'] ) ) : ?>
+						<a href="<?php echo esc_url( PantallaHorasExtra::url( array( 'trabajador' => (int) $t['id'], 'fecha' => $dia ) ) ); ?>">Autorizar horas extra</a>
+					<?php endif; ?>
+				<?php endif; ?>
+			</p>
+		</div>
+		<?php
+	}
+
 	public static function pintar(): void {
 		$id  = isset( $_GET['trabajador'] ) ? absint( $_GET['trabajador'] ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$dia = isset( $_GET['dia'] ) ? sanitize_text_field( wp_unslash( $_GET['dia'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
@@ -74,6 +118,8 @@ final class PantallaDia {
 			<?php if ( null !== $ausencia || '' !== $feriado ) : ?>
 				<div class="notice notice-info inline"><p><strong><?php echo esc_html( null !== $ausencia ? 'Ausencia justificada: ' . $ausencia : $feriado ); ?>.</strong> Este día no cuenta como falta.</p></div>
 			<?php endif; ?>
+
+			<?php self::calculo( $t, $dia ); ?>
 
 			<table class="widefat striped">
 				<thead><tr><th>Hora</th><th>Marca</th><th>Prueba</th><th>Origen</th><th>Nota</th><th></th></tr></thead>
