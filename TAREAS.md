@@ -29,7 +29,11 @@ Leyenda: `[x]` hecho · `[ ]` pendiente · `[~]` en curso
     - Cloudflare: registro A a `157.173.214.139` y CNAME `www.asistencia`, los dos con nube gris;
     - certificado Let's Encrypt para los dos nombres, válido hasta el 12-02-2027;
     - `http` y `www` redirigen a `https://asistencia.pekokis.com`, y WordPress ya usa ese dominio.
-  - [ ] Pasos 3 a 9 de la guía (PHP, caché, plugins, wp-config, zip 0.5.0, cron, correo, usuarios)
+  - [x] Pasos 3 a 6: PHP 8.3, caché apagada, plugins de Hostinger fuera, `wp-config.php` (secreto, `DISABLE_WP_CRON`), plugin 0.5.0 y tema vacío. "Estado del sistema" en verde en 11 de 13 puntos
+  - [ ] Paso 7: tarea de cron en hPanel cada 5 min (con `DISABLE_WP_CRON`, sin ella no corre nada)
+  - [ ] Paso 8: correo SMTP y correo de RR.HH. en Exportar; probar "Enviar respaldo"
+  - [ ] Paso 9: usuarios de RR.HH. y jefes, y Two Factor
+  - [ ] Paso 10: en el taller, agregar la red del WiFi y activar la pantalla
 - [x] **(Maycol)** Subdominio `asistencia.pekokis.com` en Cloudflare en modo solo DNS, más SSL de Hostinger. Paso 2 de la guía
 - [ ] **(Maycol)** En el taller: agregar la red del WiFi y activar la pantalla. Paso 10 de la guía
 - [x] Entorno local con Laragon:
@@ -197,6 +201,10 @@ Vienen de la sección 16 del plan; se resuelven con gerencia y el contador.
   - La IP del servidor sale en Hosting → Detalles del plan → "Dirección IP del sitio web": `157.173.214.139`.
   - Comprobado desde aquí: certificado válido para `asistencia` y `www.asistencia`, redirecciones a https y WordPress con el dominio correcto.
   - La portada carga un script de `cdn-reach.hostinger.com` (plugin "Reach" de Hostinger): se quita al borrar los plugins de Hostinger en el paso 4.
+- **Plugin instalado en producción (0.5.0)**:
+  - "Estado del sistema" en verde en 11 de 13 puntos; faltan el correo del respaldo y la presencia.
+  - El primer secreto de `PKA_SECRETO` quedó escrito en el chat, así que se recomendó generar otro antes de usar el sistema.
+  - Solo hay registro A (IPv4) para el subdominio, así que todos los celulares llegan por IPv4 y la red del taller es una sola IPv4.
 
 ### 13-11-2026
 - Plan técnico escrito en `docs/plan-tecnico.md`: 7 módulos, 4 fases, modelo de datos, API, seguridad y aspectos legales.
