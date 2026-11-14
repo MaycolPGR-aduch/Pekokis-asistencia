@@ -78,6 +78,23 @@ final class Dispositivos {
 		$wpdb->update( Tablas::nombre( 'dispositivos' ), array( 'ultimo_uso' => Peticion::ahoraUtc() ), array( 'id' => $dispositivoId ) );
 	}
 
+	/**
+	 * Al activar un celular nuevo, revoca los demás celulares y llaves del trabajador.
+	 *
+	 * @return int Cantidad de llaves revocadas.
+	 */
+	public static function revocarOtros( int $trabajadorId, int $dispositivoNuevo, int $credencialNueva ): int {
+		global $wpdb;
+
+		$ahora = Peticion::ahoraUtc();
+		$d     = Tablas::nombre( 'dispositivos' );
+		$c     = Tablas::nombre( 'credenciales' );
+
+		$wpdb->query( $wpdb->prepare( "UPDATE {$d} SET revocado_en = %s WHERE trabajador_id = %d AND id <> %d AND revocado_en IS NULL", $ahora, $trabajadorId, $dispositivoNuevo ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+		return (int) $wpdb->query( $wpdb->prepare( "UPDATE {$c} SET revocada_en = %s WHERE trabajador_id = %d AND id <> %d AND revocada_en IS NULL", $ahora, $trabajadorId, $credencialNueva ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+	}
+
 	/** Revoca todos los celulares y passkeys de un trabajador (cese o cambio de celular). */
 	public static function revocarTodo( int $trabajadorId ): void {
 		global $wpdb;

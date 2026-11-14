@@ -3,7 +3,7 @@
 Este archivo lleva lo hecho, lo pendiente y la bitácora del proyecto. Se actualiza cada vez que avanzamos.
 El detalle técnico de cada punto está en [docs/plan-tecnico.md](docs/plan-tecnico.md).
 
-**Estado actual:** el MVP funcional está completo en el WordPress local: perfiles, passkeys, marcas, pantalla QR, panel del día, revisión, correcciones, export mensual y respaldo. Lo cubren 81 pruebas del núcleo y 68 de punta a punta. El despliegue está preparado (zip 0.2.0, guía paso a paso y diagnóstico en Ajustes). **Siguiente: Maycol monta el sitio en Hostinger** siguiendo [docs/despliegue-hostinger.md](docs/despliegue-hostinger.md), y después se hace el piloto con celulares reales. Queda de calidad: visor de auditoría, manifest/PWA y aviso de IP nueva.
+**Estado actual:** el MVP funcional está completo en el WordPress local: perfiles, passkeys, marcas, pantalla QR, panel del día, revisión, correcciones, export mensual y respaldo. También están la app instalable (PWA), "Mis marcas del mes" y la revocación automática del celular anterior. Lo cubren 81 pruebas del núcleo y 75 de punta a punta. El despliegue está preparado (zip 0.3.0, guía paso a paso y diagnóstico en Ajustes). **Siguiente: Maycol monta el sitio en Hostinger** siguiendo [docs/despliegue-hostinger.md](docs/despliegue-hostinger.md), y después se hace el piloto con celulares reales. Queda de calidad: visor de auditoría, aviso de IP nueva y pantalla de horarios.
 
 **Estrategia:** primero un MVP con las fases 0 y 1 del plan (registro de asistencia funcionando y conforme a la norma). Después, mejoras por etapas según lo que opine gerencia.
 
@@ -46,7 +46,7 @@ Leyenda: `[x]` hecho · `[ ]` pendiente · `[~]` en curso
 - [x] Enlace de activación de un solo uso: vence en 24 h y el token va después de `#`. Con él se registra la passkey, con verificación del usuario obligatoria y attestation "none"
 - [x] Identificación con huella y ticket de marca (2 min, un solo uso). Límite de 10 fallos por IP cada 15 min
 - [x] Un celular por trabajador. Al cesar se revocan el celular y la passkey; para cambiar de celular se genera un enlace nuevo
-- [ ] Al activar un celular nuevo, revocar automáticamente la passkey del anterior
+- [x] Al activar un celular nuevo se revocan solos la llave y el celular anteriores; queda en la auditoría cuántas llaves se revocaron
 
 ### 3. Presencia
 - [x] Redes autorizadas y modo de presencia (Asistencia → Ajustes): muestra tu IP, avisa si es CGNAT, permite agregar, activar y desactivar redes, y elegir uno de los 4 modos
@@ -60,7 +60,16 @@ Leyenda: `[x]` hecho · `[ ]` pendiente · `[~]` en curso
 
 ### 4. Marcas
 - [x] Máquina de estados, validación en el servidor, antirrebote y cadena de hashes. Usa un candado por trabajador y otro para la cadena en MySQL. API: `/identificar`, `/marcas` y `/presencia`
-- [~] App del trabajador en `/` y `/activar/`: estado, botones válidos, motivos, nota, marcas de hoy, aviso de presencia y código de la pantalla. Ya se vio en el navegador (pantallas de inicio y de la tablet). Falta probar la huella real, el manifest/PWA y "mis marcas" del mes
+- [~] App del trabajador en `/` y `/activar/`: estado, botones válidos, motivos, nota, marcas de hoy, aviso de presencia y código de la pantalla. Ya se vio en el navegador (pantallas de inicio y de la tablet). Falta probar la huella real
+- [x] "Mis marcas del mes" en la app:
+  - días con marcas, horas en el taller, tardanzas con sus minutos, días sin salida y solicitudes pendientes;
+  - se ve el mes actual y el anterior;
+  - no gasta el ticket, así que después se puede marcar sin volver a poner la huella.
+- [~] App instalable (PWA):
+  - el manifest está en `/manifest.webmanifest`, con íconos de 192 y 512 px, incluido el adaptable de Android, y el ícono de iPhone;
+  - el service worker en `/sw.js` solo guarda en caché los archivos estáticos, nunca la API ni las páginas.
+
+  Falta comprobar en Chrome y en el celular que se instala: el navegador integrado de Claude no admite service workers, ni siquiera uno de prueba de una línea
 - [x] Salida por emergencia sin presencia, marcada para revisión
 
 ### 5. Revisión y auditoría
@@ -91,7 +100,7 @@ Leyenda: `[x]` hecho · `[ ]` pendiente · `[~]` en curso
 ### 7. Calidad y puesta en marcha
 - [x] Pruebas automáticas:
   - 81 del núcleo (`composer test`);
-  - 68 de todo el flujo contra el WordPress local, con un autenticador simulado (`tests/integracion/flujo-marcas.php`);
+  - 75 de todo el flujo contra el WordPress local, con un autenticador simulado (`tests/integracion/flujo-marcas.php`);
   - `tests/integracion/datos-demo.php` carga 5 trabajadores de ejemplo, con casos de hoy y de ayer, para ver el panel.
 - [ ] Pruebas en celulares reales: Android (Chrome) e iPhone (Safari)
 - [ ] Aviso de datos personales para los trabajadores (revisado por el abogado)
@@ -124,6 +133,21 @@ Vienen de la sección 16 del plan; se resuelven con gerencia y el contador.
 ---
 
 ## Bitácora
+
+### 14-11-2026
+- **Las tres mejoras para el piloto (versión 0.3.0)**:
+  - **Cambio de celular:** al activar uno nuevo se revocan la llave y el celular anteriores (`Dispositivos::revocarOtros`). Probado: la llave vieja recibe 401.
+  - **"Mis marcas del mes":** `POST /yo/mes` y una pantalla en la app con el resumen y la lista por día. Se puede ver el mes actual o el anterior, y no gasta el ticket. En el núcleo se separó `ResumenDia::minutosTardanza` para reutilizarlo.
+  - **PWA:** `/manifest.webmanifest`, `/sw.js` (solo guarda estáticos) e íconos generados con `scripts/generar-iconos.php` (reloj blanco a las 9:00 sobre rosa Pekokis).
+- **Pruebas:**
+  - 81 del núcleo y 75 de punta a punta (7 nuevas), todas en verde, con `debug.log` vacío;
+  - el manifest, el service worker y los 3 íconos responden bien.
+- **Sin probar:**
+  - la instalación de la PWA, porque el navegador integrado de Claude no admite service workers (falla incluso con uno de una línea);
+  - la pantalla "Mis marcas" vista con una huella real.
+
+  Las dos cosas quedan en el checklist del piloto (filas 2, 11 y 12).
+- Zip nuevo: `dist/pekokis-asistencia-0.3.0.zip` (203 archivos). Se borró el 0.2.0 y la guía apunta al nuevo.
 
 ### 13-11-2026
 - Plan técnico escrito en `docs/plan-tecnico.md`: 7 módulos, 4 fases, modelo de datos, API, seguridad y aspectos legales.

@@ -283,6 +283,9 @@
 			mensaje || null,
 			botones,
 			listaHoy( datos.hoy ),
+			el( 'button', { class: 'secundario', type: 'button', texto: 'Mis marcas del mes', alHacerClic: function () {
+				vistaMes( datos, '' );
+			} } ),
 			el( 'button', { class: 'secundario', type: 'button', texto: 'Olvidé marcar', alHacerClic: function () {
 				vistaOlvido( datos );
 			} } ),
@@ -290,6 +293,63 @@
 				vistaInicio();
 			} } )
 		);
+	}
+
+	/** Resumen del mes: no gasta el ticket, así que después todavía se puede marcar. */
+	function vistaMes( datos, mes ) {
+		if ( ! sesion ) {
+			vistaInicio();
+			return;
+		}
+
+		pintar( el( 'p', { class: 'cargando', texto: 'Cargando tus marcas…' } ) );
+
+		api( 'yo/mes', { ticket: sesion.ticket, mes: mes } ).then( function ( r ) {
+			var t = r.totales;
+			var resumen = el( 'div', { class: 'tarjeta resumen-mes' }, [
+				dato( t.dias, 1 === t.dias ? 'día con marcas' : 'días con marcas' ),
+				dato( t.tiempo, 'horas en el taller' ),
+				dato( t.tardanzas, 1 === t.tardanzas ? 'tardanza' : 'tardanzas', t.tardanzas ? t.minutos_tardanza + ' min en total' : '' ),
+				dato( t.incompletos, 1 === t.incompletos ? 'día sin salida' : 'días sin salida' ),
+			] );
+
+			var lista = el( 'ul', { class: 'lista-mes' }, r.dias.map( function ( d ) {
+				var detalle = [ ( d.ingreso || '—' ) + ' – ' + ( d.salida || 'sin salida' ), d.tiempo + ' h' ];
+				return el( 'li', { class: d.incompleto ? 'incompleto' : '' }, [
+					el( 'span', { class: 'dia', texto: d.etiqueta } ),
+					el( 'span', { class: 'horas', texto: detalle.join( ' · ' ) } ),
+					d.tardanza ? el( 'span', { class: 'etiqueta tarde', texto: '+' + d.tardanza + ' min' } ) : null,
+					d.incompleto ? el( 'span', { class: 'etiqueta falta', texto: 'Sin salida' } ) : null,
+				] );
+			} ) );
+
+			pintar(
+				el( 'h1', {}, [ 'Mis marcas · ', el( 'em', { texto: r.etiqueta } ) ] ),
+				resumen,
+				r.pendientes ? aviso( 'ok', 'Tienes ' + r.pendientes + ( 1 === r.pendientes ? ' solicitud pendiente' : ' solicitudes pendientes' ) + ' de aprobar.' ) : null,
+				r.dias.length ? lista : el( 'p', { class: 'ayuda', texto: 'No hay marcas este mes.' } ),
+				el( 'button', { class: 'secundario', type: 'button', texto: r.otro.etiqueta, alHacerClic: function () {
+					vistaMes( datos, r.otro.mes );
+				} } ),
+				el( 'button', { class: 'secundario', type: 'button', texto: 'Volver', alHacerClic: function () {
+					vistaEstado( datos );
+				} } )
+			);
+		} ).catch( function ( error ) {
+			if ( 'pka_ticket' === error.codigo ) {
+				vistaInicio( aviso( 'error', error.message ) );
+				return;
+			}
+			vistaEstado( datos, aviso( 'error', error.message ) );
+		} );
+	}
+
+	function dato( valor, etiqueta, nota ) {
+		return el( 'div', { class: 'dato' }, [
+			el( 'strong', { texto: String( valor ) } ),
+			el( 'span', { texto: etiqueta } ),
+			nota ? el( 'small', { texto: nota } ) : null,
+		] );
 	}
 
 	/** Solicitud de corrección: queda pendiente hasta que el jefe la apruebe. */
@@ -602,6 +662,11 @@
 	// ---------- arranque ----------
 
 	reloj();
+
+	// App instalable: el service worker solo guarda los archivos estáticos.
+	if ( 'serviceWorker' in navigator && config.sw && 'pantalla' !== config.vista ) {
+		navigator.serviceWorker.register( config.sw ).catch( function () {} );
+	}
 
 	if ( 'activar' === config.vista ) {
 		vistaActivar();

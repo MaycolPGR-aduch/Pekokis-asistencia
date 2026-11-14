@@ -11,7 +11,7 @@ Lo que tienes que hacer tú está marcado con ☐. Los nombres de los menús de 
 ## 0. Antes de empezar
 
 - ☐ **Recursos del plan.** En hPanel, revisa qué mide el 77 % de "Uso de recursos". Este sitio consume poco, pero suma archivos (unos 3.000 de WordPress y 200 del plugin) y un cron cada 5 minutos.
-- ☐ **El zip del plugin.** Ya está en `dist/pekokis-asistencia-0.2.0.zip`. Si cambia el código, se vuelve a generar con:
+- ☐ **El zip del plugin.** Ya está en `dist/pekokis-asistencia-0.3.0.zip`. Si cambia el código, se vuelve a generar con:
   ```bash
   php scripts/empaquetar.php
   ```
@@ -74,7 +74,7 @@ No lo compartas ni lo subas a git. Si algún día cambia, solo se invalidan los 
 
 ## 6. Instalar el plugin y el tema
 
-1. ☐ **Plugins → Añadir nuevo → Subir plugin:** sube `pekokis-asistencia-0.2.0.zip` y actívalo. Al activarse crea sus tablas, roles, motivos y el horario base.
+1. ☐ **Plugins → Añadir nuevo → Subir plugin:** sube `pekokis-asistencia-0.3.0.zip` y actívalo. Al activarse crea sus tablas, roles, motivos y el horario base.
 2. ☐ **Apariencia → Temas:** activa **"Pekokis Asistencia (vacío)"** y borra los demás temas, salvo uno por defecto como respaldo.
 3. ☐ Revisa **Asistencia → Ajustes → Estado del sistema.**
 
@@ -118,7 +118,7 @@ Es igual que en producción: **nunca** se llama a `wp-cron.php` por URL.
 | # | Prueba | Android (Chrome) | iPhone (Safari) |
 |---|---|---|---|
 | 1 | Activar el celular con el enlace (huella, rostro o PIN) | ☐ | ☐ |
-| 2 | Agregar la web a la pantalla de inicio | ☐ | ☐ |
+| 2 | Instalar la app: Android → menú ⋮ → "Instalar app"; iPhone → Compartir → "Agregar a inicio". Debe abrir con el ícono rosa del reloj y sin barra del navegador | ☐ | ☐ |
 | 3 | Marcar entrada conectado al WiFi del taller | ☐ | ☐ |
 | 4 | Con datos móviles: escanear el QR con la cámara y marcar | ☐ | ☐ |
 | 5 | Con datos móviles: escribir el código de 6 dígitos y marcar | ☐ | ☐ |
@@ -127,6 +127,8 @@ Es igual que en producción: **nunca** se llama a `wp-cron.php` por URL.
 | 8 | "Olvidé marcar" y que el jefe lo apruebe en Hoy | ☐ | ☐ |
 | 9 | Intentar activar a otra persona en el mismo celular (debe negarlo) | ☐ | ☐ |
 | 10 | En wp-admin: Hoy muestra a todos bien; descargar el Excel del mes | ☐ | — |
+| 11 | "Mis marcas del mes": ver los días, tardanzas y horas, y el mes anterior | ☐ | ☐ |
+| 12 | Cambio de celular: generar un enlace nuevo, activarlo en otro celular y comprobar que el anterior ya no entra | ☐ | ☐ |
 
 Anota en [TAREAS.md](../TAREAS.md) lo que falle, con el celular y el navegador.
 

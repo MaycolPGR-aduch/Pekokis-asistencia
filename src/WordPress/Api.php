@@ -8,6 +8,7 @@ use Pekokis\Asistencia\Nucleo\Accion;
 use Pekokis\Asistencia\Nucleo\Estado;
 use Pekokis\Asistencia\Nucleo\MaquinaEstados;
 use Pekokis\Asistencia\Nucleo\Motivo;
+use Pekokis\Asistencia\Nucleo\ResumenDia;
 use Pekokis\Asistencia\Nucleo\SolicitudMarca;
 use Pekokis\Asistencia\Nucleo\TotalesDia;
 use Pekokis\Asistencia\Nucleo\ValidadorMarca;
@@ -44,6 +45,7 @@ final class Api {
 		register_rest_route( self::ESPACIO, '/identificar', array( 'methods' => 'POST', 'callback' => array( self::class, 'identificar' ), 'permission_callback' => $publica ) );
 		register_rest_route( self::ESPACIO, '/marcas', array( 'methods' => 'POST', 'callback' => array( self::class, 'marcar' ), 'permission_callback' => $publica ) );
 		register_rest_route( self::ESPACIO, '/presencia', array( 'methods' => 'GET', 'callback' => array( self::class, 'presencia' ), 'permission_callback' => $publica ) );
+		register_rest_route( self::ESPACIO, '/yo/mes', array( 'methods' => 'POST', 'callback' => array( self::class, 'miMes' ), 'permission_callback' => $publica ) );
 		register_rest_route( self::ESPACIO, '/correcciones', array( 'methods' => 'POST', 'callback' => array( self::class, 'solicitarCorreccion' ), 'permission_callback' => $publica ) );
 		register_rest_route( self::ESPACIO, '/presencia/codigo', array( 'methods' => 'POST', 'callback' => array( self::class, 'presenciaCodigo' ), 'permission_callback' => $publica ) );
 		register_rest_route( self::ESPACIO, '/pantalla/codigo', array( 'methods' => 'GET', 'callback' => array( self::class, 'pantallaCodigo' ), 'permission_callback' => $publica ) );
@@ -151,7 +153,19 @@ final class Api {
 		}
 
 		Activaciones::consumir( (int) $activacion['activacion_id'] );
-		Auditoria::registrar( 'passkey.registrar', 'trabajador', $trabajadorId, null, array( 'credencial_id' => $credencial, 'dispositivo_id' => $dispositivo ), '', $trabajadorId );
+
+		// Cambio de celular: la llave y el celular anteriores dejan de servir en el acto.
+		$revocadas = Dispositivos::revocarOtros( $trabajadorId, $dispositivo, $credencial );
+
+		Auditoria::registrar(
+			'passkey.registrar',
+			'trabajador',
+			$trabajadorId,
+			null,
+			array( 'credencial_id' => $credencial, 'dispositivo_id' => $dispositivo, 'llaves_anteriores_revocadas' => $revocadas ),
+			'',
+			$trabajadorId
+		);
 
 		return self::respuesta( array( 'nombre' => $activacion['nombres'] ) );
 	}
@@ -350,6 +364,74 @@ final class Api {
 				),
 				$marcas
 			),
+		);
+	}
+
+	/**
+	 * "Mis marcas del mes": días, ingreso, salida, tardanzas y tiempo en el taller.
+	 * Solo lee: el ticket sigue sirviendo para marcar después.
+	 */
+	public static function miMes( WP_REST_Request $peticion ): WP_REST_Response|WP_Error {
+		global $wpdb;
+
+		$ticket = Temporales::leer( 'ticket', (string) $peticion->get_param( 'ticket' ) );
+
+		if ( null === $ticket ) {
+			return new WP_Error( 'pka_ticket', 'Pasaron más de 2 minutos. Vuelve a poner tu huella.', array( 'status' => 401 ) );
+		}
+
+		$trabajadorId = (int) $ticket['trabajador_id'];
+		$trabajador   = Trabajadores::buscar( $trabajadorId );
+		$zona         = Ajustes::zona();
+		$actual       = new DateTimeImmutable( 'first day of this month', $zona );
+		$anterior     = $actual->modify( '-1 month' );
+
+		// Solo el mes actual y el anterior: lo demás lo ve RR.HH.
+		$pedido = (string) $peticion->get_param( 'mes' ) === $anterior->format( 'Y-m' ) ? $anterior : $actual;
+		$desde  = $pedido->format( 'Y-m-d' );
+		$hasta  = min( $pedido->modify( 'last day of this month' )->format( 'Y-m-d' ), Ajustes::diaLaboral()->de( new DateTimeImmutable( 'now', new DateTimeZone( 'UTC' ) ) ) );
+		$marcas = Marcas::delRango( array( $trabajadorId ), $desde, $hasta )[ $trabajadorId ] ?? array();
+		$hora   = static fn( ?DateTimeImmutable $x ): ?string => $x ? $x->setTimezone( $zona )->format( 'H:i' ) : null;
+		$hm     = static fn( int $min ): string => sprintf( '%d:%02d', intdiv( $min, 60 ), $min % 60 );
+
+		$dias    = array();
+		$totales = array( 'dias' => 0, 'tardanzas' => 0, 'minutos_tardanza' => 0, 'incompletos' => 0, 'minutos' => 0 );
+
+		krsort( $marcas );
+
+		foreach ( $marcas as $dia => $delDia ) {
+			$tot      = TotalesDia::calcular( $delDia );
+			$tardanza = $trabajador ? ResumenDia::minutosTardanza( $tot->primeraEntrada, Horarios::delDia( (int) $trabajador['horario_id'], $dia ), $dia, $zona ) : 0;
+
+			$dias[] = array(
+				'fecha'      => $dia,
+				'etiqueta'   => wp_date( 'D j', ( new DateTimeImmutable( $dia . ' 12:00', $zona ) )->getTimestamp(), $zona ),
+				'ingreso'    => $hora( $tot->primeraEntrada ),
+				'salida'     => $hora( $tot->ultimaSalida ),
+				'tardanza'   => $tardanza,
+				'tiempo'     => $hm( $tot->minutosDentro ),
+				'incompleto' => $tot->incompleto,
+			);
+
+			++$totales['dias'];
+			$totales['tardanzas']        += $tardanza > 0 ? 1 : 0;
+			$totales['minutos_tardanza'] += $tardanza;
+			$totales['incompletos']      += $tot->incompleto ? 1 : 0;
+			$totales['minutos']          += $tot->minutosDentro;
+		}
+
+		$c          = Tablas::nombre( 'correcciones' );
+		$pendientes = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$c} WHERE trabajador_id = %d AND estado = 'pendiente'", $trabajadorId ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+		return self::respuesta(
+			array(
+				'mes'        => $pedido->format( 'Y-m' ),
+				'etiqueta'   => wp_date( 'F Y', $pedido->getTimestamp(), $zona ),
+				'otro'       => $pedido == $actual ? array( 'mes' => $anterior->format( 'Y-m' ), 'etiqueta' => 'Mes anterior' ) : array( 'mes' => $actual->format( 'Y-m' ), 'etiqueta' => 'Este mes' ), // phpcs:ignore Universal.Operators.StrictComparisons.LooseEqual
+				'dias'       => $dias,
+				'totales'    => array( 'tiempo' => $hm( $totales['minutos'] ) ) + $totales,
+				'pendientes' => $pendientes,
+			)
 		);
 	}
 

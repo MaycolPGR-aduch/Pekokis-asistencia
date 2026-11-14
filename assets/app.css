@@ -227,6 +227,61 @@ input[type="text"][inputmode="numeric"] {
 	margin-bottom: 12px;
 }
 
+/* Mis marcas del mes */
+.resumen-mes {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 14px;
+}
+
+.dato {
+	display: flex;
+	flex-direction: column;
+}
+
+.dato strong {
+	font-size: 1.6rem;
+	line-height: 1.1;
+	font-variant-numeric: tabular-nums;
+	color: var(--rosa);
+}
+
+.dato span { font-size: .9rem; color: var(--gris); }
+.dato small { font-size: .8rem; color: var(--gris); }
+
+.lista-mes {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: grid;
+	gap: 8px;
+}
+
+.lista-mes li {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 4px 10px;
+	padding: 10px 14px;
+	border: 2px solid var(--borde);
+	border-radius: 14px;
+	background: var(--blanco);
+}
+
+.lista-mes li.incompleto { border-color: var(--error); }
+.lista-mes .dia { font-weight: 700; min-width: 3.6em; text-transform: capitalize; }
+.lista-mes .horas { font-variant-numeric: tabular-nums; flex: 1; }
+
+.etiqueta {
+	font-size: .8rem;
+	font-weight: 700;
+	padding: 2px 8px;
+	border-radius: 999px;
+}
+
+.etiqueta.tarde { background: #fff1db; color: #8a4b00; }
+.etiqueta.falta { background: var(--error-suave); color: var(--error); }
+
 /* Pantalla de la entrada (tablet) */
 .vista-pantalla .app { max-width: 720px; text-align: center; }
 .vista-pantalla .presencia { display: none; }

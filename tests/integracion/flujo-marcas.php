@@ -89,6 +89,18 @@ $token2 = substr( Activaciones::generar( $id2 ), -32 );
 [ $st, $r ] = $api( 'POST', 'activacion/opciones', array( 'token' => $token2 ) );
 $comprobar( 'un celular = un trabajador', 409 === $st, (string) $st );
 
+// Cambio de celular: un enlace nuevo y otra llave. La anterior deja de servir sola.
+$celularViejo = $celular;
+$celular      = new AutenticadorSimulado( Passkeys::rpId(), Passkeys::origen() );
+$tokenNuevo   = substr( Activaciones::generar( $id ), -32 );
+[ , $op ]     = $api( 'POST', 'activacion/opciones', array( 'token' => $tokenNuevo ) );
+[ $st ]       = $api( 'POST', 'activacion/completar', array( 'token' => $tokenNuevo, 'reto' => $op['reto'], 'credencial' => $celular->crear( $op['publicKey']['challenge'] ) ) );
+$comprobar( 'cambio de celular: se activa la llave nueva', 200 === $st );
+[ , $op ] = $api( 'POST', 'identificar/opciones' );
+[ $st ]   = $api( 'POST', 'identificar', array( 'reto' => $op['reto'], 'credencial' => $celularViejo->firmar( $op['publicKey']['challenge'] ) ) );
+$comprobar( 'la llave del celular anterior ya no entra', 401 === $st, (string) $st );
+$comprobar( 'queda una sola llave activa', 1 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Tablas::nombre( 'credenciales' ) . ' WHERE trabajador_id = %d AND revocada_en IS NULL', $id ) ) ); // phpcs:ignore
+
 // ---- 3. Identificación y marcas.
 WP_CLI::line( '3. Marcas' );
 $identificar = static function ( bool $verificado = true ) use ( $api, $celular ): array {
@@ -228,6 +240,16 @@ $comprobar( 'la marca anulada sigue en la tabla', 1 === (int) $wpdb->get_var( $w
 $comprobar( 'y ayer vuelve a estar sin salida', array( 'incompleto' ) === $tipos( $ayer ) );
 $fin2 = \Pekokis\Asistencia\WordPress\Correcciones::marcaManual( $id, $ayer, '19:35', \Pekokis\Asistencia\Nucleo\Accion::FIN_JORNADA, null, 'Hora correcta' );
 $comprobar( 'se registra la salida con la hora correcta', is_int( $fin2 ) );
+
+// ---- 3d-bis. "Mis marcas del mes".
+[ , $id9 ] = $identificar();
+[ $st, $mes ] = $api( 'POST', 'yo/mes', array( 'ticket' => $id9['ticket'], 'mes' => substr( $ayer, 0, 7 ) ) );
+$diaAyer      = array_values( array_filter( $mes['dias'] ?? array(), static fn( $d ) => $ayer === $d['fecha'] ) )[0] ?? array();
+$comprobar( 'mis marcas: ayer con ingreso 09:00, salida 19:35 y sin tardanza', 200 === $st && '09:00' === ( $diaAyer['ingreso'] ?? '' ) && '19:35' === ( $diaAyer['salida'] ?? '' ) && 0 === ( $diaAyer['tardanza'] ?? -1 ), wp_json_encode( $diaAyer ) );
+$comprobar( 'mis marcas: 10 h 35 min en el taller ayer', '10:35' === ( $diaAyer['tiempo'] ?? '' ), (string) ( $diaAyer['tiempo'] ?? '' ) );
+$comprobar( 'mis marcas no gasta el ticket', null !== \Pekokis\Asistencia\WordPress\Temporales::leer( 'ticket', $id9['ticket'] ) );
+[ $st, $viejo ] = $api( 'POST', 'yo/mes', array( 'ticket' => $id9['ticket'], 'mes' => '2020-01' ) );
+$comprobar( 'un mes muy antiguo devuelve el mes actual', 200 === $st && substr( $hoy, 0, 7 ) === $viejo['mes'], (string) ( $viejo['mes'] ?? '' ) );
 
 // ---- 3e. Export y respaldo.
 WP_CLI::line( '3e. Export y respaldo' );

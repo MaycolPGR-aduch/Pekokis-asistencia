@@ -49,13 +49,8 @@ final class ResumenDia {
 			}
 		}
 
-		$tardanza = 0;
 		$inicio   = self::momento( $dia, $horario->entrada, $zona );
-
-		if ( $primera && $horario->laborable && $inicio ) {
-			$minutos  = intdiv( $primera->getTimestamp() - $inicio->getTimestamp(), 60 );
-			$tardanza = $minutos > $horario->toleranciaMin ? $minutos : 0;
-		}
+		$tardanza = self::minutosTardanza( $primera, $horario, $dia, $zona );
 
 		$enEstado = $ultima ? max( 0, intdiv( $ahora->getTimestamp() - $ultima->marcadoUtc->getTimestamp(), 60 ) ) : 0;
 
@@ -85,6 +80,19 @@ final class ResumenDia {
 			$enEstado,
 			Estado::REFRIGERIO === $estado && $enEstado > $horario->refrigerioMin
 		);
+	}
+
+	/** Minutos de tardanza de la primera entrada (0 si llegó dentro de la tolerancia o no era laborable). */
+	public static function minutosTardanza( ?DateTimeImmutable $primeraEntrada, HorarioDelDia $horario, string $dia, DateTimeZone $zona ): int {
+		$inicio = self::momento( $dia, $horario->entrada, $zona );
+
+		if ( ! $primeraEntrada || ! $horario->laborable || ! $inicio ) {
+			return 0;
+		}
+
+		$minutos = intdiv( $primeraEntrada->getTimestamp() - $inicio->getTimestamp(), 60 );
+
+		return $minutos > $horario->toleranciaMin ? $minutos : 0;
 	}
 
 	private static function momento( string $dia, ?string $hora, DateTimeZone $zona ): ?DateTimeImmutable {

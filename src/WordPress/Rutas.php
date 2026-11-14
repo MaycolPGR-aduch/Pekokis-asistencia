@@ -25,7 +25,17 @@ final class Rutas {
 	}
 
 	public static function despachar(): void {
-		$vista = self::VISTAS[ self::rutaActual() ] ?? null;
+		$ruta = self::rutaActual();
+
+		if ( 'manifest.webmanifest' === $ruta ) {
+			self::manifest();
+		}
+
+		if ( 'sw.js' === $ruta ) {
+			self::serviceWorker();
+		}
+
+		$vista = self::VISTAS[ $ruta ] ?? null;
 
 		if ( null === $vista ) {
 			return;
@@ -42,6 +52,7 @@ final class Rutas {
 			'vista' => $vista,
 			'api'   => esc_url_raw( rest_url( Api::ESPACIO . '/' ) ),
 			'inicio' => esc_url_raw( home_url( '/' ) ),
+			'sw'     => esc_url_raw( home_url( '/sw.js' ) ),
 		);
 
 		if ( 'pantalla' === $vista && current_user_can( Capacidades::AJUSTES ) ) {
@@ -50,6 +61,98 @@ final class Rutas {
 		}
 
 		require PKA_DIR . 'templates/app.php';
+		exit;
+	}
+
+	/** Manifest de la PWA: permite "Agregar a la pantalla de inicio" con ícono propio. */
+	private static function manifest(): never {
+		$inicio = (string) wp_parse_url( home_url( '/' ), PHP_URL_PATH );
+
+		status_header( 200 );
+		header( 'Content-Type: application/manifest+json; charset=utf-8' );
+		header( 'Cache-Control: public, max-age=3600' );
+
+		echo wp_json_encode(
+			array(
+				'name'             => 'Asistencia Pekokis',
+				'short_name'       => 'Asistencia',
+				'description'      => 'Marca tu entrada y salida en el taller con tu huella.',
+				'lang'             => 'es-PE',
+				'start_url'        => $inicio,
+				'scope'            => $inicio,
+				'display'          => 'standalone',
+				'orientation'      => 'portrait',
+				'background_color' => '#fff8fc',
+				'theme_color'      => '#e6007e',
+				'icons'            => array(
+					array( 'src' => self::asset( 'iconos/icono-192.png' ), 'sizes' => '192x192', 'type' => 'image/png', 'purpose' => 'any' ),
+					array( 'src' => self::asset( 'iconos/icono-512.png' ), 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any' ),
+					array( 'src' => self::asset( 'iconos/icono-512.png' ), 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'maskable' ),
+				),
+			),
+			JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
+		);
+		exit;
+	}
+
+	/**
+	 * Service worker mínimo. Solo guarda en caché los archivos estáticos de la app
+	 * (llevan versión en la URL); nunca la API ni las páginas, para que el estado
+	 * de un trabajador jamás salga de una caché.
+	 */
+	private static function serviceWorker(): never {
+		$prefijo = (string) wp_parse_url( PKA_URL . 'assets/', PHP_URL_PATH );
+		$cache   = 'pka-' . PKA_VERSION;
+
+		status_header( 200 );
+		header( 'Content-Type: text/javascript; charset=utf-8' );
+		header( 'Cache-Control: no-cache' );
+		header( 'Service-Worker-Allowed: ' . (string) wp_parse_url( home_url( '/' ), PHP_URL_PATH ) );
+
+		echo "'use strict';\n";
+		echo 'var CACHE = ' . wp_json_encode( $cache ) . ";\n";
+		echo 'var PREFIJO = ' . wp_json_encode( $prefijo ) . ";\n";
+		echo <<<'JS'
+self.addEventListener( 'install', function () {
+	self.skipWaiting();
+} );
+
+self.addEventListener( 'activate', function ( evento ) {
+	evento.waitUntil(
+		caches.keys().then( function ( claves ) {
+			return Promise.all( claves.filter( function ( c ) {
+				return c.indexOf( 'pka-' ) === 0 && c !== CACHE;
+			} ).map( function ( c ) {
+				return caches.delete( c );
+			} ) );
+		} ).then( function () {
+			return self.clients.claim();
+		} )
+	);
+} );
+
+self.addEventListener( 'fetch', function ( evento ) {
+	var url = new URL( evento.request.url );
+
+	// Solo archivos estáticos propios (css, js, íconos). Todo lo demás va a la red.
+	if ( 'GET' !== evento.request.method || url.origin !== self.location.origin || url.pathname.indexOf( PREFIJO ) !== 0 ) {
+		return;
+	}
+
+	evento.respondWith(
+		caches.open( CACHE ).then( function ( cache ) {
+			return cache.match( evento.request ).then( function ( guardada ) {
+				return guardada || fetch( evento.request ).then( function ( respuesta ) {
+					if ( respuesta.ok ) {
+						cache.put( evento.request, respuesta.clone() );
+					}
+					return respuesta;
+				} );
+			} );
+		} )
+	);
+} );
+JS;
 		exit;
 	}
 

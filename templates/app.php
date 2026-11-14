@@ -16,6 +16,13 @@ defined( 'ABSPATH' ) || exit;
 	<meta name="robots" content="noindex, nofollow">
 	<meta name="theme-color" content="#e6007e">
 	<title>Asistencia Pekokis</title>
+	<link rel="manifest" href="<?php echo esc_url( home_url( '/manifest.webmanifest' ) ); ?>">
+	<link rel="icon" type="image/png" sizes="192x192" href="<?php echo esc_url( Rutas::asset( 'iconos/icono-192.png' ) ); ?>">
+	<link rel="apple-touch-icon" href="<?php echo esc_url( Rutas::asset( 'iconos/apple-touch-icon.png' ) ); ?>">
+	<meta name="mobile-web-app-capable" content="yes">
+	<meta name="apple-mobile-web-app-capable" content="yes">
+	<meta name="apple-mobile-web-app-title" content="Asistencia">
+	<meta name="apple-mobile-web-app-status-bar-style" content="default">
 	<link rel="stylesheet" href="<?php echo esc_url( Rutas::asset( 'app.css' ) ); ?>">
 	<script type="application/json" id="pka-config"><?php echo wp_json_encode( $config ); ?></script>
 	<script src="<?php echo esc_url( Rutas::asset( 'app.js' ) ); ?>" defer></script>
