@@ -30,7 +30,7 @@ Leyenda: `[x]` hecho · `[ ]` pendiente · `[~]` en curso
     - certificado Let's Encrypt para los dos nombres, válido hasta el 12-02-2027;
     - `http` y `www` redirigen a `https://asistencia.pekokis.com`, y WordPress ya usa ese dominio.
   - [x] Pasos 3 a 6: PHP 8.3, caché apagada, plugins de Hostinger fuera, `wp-config.php` (secreto, `DISABLE_WP_CRON`), plugin 0.5.0 y tema vacío. "Estado del sistema" en verde en 11 de 13 puntos
-  - [ ] Paso 7: tarea de cron en hPanel cada 5 min (con `DISABLE_WP_CRON`, sin ella no corre nada)
+  - [x] Paso 7: cron de hPanel `*/5 * * * *` con `/usr/bin/php /home/u412994707/domains/asistencia.pekokis.com/public_html/wp-cron.php`. Al principio la hora estaba en `0`, lo que hacía que solo corriera entre las 00:00 y las 00:55; se corrigió a `*`
   - [ ] Paso 8: correo SMTP y correo de RR.HH. en Exportar; probar "Enviar respaldo"
   - [ ] Paso 9: usuarios de RR.HH. y jefes, y Two Factor
   - [ ] Paso 10: en el taller, agregar la red del WiFi y activar la pantalla
