@@ -439,6 +439,7 @@
 		} );
 	}
 
+	/** Entrar (T0A): la huella es lo principal; el PIN, liberar el celular y el registro son alternativas. */
 	function vistaEntrar( mensaje ) {
 		yo = null;
 		ticket = null;
@@ -452,6 +453,7 @@
 		var nombre = leer( 'pka_nombre' );
 		var entrar = boton( 'principal', 'Entrar con mi huella', null, 'huella' );
 		var estado = el( 'div', {}, [ mensaje || null ] );
+		var alternativas = el( 'div', {} );
 
 		entrar.addEventListener( 'click', function () {
 			entrar.disabled = true;
@@ -466,17 +468,488 @@
 				cargarYo();
 			} ).catch( function ( error ) {
 				entrar.disabled = false;
-				estado.replaceChildren( aviso( 'error', mensajePasskey( error ) ) );
+				if ( 'pka_registro_pendiente' === error.codigo || 'pka_cambio_pendiente' === error.codigo ) {
+					estado.replaceChildren( aviso( 'espera', error.message ) );
+					return;
+				}
+				// T4D: celular no registrado → recuperar el perfil sin perder datos.
+				estado.replaceChildren( aviso( 'error', mensajePasskey( error ), 'pka_passkey' === error.codigo ? boton( 'simple', 'Recuperar mi perfil', function () {
+					vistaBienvenida( 'cambio' );
+				} ) : null ) );
 			} );
 		} );
 
 		pintar(
 			el( 'div', { class: 'centro' }, [ el( 'div', { class: 'medallon rosa' }, [ icono( 'huella' ) ] ) ] ),
 			el( 'h1', {}, nombre ? [ 'Hola, ', el( 'em', { texto: nombre } ) ] : [ 'Asistencia ', el( 'em', { texto: 'Pekokis' } ) ] ),
-			el( 'p', { texto: 'Entra con tu huella una vez. Después, cada vez que marques, el celular te la volverá a pedir.' } ),
+			el( 'p', { texto: 'Entra con tu huella o tu cara desde cualquier lugar para ver tus horas, tu recibo y tu perfil. Para marcar, el celular te la volverá a pedir en el taller.' } ),
 			estado,
 			el( 'div', { class: 'pie-fila' }, [ entrar ] ),
-			el( 'p', { class: 'ayuda', texto: '¿Celular nuevo o no te reconoce? Pide a RR.HH. un enlace para activarlo.' } )
+			alternativas
+		);
+
+		api( 'pin/estado', null, 'GET' ).then( function ( p ) {
+			var hijos = [];
+			if ( p.pin ) {
+				hijos.push( boton( 'secundario', 'Entrar con PIN', function () {
+					vistaPin( p.largo );
+				} ) );
+			}
+			if ( p.registrado ) {
+				hijos.push( boton( 'simple', 'Solicitar liberar este celular', function () {
+					vistaLiberar( vistaEntrar );
+				} ) );
+			} else {
+				hijos.push( el( 'p', { class: 'etq', texto: '¿Es la primera vez en este celular?' } ) );
+				hijos.push( boton( 'secundario', 'Es mi primera vez', function () {
+					vistaBienvenida( 'nuevo' );
+				} ) );
+				hijos.push( boton( 'secundario', 'Cambié de celular', function () {
+					vistaBienvenida( 'cambio' );
+				} ) );
+			}
+			alternativas.replaceChildren.apply( alternativas, hijos );
+		} ).catch( function () {} );
+	}
+
+	/** Teclado grande para el PIN (T0B y T7C). Llama a alCompletar con los números al llegar al largo. */
+	function tecladoPin( largo, alCompletar ) {
+		var pin = '';
+		var puntos = el( 'div', { class: 'pin-puntos', role: 'img', 'aria-label': 'Números escritos: 0 de ' + largo } );
+		var dibujar = function () {
+			var hijos = [];
+			for ( var i = 0; i < largo; i++ ) {
+				hijos.push( el( 'i', { class: i < pin.length ? 'lleno' : '' } ) );
+			}
+			puntos.replaceChildren.apply( puntos, hijos );
+			puntos.setAttribute( 'aria-label', 'Números escritos: ' + pin.length + ' de ' + largo );
+		};
+		var teclas = [ '1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'borrar' ];
+		var teclado = el( 'div', { class: 'teclado' }, teclas.map( function ( t ) {
+			if ( '' === t ) {
+				return el( 'span', {} );
+			}
+			return el( 'button', { type: 'button', 'aria-label': 'borrar' === t ? 'Borrar' : t, alHacerClic: function () {
+				if ( 'borrar' === t ) {
+					pin = pin.slice( 0, -1 );
+				} else if ( pin.length < largo ) {
+					pin += t;
+				}
+				dibujar();
+				if ( pin.length === largo ) {
+					var listo = pin;
+					alCompletar( listo );
+				}
+			} }, [ 'borrar' === t ? '⌫' : t ] );
+		} ) );
+		dibujar();
+
+		return {
+			nodo: el( 'div', { class: 'pin' }, [ puntos, teclado ] ),
+			reiniciar: function () {
+				pin = '';
+				dibujar();
+			},
+			apagar: function ( si ) {
+				teclado.querySelectorAll( 'button' ).forEach( function ( b ) {
+					b.disabled = si;
+				} );
+			},
+		};
+	}
+
+	/** Entrar con PIN (T0B) y PIN incorrecto (T0C). Solo inicia sesión: marcar sigue pidiendo la huella. */
+	function vistaPin( largo ) {
+		mostrarPestanas( null );
+		var estado = el( 'div', {} );
+		var t = tecladoPin( largo, function ( pin ) {
+			t.apagar( true );
+			api( 'pin/entrar', { pin: pin } ).then( function () {
+				cargarYo();
+			} ).catch( function ( error ) {
+				t.reiniciar();
+				t.apagar( false );
+				var bloqueado = 0 === ( error.datos || {} ).intentos;
+				estado.replaceChildren( aviso( 'error', error.message, bloqueado ? boton( 'simple', 'Recuperar mi acceso', function () {
+					vistaBienvenida( 'cambio' );
+				} ) : null ) );
+			} );
+		} );
+
+		pintar(
+			el( 'h1', {}, [ 'Entra con tu ', el( 'em', { texto: 'PIN' } ) ] ),
+			el( 'p', { class: 'ayuda', texto: 'Tus ' + largo + ' números. Sirve solo para entrar: para marcar se sigue usando tu huella.' } ),
+			t.nodo,
+			estado,
+			boton( 'simple', 'Volver a la huella', function () {
+				vistaEntrar();
+			} )
+		);
+	}
+
+	/** Solicitar liberar este celular (T0D) y solicitud enviada (T0E). */
+	function vistaLiberar( volver ) {
+		var estado = el( 'div', {} );
+		var pedir = boton( 'principal', 'Sí, pedir que lo liberen' );
+
+		pedir.addEventListener( 'click', function () {
+			pedir.disabled = true;
+			api( 'celular/liberar', {} ).then( function ( r ) {
+				pintar(
+					el( 'div', { class: 'centro' }, [
+						el( 'div', { class: 'medallon espera' }, [ icono( 'reloj' ) ] ),
+						el( 'h1', {}, [ 'Solicitud ', el( 'em', { texto: 'enviada' } ) ] ),
+						el( 'p', { texto: r.mensaje } ),
+						el( 'p', { class: 'ayuda', texto: 'Para seguir marcando, registra tu celular nuevo dentro del taller con "Cambié de celular".' } ),
+					] ),
+					el( 'div', { class: 'pie-fila' }, [ boton( 'principal', 'Listo', function () {
+						volver();
+					} ) ] )
+				);
+			} ).catch( function ( error ) {
+				pedir.disabled = false;
+				estado.replaceChildren( aviso( 'error', error.message ) );
+			} );
+		} );
+
+		pintar(
+			el( 'h1', {}, [ '¿Liberar este ', el( 'em', { texto: 'celular' } ), '?' ] ),
+			el( 'p', { texto: 'Si lo vas a vender, regalar o cambiar, pide a gerencia que lo libere.' } ),
+			el( 'ul', { class: 'bl-pasos lista-simple' }, [
+				el( 'li', {}, [ el( 'span', { class: 'bp' }, [ icono( 'check' ) ] ), 'Tus datos y tus horas se conservan.' ] ),
+				el( 'li', {}, [ el( 'span', { class: 'bp' }, [ icono( 'alerta' ) ] ), 'Cuando gerencia lo apruebe, este celular quedará sin acceso.' ] ),
+				el( 'li', {}, [ el( 'span', { class: 'bp' }, [ icono( 'huella' ) ] ), 'Después registras tu celular nuevo en el taller.' ] ),
+			] ),
+			estado,
+			el( 'div', { class: 'pie-fila' }, [ pedir ] ),
+			boton( 'simple', 'Volver', function () {
+				volver();
+			} )
+		);
+	}
+
+	// ---------- registro y cambio de celular (T1) ----------
+
+	var MESES = [ 'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre' ];
+
+	/** Cumpleaños con listas (T1C): día y mes, sin el año. */
+	function selectorCumple( id ) {
+		var dia = el( 'select', { id: id + '-dia', 'aria-label': 'Día' }, [ el( 'option', { value: '', texto: 'Día' } ) ] );
+		var mes = el( 'select', { id: id + '-mes', 'aria-label': 'Mes' }, [ el( 'option', { value: '', texto: 'Mes' } ) ] );
+		for ( var d = 1; d <= 31; d++ ) {
+			dia.appendChild( el( 'option', { value: String( d ), texto: String( d ) } ) );
+		}
+		MESES.forEach( function ( nombre, i ) {
+			mes.appendChild( el( 'option', { value: String( i + 1 ), texto: nombre } ) );
+		} );
+		return { dia: dia, mes: mes, nodo: el( 'div', { class: 'cumple' }, [ dia, mes ] ) };
+	}
+
+	/** Bienvenida (T1A): primero, comprobar que está en el taller (WiFi o QR). */
+	function vistaBienvenida( tipo ) {
+		mostrarPestanas( null );
+		cargando( 'Comprobando que estás en el taller…' );
+
+		api( 'registro/estado', null, 'GET' ).then( function ( r ) {
+			if ( ! r.en_taller ) {
+				var reintentar = function () {
+					vistaBienvenida( tipo );
+				};
+				pintar(
+					el( 'h1', {}, [ 'Hazlo en el ', el( 'em', { texto: 'taller' } ) ] ),
+					el( 'p', { texto: 'nuevo' === tipo ? 'Para registrarte tienes que estar en el taller.' : 'Para registrar tu celular nuevo tienes que estar en el taller.' } ),
+					bloqueoPresencia( { mensaje: r.mensaje, acepta_qr: r.acepta_qr }, reintentar ),
+					r.acepta_qr ? el( 'div', { class: 'pie-fila' }, [ boton( 'principal', 'Escanear el QR', function () {
+						vistaEscanear( reintentar );
+					}, 'qr' ) ] ) : null,
+					boton( 'simple', 'Volver', function () {
+						vistaEntrar();
+					} )
+				);
+				return;
+			}
+			if ( 'nuevo' === tipo ) {
+				vistaDatos( r.aviso );
+			} else {
+				vistaBuscarPerfil();
+			}
+		} ).catch( function ( error ) {
+			pintar( el( 'h1', { texto: 'Sin conexión' } ), aviso( 'error', error.message ), boton( 'principal', 'Reintentar', function () {
+				vistaBienvenida( tipo );
+			} ) );
+		} );
+	}
+
+	/** Tus datos (T1B) con errores junto a cada campo (T1C). */
+	function vistaDatos( avisoDatos ) {
+		var campo = function ( id, etiqueta, atributos ) {
+			var entrada = el( 'input', Object.assign( { type: 'text', id: 'reg-' + id, autocomplete: 'off' }, atributos || {} ) );
+			var error = el( 'p', { class: 'error-campo', id: 'reg-' + id + '-error' } );
+			return { entrada: entrada, error: error, nodo: el( 'div', {}, [ el( 'label', { for: 'reg-' + id, texto: etiqueta } ), entrada, error ] ) };
+		};
+		var c = {
+			nombres: campo( 'nombres', 'Nombre', { autocomplete: 'given-name' } ),
+			apellidos: campo( 'apellidos', 'Apellido', { autocomplete: 'family-name' } ),
+			telefono: campo( 'telefono', 'Celular o WhatsApp', { inputmode: 'tel', autocomplete: 'tel', placeholder: '987 654 321', class: 'normal' } ),
+			dni: campo( 'dni', 'DNI', { inputmode: 'numeric', maxlength: '12', class: 'normal' } ),
+		};
+		var cumple = selectorCumple( 'reg-cumple' );
+		var errorCumple = el( 'p', { class: 'error-campo' } );
+		var errorAviso = el( 'p', { class: 'error-campo' } );
+		var casilla = el( 'input', { type: 'checkbox', id: 'reg-acepto' } );
+		var estado = el( 'div', {} );
+		var seguir = boton( 'principal', 'Continuar' );
+
+		var revisar = function () {
+			seguir.disabled = ! ( c.nombres.entrada.value.trim() && c.apellidos.entrada.value.trim() && c.telefono.entrada.value.trim() && c.dni.entrada.value.trim() && cumple.dia.value && cumple.mes.value && casilla.checked );
+		};
+		Object.keys( c ).forEach( function ( k ) {
+			c[ k ].entrada.addEventListener( 'input', function () {
+				c[ k ].error.textContent = '';
+				revisar();
+			} );
+		} );
+		[ cumple.dia, cumple.mes, casilla ].forEach( function ( x ) {
+			x.addEventListener( 'change', revisar );
+		} );
+		c.dni.entrada.addEventListener( 'blur', function () {
+			var dni = c.dni.entrada.value.replace( /[\s.-]/g, '' );
+			c.dni.error.textContent = dni && ! /^\d{8}$/.test( dni ) && ! /^[A-Za-z0-9]{9,12}$/.test( dni ) ? 'El DNI tiene 8 números.' : '';
+		} );
+		revisar();
+
+		seguir.addEventListener( 'click', function () {
+			seguir.disabled = true;
+			estado.replaceChildren();
+			api( 'registro/nuevo', {
+				nombres: c.nombres.entrada.value,
+				apellidos: c.apellidos.entrada.value,
+				telefono: c.telefono.entrada.value,
+				dni: c.dni.entrada.value,
+				cumple_dia: cumple.dia.value,
+				cumple_mes: cumple.mes.value,
+				acepta_aviso: casilla.checked ? avisoDatos.version : 0,
+			} ).then( function ( op ) {
+				vistaCrearLlave( op, 'registro' );
+			} ).catch( function ( error ) {
+				var porCampo = ( error.datos || {} ).errores || {};
+				Object.keys( c ).forEach( function ( k ) {
+					c[ k ].error.textContent = porCampo[ k ] || '';
+				} );
+				errorCumple.textContent = porCampo.cumpleanos || '';
+				errorAviso.textContent = porCampo.aviso || '';
+				if ( ! Object.keys( porCampo ).length ) {
+					estado.replaceChildren( aviso( 'error', error.message ) );
+				}
+				revisar();
+			} );
+		} );
+
+		pintar(
+			el( 'h1', {}, [ 'Tus ', el( 'em', { texto: 'datos' } ) ] ),
+			el( 'p', { class: 'ayuda', texto: 'Gerencia los revisará antes de que puedas marcar.' } ),
+			el( 'div', { class: 'formulario' }, [
+				c.nombres.nodo,
+				c.apellidos.nodo,
+				c.telefono.nodo,
+				c.dni.nodo,
+				el( 'div', {}, [ el( 'label', { for: 'reg-cumple-dia', texto: 'Cumpleaños' } ), cumple.nodo, errorCumple ] ),
+			] ),
+			el( 'p', { class: 'etq', texto: 'Cómo usamos tus datos' } ),
+			el( 'div', { class: 'aviso-datos', tabindex: '0', role: 'region', 'aria-label': 'Aviso de datos personales' }, [ textoAviso( avisoDatos.texto ) ] ),
+			el( 'label', { class: 'casilla', for: 'reg-acepto' }, [ casilla, 'Leí el aviso de datos personales' ] ),
+			errorAviso,
+			estado,
+			el( 'div', { class: 'pie-fila' }, [ seguir ] ),
+			boton( 'simple', 'Volver', function () {
+				vistaEntrar();
+			} )
+		);
+	}
+
+	/** Crear la llave (T1D y T1I): la huella y la cara no salen del celular. */
+	function vistaCrearLlave( op, tipo ) {
+		var estado = el( 'div', {} );
+		var crear = boton( 'principal', 'Crear mi llave', null, 'huella' );
+
+		crear.addEventListener( 'click', function () {
+			crear.disabled = true;
+			estado.replaceChildren();
+			var pk = op.publicKey;
+			pk.challenge = 'string' === typeof pk.challenge ? deBase64Url( pk.challenge ) : pk.challenge;
+			pk.user.id = 'string' === typeof pk.user.id ? deBase64Url( pk.user.id ) : pk.user.id;
+			( pk.excludeCredentials || [] ).forEach( function ( c ) {
+				c.id = 'string' === typeof c.id ? deBase64Url( c.id ) : c.id;
+			} );
+			navigator.credentials.create( { publicKey: pk } ).then( function ( cred ) {
+				return api( 'registro/completar', {
+					flujo: op.flujo,
+					reto: op.reto,
+					credencial: {
+						id: cred.id,
+						clientDataJSON: aBase64Url( cred.response.clientDataJSON ),
+						attestationObject: aBase64Url( cred.response.attestationObject ),
+					},
+				} );
+			} ).then( function ( r ) {
+				guardar( 'pka_nombre', r.nombre );
+				vistaSolicitudEnviada( r.tipo );
+			} ).catch( function ( error ) {
+				crear.disabled = false;
+				estado.replaceChildren( aviso( 'error', mensajePasskey( error ) ) );
+			} );
+		} );
+
+		pintar(
+			el( 'div', { class: 'centro' }, [ el( 'div', { class: 'medallon rosa' }, [ icono( 'huella' ) ] ) ] ),
+			el( 'h1', {}, [ 'registro' === tipo ? 'Crea tu ' : 'Llave de tu celular ', el( 'em', { texto: 'registro' === tipo ? 'llave' : 'nuevo' } ) ] ),
+			el( 'p', { texto: 'Con ella entras y marcas usando la huella, la cara o el PIN de bloqueo de este celular.' } ),
+			el( 'p', { class: 'ayuda', texto: 'Tu huella y tu cara no se guardan en el sistema: se quedan en tu celular.' } ),
+			estado,
+			el( 'div', { class: 'pie-fila' }, [ crear ] )
+		);
+	}
+
+	/** Registro enviado (T1E) o cambio pedido (T1J): gerencia aprueba. */
+	function vistaSolicitudEnviada( tipo ) {
+		pintar(
+			el( 'div', { class: 'centro' }, [
+				el( 'div', { class: 'medallon espera' }, [ icono( 'reloj' ) ] ),
+				el( 'h1', {}, 'registro' === tipo ? [ 'Registro ', el( 'em', { texto: 'enviado' } ) ] : [ 'Cambio ', el( 'em', { texto: 'pedido' } ) ] ),
+				el( 'p', { texto: 'registro' === tipo ? 'Gerencia revisará tus datos. Cuando lo apruebe, podrás entrar y marcar con tu huella.' : 'Cuando gerencia lo apruebe, este celular quedará listo y el anterior se dará de baja. Tus datos y tus horas se conservan.' } ),
+				'registro' === tipo ? null : el( 'p', { class: 'ayuda', texto: 'Mientras tanto, sigue marcando con tu celular anterior.' } ),
+			] ),
+			el( 'div', { class: 'pie-fila' }, [ boton( 'principal', 'Listo', function () {
+				vistaEntrar();
+			} ) ] )
+		);
+	}
+
+	/** Buscar mi perfil (T1G): solo nombres. */
+	function vistaBuscarPerfil() {
+		var entrada = el( 'input', { type: 'text', id: 'buscar-perfil', autocomplete: 'off', placeholder: 'Escribe tu nombre' } );
+		var lista = el( 'ul', { class: 'lista-mes', 'aria-live': 'polite' } );
+		var estado = el( 'div', {} );
+		var espera = null;
+
+		entrada.addEventListener( 'input', function () {
+			clearTimeout( espera );
+			var texto = entrada.value.trim();
+			if ( texto.length < 3 ) {
+				lista.replaceChildren();
+				return;
+			}
+			espera = setTimeout( function () {
+				api( 'registro/buscar', { texto: texto } ).then( function ( r ) {
+					estado.replaceChildren();
+					lista.replaceChildren.apply( lista, r.perfiles.length ? r.perfiles.map( function ( p ) {
+						return el( 'li', {}, [ el( 'button', { class: 'enlace-fila', type: 'button', alHacerClic: function () {
+							vistaConfirmar( p );
+						} }, [ el( 'span', { class: 'dia', texto: p.nombre } ), el( 'span', { class: 'etiqueta bien', texto: 'Soy yo' } ) ] ) ] );
+					} ) : [ el( 'li', { class: 'vacio' }, [ el( 'b', { texto: 'No apareces' } ), el( 'span', { class: 'ayuda', texto: 'Revisa cómo lo escribiste o pide ayuda a gerencia.' } ) ] ) ] );
+				} ).catch( function ( error ) {
+					estado.replaceChildren( aviso( 'error', error.message ) );
+				} );
+			}, 350 );
+		} );
+
+		pintar(
+			el( 'h1', {}, [ 'Busca tu ', el( 'em', { texto: 'perfil' } ) ] ),
+			el( 'p', { class: 'ayuda', texto: 'Así conservas tus datos y tus horas. Escribe al menos 3 letras de tu nombre.' } ),
+			el( 'div', { class: 'formulario' }, [ el( 'div', {}, [ el( 'label', { for: 'buscar-perfil', texto: 'Tu nombre' } ), entrada ] ) ] ),
+			estado,
+			lista,
+			boton( 'simple', 'Volver', function () {
+				vistaEntrar();
+			} )
+		);
+	}
+
+	/** Confirmar que soy yo (T1H): DNI completo y cumpleaños. */
+	function vistaConfirmar( perfil ) {
+		var dni = el( 'input', { type: 'text', id: 'conf-dni', inputmode: 'numeric', autocomplete: 'off', maxlength: '12', class: 'normal' } );
+		var cumple = selectorCumple( 'conf-cumple' );
+		var estado = el( 'div', {} );
+		var seguir = boton( 'principal', 'Confirmar' );
+		var revisar = function () {
+			seguir.disabled = ! ( dni.value.trim() && cumple.dia.value && cumple.mes.value );
+		};
+		dni.addEventListener( 'input', revisar );
+		cumple.dia.addEventListener( 'change', revisar );
+		cumple.mes.addEventListener( 'change', revisar );
+		revisar();
+
+		seguir.addEventListener( 'click', function () {
+			seguir.disabled = true;
+			api( 'registro/confirmar', { trabajador_id: perfil.id, dni: dni.value, cumple_dia: cumple.dia.value, cumple_mes: cumple.mes.value } ).then( function ( op ) {
+				vistaCrearLlave( op, 'cambio' );
+			} ).catch( function ( error ) {
+				revisar();
+				estado.replaceChildren( aviso( 'error', error.message ) );
+			} );
+		} );
+
+		pintar(
+			el( 'h1', {}, [ 'Confirma que eres ', el( 'em', { texto: perfil.nombre } ) ] ),
+			el( 'p', { class: 'ayuda', texto: 'Para que nadie tome el perfil de otra persona. Con 5 intentos equivocados se bloquea 15 minutos.' } ),
+			el( 'div', { class: 'formulario' }, [
+				el( 'div', {}, [ el( 'label', { for: 'conf-dni', texto: 'Tu DNI completo' } ), dni ] ),
+				el( 'div', {}, [ el( 'label', { for: 'conf-cumple-dia', texto: 'Tu cumpleaños' } ), cumple.nodo ] ),
+			] ),
+			estado,
+			el( 'div', { class: 'pie-fila' }, [ seguir ] ),
+			boton( 'simple', 'No soy yo', function () {
+				vistaBuscarPerfil();
+			} )
+		);
+	}
+
+	/** Crear o cambiar mi PIN (T7C): dos veces, para no equivocarse. */
+	function vistaCrearPin( largo, cambiar ) {
+		mostrarPestanas( 'perfil' );
+		var primero = '';
+		var titulo = el( 'h1', {}, [ cambiar ? 'Cambia tu ' : 'Crea tu ', el( 'em', { texto: 'PIN' } ) ] );
+		var paso = el( 'p', { class: 'ayuda', texto: 'Elige ' + largo + ' números. No uses tu DNI ni 123456.' } );
+		var estado = el( 'div', {} );
+		var t = tecladoPin( largo, function ( pin ) {
+			if ( ! primero ) {
+				primero = pin;
+				t.reiniciar();
+				paso.textContent = 'Escríbelo otra vez para confirmarlo.';
+				estado.replaceChildren();
+				return;
+			}
+			if ( pin !== primero ) {
+				primero = '';
+				t.reiniciar();
+				paso.textContent = 'Elige ' + largo + ' números. No uses tu DNI ni 123456.';
+				estado.replaceChildren( aviso( 'error', 'Los dos PIN no son iguales. Empieza otra vez.' ) );
+				return;
+			}
+			t.apagar( true );
+			api( 'yo/pin', { pin: pin } ).then( function ( r ) {
+				vistaPerfil( aviso( 'ok', r.mensaje ) );
+			} ).catch( function ( error ) {
+				if ( sesionVencida( error ) ) {
+					return;
+				}
+				primero = '';
+				t.reiniciar();
+				t.apagar( false );
+				paso.textContent = 'Elige ' + largo + ' números. No uses tu DNI ni 123456.';
+				estado.replaceChildren( aviso( 'error', error.message ) );
+			} );
+		} );
+
+		pintar(
+			titulo,
+			paso,
+			t.nodo,
+			estado,
+			el( 'p', { class: 'ayuda', texto: 'Sirve solo para entrar en este celular si tu huella no funciona. Para marcar se sigue usando tu huella.' } ),
+			boton( 'simple', 'Volver', function () {
+				vistaPerfil();
+			} )
 		);
 	}
 
@@ -530,7 +1003,9 @@
 		var escanear = null;
 		if ( v.siguiente && ! p.cumple && p.acepta_qr ) {
 			// Enlace vencido o fuera del WiFi: lo primero es escanear (T2E).
-			principal = boton( 'principal', 'Escanear el QR', vistaEscanear, 'qr' );
+			principal = boton( 'principal', 'Escanear el QR', function () {
+				vistaEscanear();
+			}, 'qr' );
 		} else if ( v.siguiente ) {
 			// T2G: la jornada de ayer sigue abierta: "Sigo aquí: marcar salida".
 			var etiqueta = j.de_ayer && 'fin_jornada' === v.siguiente.accion ? 'Sigo aquí: marcar salida' : v.siguiente.etiqueta;
@@ -538,7 +1013,9 @@
 				elegirAccion( v.siguiente.accion, v.siguiente.etiqueta );
 			}, 'huella' );
 			principal.disabled = ! p.cumple;
-			escanear = p.acepta_qr && ! p.en_red ? el( 'button', { class: 'cuad', type: 'button', 'aria-label': 'Escanear el QR de la entrada', alHacerClic: vistaEscanear }, [ icono( 'qr' ), 'Escanear' ] ) : null;
+			escanear = p.acepta_qr && ! p.en_red ? el( 'button', { class: 'cuad', type: 'button', 'aria-label': 'Escanear el QR de la entrada', alHacerClic: function () {
+				vistaEscanear();
+			} }, [ icono( 'qr' ), 'Escanear' ] ) : null;
 		}
 
 		var otras = ( v.otras || [] ).map( function ( o ) {
@@ -615,7 +1092,7 @@
 		return null;
 	}
 
-	function bloqueoPresencia( p ) {
+	function bloqueoPresencia( p, revisarOtraVez ) {
 		var pasos = [ el( 'li', {}, [ el( 'span', { class: 'bp' }, [ icono( 'wifi' ) ] ), 'Conéctate al WiFi del taller' ] ) ];
 		if ( p.acepta_qr ) {
 			pasos.push( el( 'li', {}, [ el( 'span', { class: 'bp' }, [ icono( 'qr' ) ] ), 'O escanea el QR de la pantalla de la entrada' ] ) );
@@ -625,7 +1102,7 @@
 			el( 'p', { texto: p.mensaje } ),
 			el( 'ul', { class: 'bl-pasos' }, pasos ),
 			boton( 'simple', 'Ya me conecté: revisar otra vez', function () {
-				cargarYo();
+				( revisarOtraVez || cargarYo )();
 			} ),
 		] );
 	}
@@ -852,19 +1329,21 @@
 		return api( 'presencia/codigo', datos );
 	}
 
-	function vistaEscanear() {
-		mostrarPestanas( 'marcar' );
+	function vistaEscanear( despues ) {
+		// Con la sesión iniciada vuelve a Marcar; desde el registro, a la bienvenida.
+		var seguir = 'function' === typeof despues ? despues : cargarYo;
+		mostrarPestanas( yo ? 'marcar' : null );
 		var estado = el( 'div', {} );
 		var escribir = boton( 'secundario', 'Escribir el código de la pantalla', function () {
-			vistaCodigo();
+			vistaCodigo( seguir );
 		} );
 		var volver = boton( 'simple', 'Volver', function () {
-			cargarYo();
+			seguir();
 		} );
 
 		if ( ! ( 'BarcodeDetector' in window ) || ! navigator.mediaDevices ) {
 			// iPhone: sin lector en la web. El código de 6 números hace lo mismo.
-			vistaCodigo();
+			vistaCodigo( seguir );
 			return;
 		}
 
@@ -896,10 +1375,12 @@
 					}
 					apagarCamara();
 					validarQr( codigos[0].rawValue ).then( function ( r ) {
-						cargarYo( aviso( 'ok', r.mensaje ) );
+						seguir( aviso( 'ok', r.mensaje ) );
 					} ).catch( function ( error ) {
 						estado.replaceChildren( aviso( 'error', error.message ) );
-						setTimeout( vistaEscanear, 2500 );
+						setTimeout( function () {
+							vistaEscanear( seguir );
+						}, 2500 );
 					} );
 				} ).catch( function () {
 					leyendo = false;
@@ -911,8 +1392,9 @@
 	}
 
 	/** El código de 6 números que se ve debajo del QR. */
-	function vistaCodigo() {
-		mostrarPestanas( 'marcar' );
+	function vistaCodigo( despues ) {
+		var seguir = 'function' === typeof despues ? despues : cargarYo;
+		mostrarPestanas( yo ? 'marcar' : null );
 		var entrada = el( 'input', { type: 'text', id: 'codigo', inputmode: 'numeric', autocomplete: 'one-time-code', maxlength: '7', placeholder: '000 000' } );
 		var estado = el( 'div', {} );
 		var validar = boton( 'principal', 'Validar código' );
@@ -920,7 +1402,7 @@
 		validar.addEventListener( 'click', function () {
 			validar.disabled = true;
 			validarQr( entrada.value.replace( /\D/g, '' ) ).then( function ( r ) {
-				cargarYo( aviso( 'ok', r.mensaje ) );
+				seguir( aviso( 'ok', r.mensaje ) );
 			} ).catch( function ( error ) {
 				validar.disabled = false;
 				estado.replaceChildren( aviso( 'error', error.message ) );
@@ -934,7 +1416,7 @@
 			estado,
 			el( 'div', { class: 'pie-fila' }, [ validar ] ),
 			boton( 'simple', 'Volver', function () {
-				cargarYo();
+				seguir();
 			} )
 		);
 	}
@@ -1440,7 +1922,7 @@
 
 	// ---------- perfil (T7) ----------
 
-	function vistaPerfil() {
+	function vistaPerfil( mensaje ) {
 		mostrarPestanas( 'perfil' );
 		cargando();
 
@@ -1470,13 +1952,35 @@
 
 			pintar(
 				el( 'div', { class: 'perfil-cab' }, [ el( 'span', { class: 'avm', 'aria-hidden': 'true', texto: p.iniciales } ), el( 'div', {}, [ el( 'h1', { texto: p.nombre } ), el( 'span', { texto: p.cargo } ) ] ) ] ),
+				mensaje || null,
 				el( 'div', { class: 'ficha' }, [
 					el( 'div', {}, [ el( 'span', { texto: 'DNI' } ), el( 'div', {}, [ dni, ver ] ) ] ),
 					p.telefono ? el( 'div', {}, [ el( 'span', { texto: 'Teléfono' } ), el( 'b', { texto: p.telefono } ) ] ) : null,
 					el( 'div', {}, [ el( 'span', { texto: 'Este celular' } ), el( 'b', { texto: p.celular } ) ] ),
 					el( 'div', {}, [ el( 'span', { texto: 'Estado' } ), el( 'b', { texto: p.estado } ) ] ),
+					p.pin && p.pin.activo ? el( 'div', {}, [
+						el( 'span', { texto: 'PIN de ingreso' } ),
+						el( 'div', {}, [
+							el( 'b', { texto: p.pin.tiene ? 'Desde el ' + p.pin.desde : 'Sin PIN' } ),
+							el( 'button', { type: 'button', texto: p.pin.tiene ? 'Cambiar' : 'Crear', alHacerClic: function () {
+								vistaCrearPin( p.pin.largo, p.pin.tiene );
+							} } ),
+							p.pin.tiene ? el( 'button', { type: 'button', texto: 'Quitar', alHacerClic: function () {
+								api( 'yo/pin/quitar', {} ).then( function ( r ) {
+									vistaPerfil( aviso( 'ok', r.mensaje ) );
+								} ).catch( function ( error ) {
+									sesionVencida( error );
+								} );
+							} } ) : null,
+						] ),
+					] ) : null,
 				] ),
-				el( 'p', { class: 'ayuda', texto: '¿Cambiaste de celular o algún dato está mal? Pídele a RR.HH. que lo corrija.' } ),
+				p.pendiente ? aviso( 'espera', p.pendiente ) : null,
+				el( 'p', { class: 'ayuda', texto: '¿Algún dato está mal? Pídele a RR.HH. que lo corrija. Si cambias de celular, registra el nuevo en el taller con "Cambié de celular".' } ),
+				p.liberar ? boton( 'simple', 'Liberar este celular', function () {
+					mostrarPestanas( 'perfil' );
+					vistaLiberar( vistaPerfil );
+				} ) : null,
 				el( 'p', {}, [ el( 'a', { href: config.privacidad, texto: 'Aviso de datos personales' } ) ] ),
 				boton( 'secundario', 'Cerrar sesión', function () {
 					api( 'yo/salir', {} ).then( function () {

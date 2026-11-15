@@ -66,6 +66,7 @@ final class Historial {
 		'horario.desactivar'     => 'Horario desactivado',
 		'ajustes.modo_presencia' => 'Cambio del modo de presencia',
 		'ajustes.campana'        => 'Cambio de los avisos de campaña',
+		'ajustes.pin'            => 'Cambio del PIN de ingreso',
 		'ajustes.correo_rrhh'    => 'Cambio del correo del respaldo',
 		'registro.descargar'     => 'Excel del registro descargado',
 		'respaldo.enviar'        => 'Respaldo enviado por correo',

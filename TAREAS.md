@@ -3,7 +3,7 @@
 Este archivo lleva lo hecho, lo pendiente y la bitácora del proyecto. Se actualiza cada vez que avanzamos.
 El detalle técnico de cada punto está en [docs/plan-tecnico.md](docs/plan-tecnico.md).
 
-**Estado actual:** en producción está la **0.8.1**. En local está lista la **0.12.0**, que agrega: avisos por correo (fase 4); el pago por recibos por honorarios de las maquetas (honorario y tarifas, horas extra automáticas); la **calculadora de pagos** con "Ver cálculo" y "Pagado"; los **recibos por honorarios** (el trabajador los sube desde la app y gerencia los revisa); y la **app del trabajador con el diseño de las maquetas** (entra una vez con su huella y ve las pestañas Marcar, Mis horas, Mi recibo y Perfil, con "Tu día" en 4 pasos, el detalle de cada día y "Pedir corrección"). La cubren 135 pruebas del núcleo y 195 de punta a punta. **Siguiente:** subir la versión, y seguir con lo factible de las maquetas: el PIN, el registro propio y el cambio de celular, el QR de 30 min, las jornadas que pasan la medianoche y la pantalla de gerencia con su diseño. También falta el correo de RR.HH., la red o pantalla del taller, cambiar `PKA_SECRETO` y hacer el piloto.
+**Estado actual:** en producción está la **0.8.1**. En local está lista la **0.13.0**, que agrega: avisos por correo (fase 4); el pago por recibos por honorarios de las maquetas (honorario y tarifas, horas extra automáticas); la **calculadora de pagos** con "Ver cálculo" y "Pagado"; los **recibos por honorarios** (el trabajador los sube desde la app y gerencia los revisa); y la **app del trabajador con el diseño de las maquetas** (entra una vez con su huella y ve las pestañas Marcar, Mis horas, Mi recibo y Perfil, con "Tu día" en 4 pasos, el detalle de cada día y "Pedir corrección"); y la **etapa B**: PIN de ingreso, registro propio y cambio de celular aprobados por gerencia (Asistencia → Celulares), liberar el celular, QR de hasta 30 min, jornadas que pasan la medianoche y el recordatorio de campaña. La cubren 150 pruebas del núcleo y 232 de punta a punta. **Siguiente:** subir la versión y confirmar con el responsable lo marcado "por confirmar" (16 h, aprobación de gerencia, vigencia del QR); después, la pantalla de gerencia con el diseño de las maquetas y delegar permisos (G17). También falta el correo de RR.HH., la red o pantalla del taller, cambiar `PKA_SECRETO` y hacer el piloto.
 
 **Estrategia:** primero un MVP con las fases 0 y 1 del plan (registro de asistencia funcionando y conforme a la norma). Después, mejoras por etapas según lo que opine gerencia.
 
@@ -219,7 +219,15 @@ Leyenda: `[x]` hecho · `[ ]` pendiente · `[~]` en curso
     - **Mis horas**: horas, extra y días completos del mes; "Te falta marcar" (los 3 más recientes); calendario donde cada día se toca para ver sus marcas, otras salidas y correcciones pedidas con su respuesta; **Pedir corrección** con la hora, "¿Qué pasó?" (Olvidé marcar, Falló el WiFi, Se cerró la página, Otro) y un comentario;
     - **Perfil**: DNI oculto (•••• 4040) con "Ver", que queda en el historial; teléfono, celular registrado y "Cerrar sesión";
     - **Mi recibo** ya no pide la huella (usa la sesión).
-  - [ ] **Etapa B:** PIN de respaldo (T0B/T0C), registro propio y cambio de celular con DNI y cumpleaños aprobado por gerencia (T1), "liberar mi celular", QR de 30 min, jornadas que pasan la medianoche con alerta de más de 16 h y el recordatorio de campaña (T9).
+  - [x] **Etapa B** (versión 0.13.0):
+    - **PIN de ingreso** (T0B, T0C, T7C): 6 números, creado desde el perfil, guardado con hash; solo inicia sesión y solo en el celular registrado; **nunca marca**; 5 errores bloquean 15 min; gerencia lo puede quitar; se activa o desactiva y se elige el largo en Ajustes;
+    - **registro propio** (T1A–T1F): "Es mi primera vez", en el taller (WiFi o QR): nombre, apellido, celular, DNI, cumpleaños (día y mes) y aviso de datos → llave → "Registro enviado". Hasta que gerencia lo aprueba no entra ni marca;
+    - **cambio de celular** (T1G–T1K, T4D): "Cambié de celular" o "Recuperar mi perfil": buscar el perfil (solo nombres), confirmar con DNI completo y cumpleaños (5 errores, 15 min), llave del celular nuevo → "Cambio pedido". Sigue marcando con el anterior hasta la aprobación; al aprobar, el anterior queda de baja;
+    - **liberar el celular** (T0D, T0E): desde la entrada o el perfil; gerencia lo aprueba, o libera un celular directamente;
+    - **Asistencia → Celulares** (G13): lo que espera aprobación (aprobar o rechazar con motivo, que la persona ve) y el celular de cada persona (liberar, quitar PIN). Nadie aprueba su propio celular. Todo en el historial y con avisos nuevos ("Celular por aprobar" a RR.HH.; "Tu celular fue revisado" a la persona);
+    - **cumpleaños en la ficha** del trabajador: sin él, quien fue dado de alta por RR.HH. no puede cambiar de celular solo (se le pide un enlace de activación, como antes);
+    - **QR de hasta 30 min**, **jornadas que pasan la medianoche** y **recordatorio de campaña** (ver la bitácora del 15-11).
+  - [ ] Por confirmar con el responsable (maquetas 5.7 y 6.3): que gerencia apruebe cada registro y cada cambio (así está), el límite de 16 h, y si el QR pasa a 30 min (hoy 30 s por defecto).
 
 ## Decisiones pendientes
 
@@ -239,7 +247,7 @@ Vienen de la sección 16 del plan; se resuelven con gerencia y el contador.
 
 ## Bitácora
 
-### 15-11-2026 — etapa B de la app (maquetas), en curso
+### 15-11-2026 — versión 0.13.0: etapa B de la app (maquetas)
 - **QR con vigencia configurable** (Ajustes → "El QR de la pantalla cambia cada": 30 s, 5, 15 o 30 min; las maquetas piden 30 min). Al escanear, el enlace dura lo mismo que el QR ("Enlace vigente · 24 min"). La pantalla muestra una barra que pasa a ámbar en los últimos minutos, y con el enlace vencido el botón principal de la app es "Escanear el QR". Durante el primer minuto del QR nuevo se sigue aceptando el anterior. El periodo va en la firma: un token de 30 s no sirve como si fuera de 30 min. **Queda en 30 s por defecto**, para no cambiar lo que está en producción; con 15 o 30 min conviene "WiFi del taller y QR", porque un QR largo se puede reenviar por WhatsApp.
 - **Jornadas que pasan la medianoche** (`JornadaAbierta` en el núcleo, `Jornadas::diaActual`):
   - la jornada no se corta: si la de ayer sigue abierta, hoy no hay marcas y no pidió una corrección para ayer, lo que marque va al día de ayer (antes se cortaba a las 4 a. m.);
@@ -248,6 +256,12 @@ Vienen de la sección 16 del plan; se resuelven con gerencia y el contador.
   - si al cerrarla pasa de **16 h** (Ajustes → Reglas, "Revisar jornadas de más de"), se acepta igual, queda por revisar y se avisa al jefe con el aviso nuevo "Jornada muy larga" (T3F);
   - Hoy muestra "Sigue en la jornada de ayer" en vez de "no llegó", y el cron no avisa "no llegó" a quien sigue trabajando desde ayer.
   - Prueba de punta a punta: 6 comprobaciones nuevas. Se ajustó la prueba de avisos, que usaba "el próximo lunes": hoy es domingo, y la jornada de hoy de Luis seguía abierta.
+- **PIN, registro propio, cambio y liberar celular** (`Pines`, `Celulares`, `ValidacionIdentidad` con 4 pruebas; base de datos versión 7: cumpleaños, PIN y origen en `trabajadores`, llaves `pendiente`, tabla `solicitudes_celular`):
+  - API: `pin/estado`, `pin/entrar`, `yo/pin`, `yo/pin/quitar`, `registro/estado`, `registro/nuevo`, `registro/buscar`, `registro/confirmar`, `registro/completar`, `celular/liberar`. `identificar` responde "Tu registro está esperando…" o "Tu cambio de celular está esperando…" en vez de "no reconocimos tu llave";
+  - app: entrada con las alternativas, teclado del PIN, liberar, bienvenida que comprueba el taller (con "Escanear el QR" si hace falta), tus datos con errores por campo, crear la llave, buscar mi perfil, confirmar que soy yo, crear o cambiar el PIN en el perfil;
+  - panel: Asistencia → Celulares (con el número de pendientes en el menú), cumpleaños en la ficha, "PIN de ingreso" en Ajustes;
+  - prueba de punta a punta: 25 comprobaciones nuevas (232 en total): fuera del taller no se registra, errores por campo, DNI repetido, pendiente no entra, aprobar, PIN (escalera, hash, intentos, desde otro celular no, no marca), buscar sin DNI, cumpleaños equivocado, sin cumpleaños, cambio pendiente con el anterior funcionando, aprobar el cambio, liberar, rechazar con motivo y volver a registrarse, historial;
+  - en el navegador (tamaño celular): la entrada, "Tus datos" con errores, buscar y confirmar perfil, crear y cambiar el PIN; en el panel: Celulares (aprobar, rechazar sin motivo) y las secciones nuevas de Ajustes. **No probé** crear la llave del registro ni entrar con PIN en pantalla: necesitan la huella y la cookie del celular de verdad (están cubiertas por la prueba de punta a punta).
 - **Recordatorio de campaña** (T9A y G15; `RecordatorioCampana` en el núcleo, 4 pruebas): "Aún no marcas tu entrada…" arriba de Marcar, solo si gerencia lo activó, dentro de las fechas (por defecto del 4-1 al 31-3-2027), en un día laborable de la persona, pasada la hora (09:15) y si todavía no marcó; desaparece al marcar. Se configura en Ajustes → "Avisos de campaña", con la vista previa del texto. **Empieza apagado.** No manda correos. El E2E solo comprobó el lado "no sale" (hoy es domingo); el día laborable lo cubren las pruebas del núcleo.
 
 ### 14-11-2026 (noche, 8) — versión 0.12.0: app del trabajador con el diseño de las maquetas (etapa A)

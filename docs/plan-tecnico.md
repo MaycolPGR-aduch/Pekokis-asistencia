@@ -295,6 +295,17 @@ Decidido el 14-11-2026, siguiendo las maquetas entregadas por Pekokis (`CONTEXTO
 - **Mis horas (T5/T6):** horas, extra y días completos (sin dinero), "Te falta marcar", calendario con cada día tocable y el detalle con sus pasos, otras salidas y correcciones pedidas. "Pedir corrección" manda la hora, qué pasó y un comentario a `POST /correcciones`.
 - **Perfil (T7):** DNI oculto; "Ver" lo trae con `POST /yo/dni` y queda en el historial.
 
+### 6.9 Identidad y celulares (versión 0.13.0, etapa B de las maquetas)
+
+- **Dos cosas distintas:** entrar (ver horas, recibo, perfil) se hace desde cualquier lugar con la huella o el PIN; marcar, registrar o cambiar el celular solo en el taller (WiFi o QR) y siempre con la huella.
+- **PIN opcional:** lo crea la persona en su perfil (6 números por defecto, sin escaleras ni números repetidos ni parte del DNI), se guarda con `password_hash()`, sirve solo en el celular registrado (cookie del celular + llave vigente) y nunca para marcar. 5 errores → 15 min. Gerencia lo activa, elige el largo y lo puede quitar.
+- **Registro propio:** perfil `pendiente` (origen `registro`) con cumpleaños `MM-DD` y el aviso aceptado; llave creada; solicitud `registro` en `solicitudes_celular`. Gerencia aprueba (queda `activo` con el horario base) o rechaza con motivo (queda `rechazado` y puede volver a registrarse).
+- **Cambio de celular:** buscar por nombre (solo nombres, hasta 8), confirmar con DNI + cumpleaños (5 errores por persona o por IP → 15 min), llave nueva con `pendiente = 1`. Hasta aprobar, la llave nueva no entra y la anterior sigue; al aprobar, `revocarOtros` da de baja el resto. Sin cumpleaños en la ficha no se puede (se usa el enlace de activación de RR.HH.).
+- **Liberar:** la persona lo pide desde el celular registrado (o su perfil) y gerencia lo aprueba, o gerencia libera directamente con motivo. Se dan de baja ese celular y sus llaves; los datos y las horas se conservan.
+- **Jornada que pasa la medianoche:** `Jornadas::diaActual` continúa la jornada de ayer si sigue abierta, hoy no hay marcas y no hay corrección pedida. Al cerrarla con más de `jornada_larga_horas` (16) desde la entrada, la salida queda por revisar y avisa al jefe.
+- **QR:** periodo configurable (`qr_segundos`: 30, 300, 900 o 1800); el pase dura lo mismo que el QR (o los minutos del pase, lo que sea mayor).
+- **Recordatorio de campaña:** `RecordatorioCampana` (activo, fechas, hora, día laborable, sin marcas) → `yo.recordatorio`.
+
 ---
 
 ## 7. Modelo de datos
@@ -351,6 +362,11 @@ Todas las rutas van bajo `/wp-json/asistencia/v1`.
 | `POST /yo/mes` | Trabajador (sesión o ticket) | Calendario, detalle de cada día y resumen del mes |
 | `GET /yo/perfil` · `POST /yo/dni` | Trabajador (sesión) | Perfil con el DNI oculto; mostrarlo completo queda en el historial |
 | `POST /yo/salir` | Trabajador | Cierra la sesión de ese celular |
+| `GET /pin/estado` · `POST /pin/entrar` | Celular registrado | ¿Se puede entrar con PIN aquí? / Entrar con PIN (solo sesión) |
+| `POST /yo/pin` · `POST /yo/pin/quitar` | Trabajador (sesión) | Crear, cambiar o quitar su PIN |
+| `GET /registro/estado` | Público | ¿Está en el taller? y el aviso de datos |
+| `POST /registro/nuevo` · `/registro/buscar` · `/registro/confirmar` · `/registro/completar` | En el taller | Registro propio y cambio de celular (quedan para gerencia) |
+| `POST /celular/liberar` | Celular registrado | Pedir que liberen este celular |
 | `POST /yo/recibos` (y `/enviar`, `/anular`) | Trabajador (sesión) | Sus recibos por honorarios |
 | `POST /correcciones` | Trabajador (sesión o ticket) | "Olvidé marcar": queda pendiente para su jefe |
 | `GET /pantalla/codigo` | Pantalla | Token y código vigentes |

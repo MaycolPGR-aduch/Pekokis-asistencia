@@ -39,6 +39,7 @@ final class PantallaAjustes {
 		add_action( 'admin_post_pka_guardar_avisos', array( self::class, 'guardarAvisos' ) );
 		add_action( 'admin_post_pka_probar_avisos', array( self::class, 'probarAvisos' ) );
 		add_action( 'admin_post_pka_guardar_campana', array( self::class, 'guardarCampana' ) );
+		add_action( 'admin_post_pka_guardar_pin', array( self::class, 'guardarPin' ) );
 	}
 
 	/** Campos numéricos de las reglas de horas: clave => [etiqueta, mínimo, máximo, ayuda]. */
@@ -318,6 +319,50 @@ final class PantallaAjustes {
 		Menu::volverA( admin_url( 'admin.php?page=' . self::SLUG ) . '#campana' );
 	}
 
+	/** PIN de ingreso opcional (maquetas 5.3 y G14). */
+	private static function pin(): void {
+		$a = Ajustes::todos();
+		?>
+		<h2 style="margin-top:32px" id="pin">PIN de ingreso</h2>
+		<p>Cada persona puede crear desde su perfil un PIN para <strong>entrar</strong> si su huella no funciona. Solo sirve en su celular registrado y <strong>nunca para marcar</strong> (marcar siempre pide la huella, para que nadie marque por otro con un PIN prestado). 5 PIN equivocados bloquean 15 minutos. Si alguien lo olvida, quítaselo en Asistencia → Celulares.</p>
+		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+			<input type="hidden" name="action" value="pka_guardar_pin">
+			<?php wp_nonce_field( 'pka_guardar_pin' ); ?>
+			<p><label><input type="checkbox" name="pin_activo" value="1" <?php checked( ! empty( $a['pin_activo'] ) ); ?>> Permitir entrar con PIN</label></p>
+			<p>
+				<label for="pka-pin-largo">Largo del PIN</label>
+				<select id="pka-pin-largo" name="pin_largo">
+					<?php foreach ( array( 4, 5, 6, 7, 8 ) as $n ) : ?>
+						<option value="<?php echo (int) $n; ?>" <?php selected( (int) $a['pin_largo'], $n ); ?>><?php echo (int) $n; ?> números</option>
+					<?php endforeach; ?>
+				</select>
+				<span class="description">Las maquetas piden 6. Si lo cambias, los PIN ya creados siguen valiendo con su largo.</span>
+			</p>
+			<?php submit_button( 'Guardar PIN', 'secondary' ); ?>
+		</form>
+		<?php
+	}
+
+	public static function guardarPin(): void {
+		self::exigir( 'pka_guardar_pin' );
+
+		$antes                 = Ajustes::todos();
+		$ajustes               = $antes;
+		$ajustes['pin_activo'] = ! empty( $_POST['pin_activo'] );
+		$ajustes['pin_largo']  = max( 4, min( 8, isset( $_POST['pin_largo'] ) ? absint( $_POST['pin_largo'] ) : 6 ) );
+		update_option( Ajustes::OPCION, $ajustes );
+
+		$claves    = array( 'pin_activo' => true, 'pin_largo' => true );
+		[ $a, $d ] = Auditoria::diferencias( array_intersect_key( $antes, $claves ), array_intersect_key( $ajustes, $claves ) );
+
+		if ( $d ) {
+			Auditoria::registrar( 'ajustes.pin', 'ajustes', null, $a, $d );
+		}
+
+		Avisos::agregar( 'success', 'PIN de ingreso guardado.' );
+		Menu::volverA( admin_url( 'admin.php?page=' . self::SLUG ) . '#pin' );
+	}
+
 	private static function empleadorYAviso(): void {
 		$a      = Ajustes::todos();
 		$conteo = Aviso::conteo();
@@ -595,6 +640,7 @@ final class PantallaAjustes {
 			<?php self::reglas(); ?>
 			<?php self::avisos(); ?>
 			<?php self::campana(); ?>
+			<?php self::pin(); ?>
 			<?php self::empleadorYAviso(); ?>
 		</div>
 		<?php

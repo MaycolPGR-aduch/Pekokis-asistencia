@@ -99,7 +99,7 @@ final class Celulares {
 		}
 
 		if ( '' === $cumple ) {
-			$errores['cumpleanos'] = 'Elige el día y el mes de tu cumpleaños.';
+			$errores['cumpleanos'] = '' !== (string) ( $entrada['cumple_dia'] ?? '' ) && '' !== (string) ( $entrada['cumple_mes'] ?? '' ) ? 'Esa fecha no existe: revisa el día.' : 'Elige el día y el mes de tu cumpleaños.';
 		}
 
 		$tabla = Tablas::nombre( 'trabajadores' );

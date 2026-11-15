@@ -11,7 +11,7 @@ Lo que tienes que hacer tú está marcado con ☐. Los nombres de los menús de 
 ## 0. Antes de empezar
 
 - ☐ **Recursos del plan.** En hPanel, revisa qué mide el 77 % de "Uso de recursos". Este sitio consume poco, pero suma archivos (unos 3.000 de WordPress y 200 del plugin) y un cron cada 5 minutos.
-- ☐ **El zip del plugin.** Ya está en `dist/pekokis-asistencia-0.12.0.zip`. Si cambia el código, se vuelve a generar con:
+- ☐ **El zip del plugin.** Ya está en `dist/pekokis-asistencia-0.13.0.zip`. Si cambia el código, se vuelve a generar con:
   ```bash
   php scripts/empaquetar.php
   ```
@@ -74,7 +74,7 @@ No lo compartas ni lo subas a git. Si algún día cambia, solo se invalidan los 
 
 ## 6. Instalar el plugin y el tema
 
-1. ☐ **Plugins → Añadir nuevo → Subir plugin:** sube `pekokis-asistencia-0.12.0.zip` y actívalo. Al activarse crea sus tablas, roles, motivos y el horario base.
+1. ☐ **Plugins → Añadir nuevo → Subir plugin:** sube `pekokis-asistencia-0.13.0.zip` y actívalo. Al activarse crea sus tablas, roles, motivos y el horario base.
 2. ☐ **Apariencia → Temas:** activa **"Pekokis Asistencia (vacío)"** y borra los demás temas, salvo uno por defecto como respaldo.
 3. ☐ Revisa **Asistencia → Ajustes → Estado del sistema.**
 
@@ -149,6 +149,10 @@ Es igual que en producción: **nunca** se llama a `wp-cron.php` por URL.
 | 23 | App nueva: entrar con la huella, cerrar la app y volver a abrirla (sigue dentro); marcar entrada y salir a comer (cada marca pide la huella) | ☐ | ☐ |
 | 24 | Fuera del WiFi: tocar "Escanear" (Android lee el QR; iPhone pide el código de 6 números) y marcar | ☐ | ☐ |
 | 25 | Mis horas: tocar un día sin salida, "Pedir corrección", y verla en el panel; Perfil: "Ver" el DNI y "Cerrar sesión" | ☐ | ☐ |
+| 26 | Perfil → PIN de ingreso → Crear; cerrar sesión y "Entrar con PIN" (un PIN equivocado dice cuántos intentos quedan) | ☐ | ☐ |
+| 27 | En un celular sin registrar, en el taller: "Es mi primera vez" → datos → llave → "Registro enviado"; aprobarlo en Asistencia → Celulares y entrar | ☐ | ☐ |
+| 28 | Cambio de celular: poner el cumpleaños en la ficha; en el celular nuevo "Cambié de celular" → buscar → DNI y cumpleaños → llave; el anterior sigue marcando hasta aprobar; después ya no | ☐ | ☐ |
+| 29 | Ajustes: QR a 30 min y la pantalla muestra la barra; "Avisos de campaña" con una fecha de hoy y ver el aviso en la app antes de marcar (y volver a dejarlo como estaba) | ☐ | ☐ |
 | 19 | Ajustes → Avisos: "Enviarme un correo de prueba"; encender "No llegó", pedir un "olvidé marcar" y ver que el correo llega al jefe (revisa también spam) | ☐ | — |
 
 Anota en [TAREAS.md](../TAREAS.md) lo que falle, con el celular y el navegador.
