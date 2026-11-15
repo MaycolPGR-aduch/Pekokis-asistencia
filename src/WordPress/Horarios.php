@@ -23,7 +23,7 @@ final class Horarios {
 		$feriado = Calendario::descripcion( $dia );
 
 		if ( '' !== $feriado ) {
-			return HorarioDelDia::libre( $feriado );
+			return HorarioDelDia::libre( $feriado, true );
 		}
 
 		$diaSemana = (int) ( new DateTimeImmutable( $dia ) )->format( 'N' );

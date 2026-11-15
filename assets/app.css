@@ -356,6 +356,7 @@ input[type="text"][inputmode="numeric"] {
 .cal-hoy { border: 2px solid var(--rosa); --cal-tinta: var(--rosa); }
 
 .cal-completo { --cal-fondo: #e7f5ec; --cal-tinta: #00733a; }
+.cal-con_extra { --cal-fondo: #dff6f5; --cal-tinta: #0b6e69; }
 .cal-tarde { --cal-fondo: #fdf1dc; --cal-tinta: #8a4b00; }
 .cal-falta { --cal-fondo: #fbe7e7; --cal-tinta: #b32d2e; }
 .cal-justificado { --cal-fondo: #e5f0fa; --cal-tinta: #1d5f99; }
@@ -366,6 +367,7 @@ input[type="text"][inputmode="numeric"] {
 
 @media (prefers-color-scheme: dark) {
 	.cal-completo { --cal-fondo: #12352a; --cal-tinta: #7fd8ac; }
+	.cal-con_extra { --cal-fondo: #0f3533; --cal-tinta: #7fe0da; }
 	.cal-tarde { --cal-fondo: #3b2a10; --cal-tinta: #f2bf6b; }
 	.cal-falta { --cal-fondo: #3d1717; --cal-tinta: #f28b8b; }
 	.cal-justificado { --cal-fondo: #142c42; --cal-tinta: #8cc2f0; }

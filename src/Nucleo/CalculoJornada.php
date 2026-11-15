@@ -6,20 +6,20 @@ use DateTimeImmutable;
 use DateTimeZone;
 
 /**
- * Cálculo de un día de un trabajador para horas y pre-planilla (plan, sección 6.5).
+ * Cálculo de un día de un trabajador para horas y pagos.
  *
- * Parte de las marcas efectivas, el horario del día, las decisiones de los jefes
- * sobre las salidas que requieren aprobación y el sobretiempo autorizado.
- * Todo se mide en minutos; los montos los calcula PrePlanilla.
- *
- * Criterios (por confirmar con el contador):
- * - Las salidas temporales cuentan como trabajadas solo si su motivo lo dice
- *   (encargo, lactancia) y, si requiere aprobación, cuando está aprobada.
- * - El tiempo trabajado fuera del horario solo es sobretiempo dentro de una
- *   franja autorizada; lo demás queda como "permanencia sin autorizar" para que
- *   el jefe lo revise (la norma presume sobretiempo si no se aclara).
- * - En un día no laborable (descanso o feriado) todo lo trabajado y autorizado
- *   va a su propia bolsa, con su propia sobretasa.
+ * Criterio (contexto del sistema, secciones 6.2 y 8):
+ * - Horas trabajadas = tiempo dentro del taller (más las salidas que cuentan
+ *   como trabajadas). La comida no cuenta.
+ * - Si en un día laborable no marcó la comida, se descuenta la comida de la
+ *   regla (60 min por defecto, por confirmar).
+ * - Lunes a viernes laborable: es hora extra todo lo que pase de la jornada
+ *   efectiva del horario (9 h 30 min con el horario base). Es automático: no
+ *   hace falta autorizarla.
+ * - Sábado: todas sus horas van con la tarifa de sábado. Domingo: con la de
+ *   domingo. Feriado (o día no laborable del calendario): con la de feriado.
+ * - Un día de semana que no es laborable en su horario: todo es hora extra.
+ * - Tardanzas, salidas anticipadas y faltas se señalan; no se descuentan.
  */
 final class CalculoJornada {
 	public const COMPLETO    = 'completo';
@@ -38,33 +38,39 @@ final class CalculoJornada {
 		self::DESCANSO    => 'Descanso',
 	);
 
+	// Cómo se paga el día.
+	public const DIA_LABORABLE = 'laborable';
+	public const DIA_LIBRE     = 'libre';     // Día de semana fuera de su horario.
+	public const DIA_SABADO    = 'sabado';
+	public const DIA_DOMINGO   = 'domingo';
+	public const DIA_FERIADO   = 'feriado';
+
 	private function __construct(
 		public readonly string $estado,
 		public readonly bool $laborable,
-		public readonly int $minutosEsperados,
-		public readonly int $minutosTrabajados,     // Todo lo trabajado: dentro + salidas pagadas.
-		public readonly int $minutosOrdinarios,     // Lo trabajado dentro del horario.
+		public readonly string $tipoDia,
+		public readonly int $minutosEsperados,       // Jornada efectiva del horario (sin la comida).
+		public readonly int $minutosTrabajados,      // Ya sin la comida descontada.
 		public readonly int $minutosSalidasPagadas,
 		public readonly int $minutosRefrigerio,
+		public readonly int $minutosComidaDescontada, // Comida no marcada que se descontó.
 		public readonly int $minutosExcesoRefrigerio,
 		public readonly int $minutosTardanza,
 		public readonly int $minutosSalidaAnticipada,
-		public readonly int $minutosNoTrabajados,   // Lo que faltó para la jornada (base del descuento).
-		public readonly int $minutosExtra1,         // Sobretiempo pagado a la primera tasa.
-		public readonly int $minutosExtra2,         // Sobretiempo pagado a la segunda tasa.
-		public readonly int $minutosDescansoTrabajado,
-		public readonly int $minutosCompensables,   // Sobretiempo autorizado a cambio de descanso.
-		public readonly int $minutosSinAutorizar,
+		public readonly int $minutosNoTrabajados,    // Lo que faltó para la jornada (solo se informa).
+		public readonly int $minutosExtra,           // Lunes a viernes, sobre la jornada (o día libre).
+		public readonly int $minutosSabado,
+		public readonly int $minutosDomingo,
+		public readonly int $minutosFeriado,
 		public readonly int $pendientesRevision,
 		public readonly string $detalle = '',
 	) {
 	}
 
 	/**
-	 * @param Marca[]                   $marcasDelDia  Marcas efectivas del día laboral.
-	 * @param array<int, string>        $revisiones    marca_id => "aprobada" | "rechazada".
-	 * @param AutorizacionSobretiempo[] $autorizaciones
-	 * @param string|null               $ausencia      Ausencia justificada del día ("Vacaciones"…).
+	 * @param Marca[]            $marcasDelDia Marcas efectivas del día laboral.
+	 * @param array<int, string> $revisiones   marca_id => "aprobada" | "rechazada".
+	 * @param string|null        $ausencia     Ausencia justificada del día ("Vacaciones"…).
 	 */
 	public static function calcular(
 		array $marcasDelDia,
@@ -73,12 +79,12 @@ final class CalculoJornada {
 		DateTimeZone $zona,
 		ReglasPago $reglas,
 		array $revisiones = array(),
-		array $autorizaciones = array(),
 		?string $ausencia = null,
 	): self {
 		$marcas  = MaquinaEstados::ordenar( $marcasDelDia );
 		$ventana = self::ventana( $horario, $dia, $zona );
 		$esperan = $ventana ? max( 0, intdiv( $ventana[1] - $ventana[0], 60 ) - $horario->refrigerioMin ) : 0;
+		$tipo    = self::tipoDia( $horario, $dia, $zona );
 
 		if ( ! $marcas ) {
 			[ $estado, $noTrabajado ] = match ( true ) {
@@ -87,7 +93,7 @@ final class CalculoJornada {
 				default               => array( self::FALTA, $esperan ),
 			};
 
-			return new self( $estado, $horario->laborable, $esperan, 0, 0, 0, 0, 0, 0, 0, $noTrabajado, 0, 0, 0, 0, 0, 0, $ausencia ?? $horario->descanso );
+			return new self( $estado, $horario->laborable, $tipo, $esperan, 0, 0, 0, 0, 0, 0, 0, $noTrabajado, 0, 0, 0, 0, 0, $ausencia ?? $horario->descanso );
 		}
 
 		$dentro     = array(); // Tramos [inicio, fin] en segundos Unix.
@@ -135,41 +141,18 @@ final class CalculoJornada {
 			}
 		}
 
-		$trabajado  = array_merge( $dentro, $pagadas );
-		$total      = self::suma( $trabajado );
-		$ordinario  = $horario->laborable && $ventana ? self::sumaCruce( $trabajado, array( $ventana ) ) : 0;
-		$fueraHor   = self::fueraDe( $trabajado, $horario->laborable ? $ventana : null );
-		$franjas    = array(
-			AutorizacionSobretiempo::PAGO     => array(),
-			AutorizacionSobretiempo::DESCANSO => array(),
-		);
-
-		foreach ( $autorizaciones as $a ) {
-			$franjas[ $a->compensacion ][] = array( $a->desde->getTimestamp(), $a->hasta->getTimestamp() );
-		}
-
-		$autPago     = self::sumaCruce( $fueraHor, $franjas[ AutorizacionSobretiempo::PAGO ] );
-		$autDescanso = self::sumaCruce( $fueraHor, $franjas[ AutorizacionSobretiempo::DESCANSO ] );
-		$sinAut      = max( 0, self::suma( $fueraHor ) - $autPago - $autDescanso );
-
-		$extra1 = 0;
-		$extra2 = 0;
-		$enDesc = 0;
-
-		if ( $horario->laborable ) {
-			$minPago = intdiv( $autPago, 60 );
-			$extra1  = min( $minPago, $reglas->tramoExtra1Min );
-			$extra2  = $minPago - $extra1;
-		} else {
-			$enDesc = intdiv( $autPago, 60 );
-		}
-
-		$primera  = self::primeraEntrada( $marcas );
-		$tardanza = self::tardanza( $primera, $horario, $ventana, $reglas );
-		$anticip  = self::salidaAnticipada( $marcas, $ventana, $horario, $revisiones );
+		$bruto    = intdiv( self::suma( $dentro ) + self::suma( $pagadas ), 60 );
 		$refriMin = intdiv( $refrigerio, 60 );
-		$ordMin   = intdiv( $ordinario, 60 );
-		$noTrab   = $horario->laborable && null === $ausencia ? max( 0, $esperan - $ordMin ) : 0;
+		$comida   = $horario->laborable && 0 === $refrigerio && null === $abierta ? min( $reglas->comidaNoMarcadaMin, $bruto ) : 0;
+		$neto     = $bruto - $comida;
+
+		[ $extra, $sabado, $domingo, $feriado ] = match ( $tipo ) {
+			self::DIA_LABORABLE => array( max( 0, $neto - $esperan ), 0, 0, 0 ),
+			self::DIA_SABADO    => array( 0, $neto, 0, 0 ),
+			self::DIA_DOMINGO   => array( 0, 0, $neto, 0 ),
+			self::DIA_FERIADO   => array( 0, 0, 0, $neto ),
+			default             => array( $neto, 0, 0, 0 ),
+		};
 
 		$estado = match ( true ) {
 			null !== $abierta || null !== MaquinaEstados::problemaEnSecuencia( $marcas ) => self::INCOMPLETO,
@@ -180,20 +163,20 @@ final class CalculoJornada {
 		return new self(
 			$estado,
 			$horario->laborable,
+			$tipo,
 			$esperan,
-			intdiv( $total, 60 ),
-			$ordMin,
+			$neto,
 			intdiv( self::suma( $pagadas ), 60 ),
 			$refriMin,
+			$comida,
 			$horario->laborable ? max( 0, $refriMin - $horario->refrigerioMin ) : 0,
-			$tardanza,
-			$anticip,
-			$noTrab,
-			$extra1,
-			$extra2,
-			$enDesc,
-			intdiv( $autDescanso, 60 ),
-			intdiv( $sinAut, 60 ),
+			self::tardanza( self::primeraEntrada( $marcas ), $horario, $ventana, $reglas ),
+			self::salidaAnticipada( $marcas, $ventana, $revisiones ),
+			$horario->laborable && null === $ausencia && self::INCOMPLETO !== $estado ? max( 0, $esperan - $neto ) : 0,
+			$extra,
+			$sabado,
+			$domingo,
+			$feriado,
 			$pendientes,
 			$ausencia ?? $horario->descanso
 		);
@@ -205,6 +188,27 @@ final class CalculoJornada {
 
 	public function esFalta(): bool {
 		return self::FALTA === $this->estado;
+	}
+
+	/** Minutos que se pagan aparte del honorario (extra, sábado, domingo y feriado). */
+	public function minutosAdicionales(): int {
+		return $this->minutosExtra + $this->minutosSabado + $this->minutosDomingo + $this->minutosFeriado;
+	}
+
+	/** Feriado del calendario, sábado, domingo, o laborable / libre según su horario. */
+	public static function tipoDia( HorarioDelDia $horario, string $dia, DateTimeZone $zona ): string {
+		if ( $horario->feriado ) {
+			return self::DIA_FERIADO;
+		}
+
+		$n = (int) ( new DateTimeImmutable( $dia . ' 12:00', $zona ) )->format( 'N' );
+
+		return match ( true ) {
+			6 === $n            => self::DIA_SABADO,
+			7 === $n            => self::DIA_DOMINGO,
+			$horario->laborable => self::DIA_LABORABLE,
+			default             => self::DIA_LIBRE,
+		};
 	}
 
 	/** @param array<int, string> $revisiones */
@@ -266,7 +270,7 @@ final class CalculoJornada {
 	 * @param Marca[]            $marcas
 	 * @param array<int, string> $revisiones
 	 */
-	private static function salidaAnticipada( array $marcas, ?array $ventana, HorarioDelDia $horario, array $revisiones ): int {
+	private static function salidaAnticipada( array $marcas, ?array $ventana, array $revisiones ): int {
 		$ultima = $marcas[ count( $marcas ) - 1 ];
 
 		if ( ! $ventana || TipoMarca::SALIDA !== $ultima->tipo || CategoriaMotivo::REFRIGERIO === $ultima->motivo?->categoria ) {
@@ -295,49 +299,5 @@ final class CalculoJornada {
 		}
 
 		return $total;
-	}
-
-	/**
-	 * Segundos de $tramos que caen dentro de $franjas (las franjas no se solapan entre sí).
-	 *
-	 * @param array<int, array{0: int, 1: int}> $tramos
-	 * @param array<int, array{0: int, 1: int}> $franjas
-	 */
-	private static function sumaCruce( array $tramos, array $franjas ): int {
-		$total = 0;
-
-		foreach ( $tramos as [ $a, $b ] ) {
-			foreach ( $franjas as [ $c, $d ] ) {
-				$total += max( 0, min( $b, $d ) - max( $a, $c ) );
-			}
-		}
-
-		return $total;
-	}
-
-	/**
-	 * Partes de los tramos fuera de la ventana del horario (todo, si no hay ventana).
-	 *
-	 * @param array<int, array{0: int, 1: int}> $tramos
-	 * @return array<int, array{0: int, 1: int}>
-	 */
-	private static function fueraDe( array $tramos, ?array $ventana ): array {
-		if ( ! $ventana ) {
-			return $tramos;
-		}
-
-		$fuera = array();
-
-		foreach ( $tramos as [ $a, $b ] ) {
-			if ( $a < $ventana[0] ) {
-				$fuera[] = array( $a, min( $b, $ventana[0] ) );
-			}
-
-			if ( $b > $ventana[1] ) {
-				$fuera[] = array( max( $a, $ventana[1] ), $b );
-			}
-		}
-
-		return $fuera;
 	}
 }

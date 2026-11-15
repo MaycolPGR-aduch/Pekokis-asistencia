@@ -3,22 +3,26 @@
 namespace Pekokis\Asistencia\Nucleo;
 
 /**
- * Un sueldo con su vigencia. Los montos van en céntimos para no arrastrar
- * errores de redondeo. Cada cambio crea uno nuevo; el historial no se edita.
+ * Honorario y tarifas de una persona, con su vigencia (pago por recibos por
+ * honorarios). Las horas normales están incluidas en el honorario; cada tipo de
+ * hora adicional tiene su propia tarifa. Montos en céntimos para no arrastrar
+ * errores de redondeo. Cada cambio crea un registro nuevo; el historial no se edita.
  */
 final class Sueldo {
-	public const MENSUAL  = 'mensual';
-	public const POR_HORA = 'por_hora';
-
-	public const MODALIDADES = array(
-		self::MENSUAL  => 'Sueldo mensual',
-		self::POR_HORA => 'Pago por hora',
+	public const TARIFAS = array(
+		'extra'   => 'Hora extra (lunes a viernes)',
+		'sabado'  => 'Hora de sábado',
+		'domingo' => 'Hora de domingo',
+		'feriado' => 'Hora de feriado',
 	);
 
 	public function __construct(
-		public readonly string $modalidad,
-		public readonly int $montoCentimos,
-		public readonly string $vigenteDesde,       // Y-m-d
+		public readonly int $honorarioCentimos,
+		public readonly int $tarifaExtra,   // Céntimos por hora.
+		public readonly int $tarifaSabado,
+		public readonly int $tarifaDomingo,
+		public readonly int $tarifaFeriado,
+		public readonly string $vigenteDesde,        // Y-m-d
 		public readonly ?string $vigenteHasta = null, // Y-m-d, null = sigue vigente.
 		public readonly ?int $id = null,
 	) {
@@ -28,11 +32,15 @@ final class Sueldo {
 		return $this->vigenteDesde <= $dia && ( null === $this->vigenteHasta || $dia <= $this->vigenteHasta );
 	}
 
-	/** Valor de una hora en céntimos (con decimales: se redondea al final). */
-	public function valorHora( ReglasPago $reglas ): float {
-		return self::POR_HORA === $this->modalidad
-			? (float) $this->montoCentimos
-			: $this->montoCentimos / 30 / $reglas->horasJornadaValor;
+	/** Tarifa por hora (céntimos) de un tipo: extra, sabado, domingo o feriado. */
+	public function tarifa( string $tipo ): int {
+		return match ( $tipo ) {
+			'extra'   => $this->tarifaExtra,
+			'sabado'  => $this->tarifaSabado,
+			'domingo' => $this->tarifaDomingo,
+			'feriado' => $this->tarifaFeriado,
+			default   => 0,
+		};
 	}
 
 	/** @param Sueldo[] $historial */

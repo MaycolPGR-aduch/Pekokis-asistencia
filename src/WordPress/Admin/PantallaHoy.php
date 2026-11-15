@@ -163,16 +163,6 @@ final class PantallaHoy {
 			}
 		}
 
-		if ( current_user_can( Capacidades::APROBAR ) ) {
-			$sinAutorizar = PantallaHorasExtra::sinAutorizar();
-
-			if ( $sinAutorizar ) {
-				$personas = count( array_unique( array_map( static fn( array $p ): int => (int) $p['t']['id'], $sinAutorizar ) ) );
-				$avisos[] = '<strong>' . $personas . ( 1 === $personas ? ' persona se quedó' : ' personas se quedaron' ) . ' fuera de su horario sin horas extra autorizadas</strong> en los últimos días. '
-					. 'Revísalo en <a href="' . esc_url( PantallaHorasExtra::url() ) . '">Asistencia → Horas extra</a>: si no se aclara, la norma presume que es sobretiempo.';
-			}
-		}
-
 		foreach ( $avisos as $aviso ) {
 			echo '<div class="notice notice-warning inline"><p>' . wp_kses( $aviso, array( 'strong' => array(), 'a' => array( 'href' => array() ) ) ) . '</p></div>';
 		}

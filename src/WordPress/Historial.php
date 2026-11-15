@@ -63,7 +63,7 @@ final class Historial {
 		'sueldo.agregar'         => 'Sueldo registrado',
 		'sueldo.anular'          => 'Sueldo anulado',
 		'ajustes.reglas'         => 'Cambio de las reglas de horas',
-		'preplanilla.descargar'  => 'Pre-planilla descargada',
+		'preplanilla.descargar'  => 'Planilla de pagos descargada',
 		'informe.descargar'      => 'Informe por trabajador descargado',
 		'ajustes.avisos'         => 'Cambio de los avisos',
 	);
@@ -118,6 +118,7 @@ final class Historial {
 		'sueldo'                      => 'Sueldo',
 		'vigente_desde'               => 'Rige desde',
 		'trabajadores'                => 'Trabajadores',
+		'comida_no_marcada_min'       => 'Comida descontada si no se marca (min)',
 		'tasa_extra_1'                => 'Sobretasa primeras horas extra (%)',
 		'tasa_extra_2'                => 'Sobretasa siguientes horas extra (%)',
 		'tramo_extra_1_min'           => 'Minutos a la primera sobretasa',

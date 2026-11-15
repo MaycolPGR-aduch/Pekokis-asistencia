@@ -36,15 +36,9 @@ final class Ajustes {
 			// Aviso de datos personales: vacío = borrador por defecto (Aviso::borrador()).
 			'aviso_texto'     => '',
 			'aviso_version'   => 1,
-			// Reglas de horas y pre-planilla (fase 2). POR CONFIRMAR CON EL CONTADOR.
-			'tasa_extra_1'           => 25,
-			'tasa_extra_2'           => 35,
-			'tramo_extra_1_min'      => 120,
-			'tasa_descanso'          => 100,
-			'horas_jornada_valor'    => 8,
-			'descontar_no_trabajado' => 1,
+			// Reglas de horas (pago por recibos por honorarios). POR CONFIRMAR con el responsable.
+			'comida_no_marcada_min'  => 60,
 			'tardanza_desde'         => ReglasPago::TARDANZA_DESDE_ENTRADA,
-			'aviso_permanencia_min'  => 30,
 			// Avisos (fase 4). Todos empiezan apagados; se encienden en Ajustes.
 			'avisos_activos'          => array(),
 			'aviso_hora_sin_salida'   => '20:00',

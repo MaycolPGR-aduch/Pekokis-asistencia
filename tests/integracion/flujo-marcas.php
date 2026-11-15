@@ -44,7 +44,7 @@ $api = static function ( string $metodo, string $ruta, array $cuerpo = array() )
 };
 
 // ---- Preparación: tablas vacías, una red autorizada y la IP del "WiFi del taller".
-foreach ( array( 'trabajadores', 'marcas', 'auditoria', 'credenciales', 'dispositivos', 'activaciones', 'redes', 'correcciones', 'pantallas', 'revisiones', 'calendario', 'ausencias', 'sueldos', 'sobretiempo', 'avisos' ) as $tabla ) {
+foreach ( array( 'trabajadores', 'marcas', 'auditoria', 'credenciales', 'dispositivos', 'activaciones', 'redes', 'correcciones', 'pantallas', 'revisiones', 'calendario', 'ausencias', 'sueldos', 'avisos' ) as $tabla ) {
 	$wpdb->query( 'TRUNCATE TABLE ' . Tablas::nombre( $tabla ) ); // phpcs:ignore
 }
 $wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE '\\_transient\\_pka\\_%' OR option_name LIKE '\\_transient\\_timeout\\_pka\\_%'" ); // phpcs:ignore
@@ -491,51 +491,46 @@ require_once ABSPATH . 'wp-admin/includes/user.php';
 wp_delete_user( $gerente );
 wp_delete_user( $jefe );
 
-// ---- 11. Horas extra, sueldos y pre-planilla (fase 2).
-WP_CLI::line( '11. Horas extra, sueldos y pre-planilla' );
+// ---- 11. Horas y pagos por recibos por honorarios.
+WP_CLI::line( '11. Horas y pagos (honorarios y tarifas)' );
 $J  = \Pekokis\Asistencia\WordPress\Jornadas::class;
-$ST = \Pekokis\Asistencia\WordPress\Sobretiempo::class;
 $SU = \Pekokis\Asistencia\WordPress\Sueldos::class;
 $A  = \Pekokis\Asistencia\Nucleo\Accion::class;
 $diaExtra = $antes[0];
 $CM = \Pekokis\Asistencia\WordPress\Correcciones::class;
-$CM::marcaManual( $id2, $diaExtra, '09:20', $A::ENTRADA, null, 'Prueba fase 2' );
-$CM::marcaManual( $id2, $diaExtra, '13:00', $A::SALIDA_REFRIGERIO, 'refrigerio', 'Prueba fase 2' );
-$CM::marcaManual( $id2, $diaExtra, '14:00', $A::REGRESO, null, 'Prueba fase 2' );
-$CM::marcaManual( $id2, $diaExtra, '21:30', $A::FIN_JORNADA, 'fin_jornada', 'Prueba fase 2' );
+$CM::marcaManual( $id2, $diaExtra, '09:20', $A::ENTRADA, null, 'Prueba de pagos' );
+$CM::marcaManual( $id2, $diaExtra, '13:00', $A::SALIDA_REFRIGERIO, 'refrigerio', 'Prueba de pagos' );
+$CM::marcaManual( $id2, $diaExtra, '14:00', $A::REGRESO, null, 'Prueba de pagos' );
+$CM::marcaManual( $id2, $diaExtra, '21:30', $A::FIN_JORNADA, 'fin_jornada', 'Prueba de pagos' );
 $luis = Trabajadores::buscar( $id2 );
 $j    = $J::delDia( $luis, $diaExtra );
-$comprobar( 'el día se calcula: 20 min de tardanza y 2 h fuera de horario sin autorizar', $j && 20 === $j->minutosTardanza && 120 === $j->minutosSinAutorizar && 0 === $j->minutosExtra1 && 20 === $j->minutosNoTrabajados, $j ? wp_json_encode( get_object_vars( $j ) ) : 'null' );
-$pend = array_filter( \Pekokis\Asistencia\WordPress\Admin\PantallaHorasExtra::sinAutorizar( 15 ), static fn( $p ) => (int) $p['t']['id'] === $id2 && $p['dia'] === $diaExtra );
-$comprobar( 'aparece en "tiempo fuera de horario sin autorizar"', 1 === count( $pend ) );
+$comprobar( 'el día: 11 h 10 trabajadas, 20 min de tardanza y 1 h 40 de extra automática', $j && 670 === $j->minutosTrabajados && 20 === $j->minutosTardanza && 100 === $j->minutosExtra, $j ? wp_json_encode( get_object_vars( $j ) ) : 'null' );
 
-$sinMotivo = $ST::crear( array( 'trabajador_id' => $id2, 'fecha' => $diaExtra, 'desde' => '19:30', 'hasta' => '21:00', 'compensacion' => 'pago', 'motivo' => '' ) );
-$comprobar( 'autorizar horas extra exige motivo', is_wp_error( $sinMotivo ) && isset( $sinMotivo->get_error_data()['errores']['motivo'] ) );
-$aut = $ST::crear( array( 'trabajador_id' => $id2, 'fecha' => $diaExtra, 'desde' => '19:30', 'hasta' => '21:00', 'compensacion' => 'pago', 'motivo' => 'Pedido urgente de prueba' ) );
-$comprobar( 'se autorizan horas extra (después del día)', is_int( $aut ) );
-$comprobar( 'no se cruzan dos franjas del mismo día', is_wp_error( $ST::crear( array( 'trabajador_id' => $id2, 'fecha' => $diaExtra, 'desde' => '20:00', 'hasta' => '22:00', 'compensacion' => 'pago', 'motivo' => 'Otra franja' ) ) ) );
-$j = $J::delDia( $luis, $diaExtra );
-$comprobar( 'dentro de la franja es sobretiempo; lo demás sigue sin autorizar', 90 === $j->minutosExtra1 && 30 === $j->minutosSinAutorizar, wp_json_encode( array( $j->minutosExtra1, $j->minutosSinAutorizar ) ) );
-
-$comprobar( 'un sueldo de 0 no se acepta', is_wp_error( $SU::agregar( $id2, array( 'modalidad' => 'mensual', 'monto' => '0', 'vigente_desde' => '2020-01-01' ) ) ) );
-$s1 = $SU::agregar( $id2, array( 'modalidad' => 'mensual', 'monto' => '3.000,00', 'vigente_desde' => '2020-01-01', 'nota' => 'Contrato' ) );
-$comprobar( 'se registra el sueldo', is_int( $s1 ) && 300000 === $SU::vigente( $id2 )->montoCentimos );
-$comprobar( 'un cambio tiene que regir después del actual', is_wp_error( $SU::agregar( $id2, array( 'modalidad' => 'mensual', 'monto' => '3300', 'vigente_desde' => '2020-01-01' ) ) ) );
+$tarifas = array( 'honorario' => '1.800,00', 'tarifa_extra' => '12', 'tarifa_sabado' => '14', 'tarifa_domingo' => '20', 'tarifa_feriado' => '24', 'vigente_desde' => '2020-01-01', 'nota' => 'Contrato' );
+$comprobar( 'un honorario de 0 no se acepta', is_wp_error( $SU::agregar( $id2, array( 'honorario' => '0' ) + $tarifas ) ) );
+$comprobar( 'una tarifa vacía no se acepta', is_wp_error( $SU::agregar( $id2, array( 'tarifa_sabado' => '' ) + $tarifas ) ) );
+$s1 = $SU::agregar( $id2, $tarifas );
+$comprobar( 'se registran el honorario y las 4 tarifas', is_int( $s1 ) && 180000 === $SU::vigente( $id2 )->honorarioCentimos && 1200 === $SU::vigente( $id2 )->tarifaExtra && 2400 === $SU::vigente( $id2 )->tarifaFeriado );
+$comprobar( 'un cambio tiene que regir después del actual', is_wp_error( $SU::agregar( $id2, $tarifas ) ) );
 $manana = ( new DateTimeImmutable( $hoy ) )->modify( '+1 day' )->format( 'Y-m-d' );
-$s2     = $SU::agregar( $id2, array( 'modalidad' => 'mensual', 'monto' => '3300', 'vigente_desde' => $manana, 'nota' => 'Aumento' ) );
-$comprobar( 'un aumento cierra el sueldo anterior el día antes', is_int( $s2 ) && 300000 === $SU::vigente( $id2, $hoy )->montoCentimos && 330000 === $SU::vigente( $id2, $manana )->montoCentimos );
-$comprobar( 'solo se anula el último sueldo', is_wp_error( $SU::anular( $s1, 'Prueba' ) ) );
-$comprobar( 'al anular el aumento vuelve a regir el anterior', true === $SU::anular( $s2, 'Era de prueba' ) && 300000 === $SU::vigente( $id2, $manana )->montoCentimos );
+$s2     = $SU::agregar( $id2, array( 'honorario' => '2000', 'tarifa_extra' => '15', 'vigente_desde' => $manana, 'nota' => 'Aumento' ) + $tarifas );
+$comprobar( 'un aumento cierra el registro anterior el día antes', is_int( $s2 ) && 180000 === $SU::vigente( $id2, $hoy )->honorarioCentimos && 200000 === $SU::vigente( $id2, $manana )->honorarioCentimos );
+$comprobar( 'solo se anula el último', is_wp_error( $SU::anular( $s1, 'Prueba' ) ) );
+$comprobar( 'al anular el aumento vuelve a regir el anterior', true === $SU::anular( $s2, 'Era de prueba' ) && 180000 === $SU::vigente( $id2, $manana )->honorarioCentimos );
 
 $mesExtra = substr( $diaExtra, 0, 7 );
 $pp       = $J::prePlanilla( array( $luis ), $mesExtra )[ $id2 ] ?? null;
-$comprobar( 'pre-planilla: 1,5 h al 25 % = S/ 23,44 (valor hora 12,50)', $pp && 90 === $pp->minutos['extra_1'] && 2344 === $pp->montos['extra_1'], $pp ? wp_json_encode( array( $pp->minutos, $pp->montos ) ) : 'null' );
-$comprobar( 'pre-planilla: cuenta faltas y tardanzas', $pp && $pp->dias['faltas'] >= 1 && 20 === $pp->minutos['tardanza'] && 30 === $pp->minutos['sin_autorizar'] );
-$ajustesFase2 = \Pekokis\Asistencia\WordPress\Ajustes::todos();
-update_option( \Pekokis\Asistencia\WordPress\Ajustes::OPCION, array( 'tasa_extra_1' => 50 ) + $ajustesFase2 );
-$pp50 = $J::prePlanilla( array( $luis ), $mesExtra )[ $id2 ];
-$comprobar( 'las reglas de Ajustes cambian el cálculo (50 % → S/ 28,13)', 2813 === $pp50->montos['extra_1'] );
-update_option( \Pekokis\Asistencia\WordPress\Ajustes::OPCION, $ajustesFase2 );
+$comprobar( 'pago: S/ 1,800 + 1 h 40 × S/ 12 = S/ 1,820', $pp && 100 === $pp->minutos['extra'] && 2000 === $pp->montos['extra'] && 182000 === $pp->montos['total'], $pp ? wp_json_encode( array( $pp->minutos, $pp->montos ) ) : 'null' );
+$comprobar( 'las faltas y tardanzas se señalan pero no se descuentan', $pp && $pp->dias['faltas'] >= 1 && 20 === $pp->minutos['tardanza'] && 180000 === $pp->montos['honorario'] );
+
+// Un sábado trabajado va con la tarifa de sábado.
+$sabado = ( new DateTimeImmutable( $diaExtra ) )->modify( 'next saturday' )->format( 'Y-m-d' );
+if ( $sabado <= $ayer ) {
+	$CM::marcaManual( $id2, $sabado, '09:00', $A::ENTRADA, null, 'Sábado de prueba' );
+	$CM::marcaManual( $id2, $sabado, '13:00', $A::FIN_JORNADA, 'fin_jornada', 'Sábado de prueba' );
+	$js = $J::delDia( Trabajadores::buscar( $id2 ), $sabado );
+	$comprobar( 'el sábado: 4 h con la tarifa de sábado', $js && 240 === $js->minutosSabado && 0 === $js->minutosExtra );
+}
 
 $xlsPP = \Pekokis\Asistencia\WordPress\PrePlanillas::excel( $mesExtra, 'Prueba' );
 if ( class_exists( 'ZipArchive' ) ) {
@@ -544,10 +539,9 @@ if ( class_exists( 'ZipArchive' ) ) {
 	$zip = new ZipArchive();
 	$zip->open( $tmp );
 	$textos = (string) $zip->getFromName( 'xl/sharedStrings.xml' );
-	$hojas  = $zip->numFiles;
 	$zip->close();
 	wp_delete_file( $tmp );
-	$comprobar( 'el Excel de pre-planilla trae a Luis, el aviso de estimado y las reglas', str_contains( $textos, 'Pérez, Luis' ) && str_contains( $textos, 'ESTIMADOS' ) && str_contains( $textos, 'sueldo ÷ 30 ÷ 8 h' ) );
+	$comprobar( 'la planilla de pagos trae a Luis, el estado y la fórmula', str_contains( $textos, 'Pérez, Luis' ) && ( str_contains( $textos, 'Listo para pagar' ) || str_contains( $textos, 'Resolver incidencia' ) ) && str_contains( $textos, 'honorario + horas extra × tarifa extra' ) && 'pagos-' . $mesExtra . '.xlsx' === $xlsPP['nombre'] );
 }
 
 $gerente2 = wp_insert_user( array( 'user_login' => 'gerente2_prueba_' . wp_rand(), 'user_pass' => wp_generate_password( 20 ), 'role' => 'pka_gerencia' ) );
@@ -556,20 +550,15 @@ wp_set_current_user( $gerente2 );
 [ $histGerencia ] = \Pekokis\Asistencia\WordPress\Historial::buscar( array( 'trabajador' => $id2 ) );
 wp_set_current_user( 1 );
 $conSueldo = static fn( array $filas ): int => count( array_filter( $filas, static fn( $f ) => str_starts_with( $f['accion'], 'sueldo.' ) ) );
-$comprobar( 'el historial muestra los sueldos a RR.HH. pero no a Gerencia', 3 === $conSueldo( $histAdmin ) && 0 === $conSueldo( $histGerencia ) && count( $histGerencia ) > 0 );
-$comprobar( 'gerencia no ve sueldos', ! user_can( $gerente2, \Pekokis\Asistencia\WordPress\Capacidades::VER_SUELDOS ) );
+$comprobar( 'el historial muestra los honorarios a quien ve sueldos y no al rol de solo lectura', 3 === $conSueldo( $histAdmin ) && 0 === $conSueldo( $histGerencia ) && count( $histGerencia ) > 0 );
 
 $jefe2 = wp_insert_user( array( 'user_login' => 'jefe2_prueba_' . wp_rand(), 'user_pass' => wp_generate_password( 20 ), 'role' => 'pka_rrhh' ) );
 Trabajadores::guardar( array( 'user_id' => $jefe2, 'jefe_user_id' => 1 ) + Trabajadores::buscar( $id2 ), $id2, 'Luis en RR.HH.' );
 wp_set_current_user( $jefe2 );
-$propioST = $ST::crear( array( 'trabajador_id' => $id2, 'fecha' => $diaExtra, 'desde' => '06:00', 'hasta' => '08:00', 'compensacion' => 'pago', 'motivo' => 'Me autorizo yo' ) );
-$propioSU = $SU::agregar( $id2, array( 'modalidad' => 'mensual', 'monto' => '9000', 'vigente_desde' => $manana ) );
+$propioSU = $SU::agregar( $id2, array( 'vigente_desde' => $manana ) + $tarifas );
 wp_set_current_user( 1 );
-$comprobar( 'nadie se autoriza horas extra ni se registra su sueldo', is_wp_error( $propioST ) && 'pka_propio' === $propioST->get_error_code() && is_wp_error( $propioSU ) && 'pka_propio' === $propioSU->get_error_code() );
-
-$comprobar( 'anular la autorización exige motivo', is_wp_error( $ST::anular( $aut, '' ) ) );
-$comprobar( 'al anularla vuelve a quedar sin autorizar', true === $ST::anular( $aut, 'Se autorizó por error' ) && 120 === $J::delDia( $luis, $diaExtra )->minutosSinAutorizar );
-$comprobar( 'la base de datos ya tiene las tablas de la fase 2 (versión 3 o más)', (int) get_option( 'pka_version_bd' ) >= 3 );
+$comprobar( 'nadie registra su propio honorario', is_wp_error( $propioSU ) && 'pka_propio' === $propioSU->get_error_code() );
+$comprobar( 'la base de datos tiene las columnas de tarifas (versión 5 o más)', (int) get_option( 'pka_version_bd' ) >= 5 && null !== $wpdb->get_var( 'SHOW COLUMNS FROM ' . Tablas::nombre( 'sueldos' ) . " LIKE 'tarifa_feriado'" ) ); // phpcs:ignore
 wp_delete_user( $gerente2 );
 wp_delete_user( $jefe2 );
 
@@ -677,7 +666,7 @@ $final = $wpdb->get_row( 'SELECT estado, intentos, error FROM ' . Tablas::nombre
 $fallarCorreo = false;
 $comprobar( 'un correo que falla se reintenta y a la tercera queda como fallido', 'pendiente' === $intentos['estado'] && 2 === (int) $intentos['intentos'] && 'fallido' === $final['estado'] && str_contains( $final['error'], 'SMTP' ), wp_json_encode( array( $intentos, $final ) ) );
 $comprobar( 'el cron de avisos está programado cada 5 minutos', false !== wp_next_scheduled( $N::EVENTO ) && 'pka_cinco_minutos' === wp_get_schedule( $N::EVENTO ) );
-$comprobar( 'la base de datos está en la versión 4', '4' === get_option( 'pka_version_bd' ) );
+$comprobar( 'la base de datos está al día', \Pekokis\Asistencia\WordPress\Instalador::VERSION_BD === get_option( 'pka_version_bd' ) );
 update_option( \Pekokis\Asistencia\WordPress\Ajustes::OPCION, $ajustesAvisos );
 
 $comprobar( 'presencia por IP del taller', ( $_SERVER['REMOTE_ADDR'] = '203.0.113.10' ) && Presencia::enRedDelTaller() );

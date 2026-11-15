@@ -9,8 +9,8 @@ use Pekokis\Asistencia\Nucleo\PrePlanilla;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Junta lo que guarda WordPress (marcas, horarios, calendario, ausencias,
- * revisiones y sobretiempo) y calcula cada día con el núcleo.
+ * Junta lo que guarda WordPress (marcas, horarios, calendario, ausencias
+ * y revisiones) y calcula cada día con el núcleo.
  *
  * No guarda nada: la fuente de verdad son siempre las marcas y sus correcciones.
  */
@@ -30,7 +30,6 @@ final class Jornadas {
 		$reglas     = Ajustes::reglasPago();
 		$marcas     = Marcas::delRango( $ids, $desde, $hasta );
 		$ausencias  = Ausencias::delRango( $ids, $desde, $hasta );
-		$sobre      = Sobretiempo::delRango( $ids, $desde, $hasta );
 		$revisiones = self::revisiones( $ids, $desde, $hasta );
 		$resultado  = array();
 
@@ -48,7 +47,6 @@ final class Jornadas {
 					$zona,
 					$reglas,
 					$revisiones,
-					$sobre[ $id ][ $dia ] ?? array(),
 					$ausencias[ $id ][ $dia ] ?? null
 				);
 			}
@@ -78,12 +76,11 @@ final class Jornadas {
 
 		$jornadas = self::delRango( $trabajadores, $desde, $hasta );
 		$sueldos  = Sueldos::deTrabajadores( array_map( static fn( array $t ): int => (int) $t['id'], $trabajadores ) );
-		$reglas   = Ajustes::reglasPago();
 		$filas    = array();
 
 		foreach ( $trabajadores as $t ) {
 			$id           = (int) $t['id'];
-			$filas[ $id ] = PrePlanilla::calcular( $jornadas[ $id ] ?? array(), $sueldos[ $id ] ?? array(), $reglas );
+			$filas[ $id ] = PrePlanilla::calcular( $jornadas[ $id ] ?? array(), $sueldos[ $id ] ?? array() );
 		}
 
 		return $filas;

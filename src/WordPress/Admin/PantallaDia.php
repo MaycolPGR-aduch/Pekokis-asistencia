@@ -39,7 +39,7 @@ final class PantallaDia {
 		return add_query_arg( array( 'page' => Menu::SLUG, 'vista' => 'dia', 'trabajador' => $trabajadorId, 'dia' => $dia ), admin_url( 'admin.php' ) );
 	}
 
-	/** Resumen del cálculo del día (fase 2): horas, tardanza, horas extra y tiempo sin autorizar. */
+	/** Resumen del cálculo del día: horas trabajadas, tardanza y horas que se pagan aparte del honorario. */
 	private static function calculo( array $t, string $dia ): void {
 		$j = \Pekokis\Asistencia\WordPress\Jornadas::delDia( $t, $dia );
 
@@ -48,36 +48,35 @@ final class PantallaDia {
 		}
 
 		$h      = static fn( int $m ): string => \Pekokis\Asistencia\Nucleo\PrePlanilla::horas( $m );
-		$partes = array( 'Trabajó ' . $h( $j->minutosTrabajados ) . ' h' );
+		$partes = array( 'Trabajó ' . $h( $j->minutosTrabajados ) . ' h' . ( $j->laborable ? ' de una jornada de ' . $h( $j->minutosEsperados ) . ' h' : '' ) );
 
-		if ( $j->laborable ) {
-			$partes[] = 'dentro del horario ' . $h( $j->minutosOrdinarios ) . ' h (se esperaban ' . $h( $j->minutosEsperados ) . ' h, sin el refrigerio)';
+		foreach ( array(
+			array( $j->minutosExtra, 'h extra' ),
+			array( $j->minutosSabado, 'h de sábado' ),
+			array( $j->minutosDomingo, 'h de domingo' ),
+			array( $j->minutosFeriado, 'h de feriado' ),
+		) as [ $min, $texto ] ) {
+			if ( $min > 0 ) {
+				$partes[] = $h( $min ) . ' ' . $texto;
+			}
 		}
 
 		foreach ( array(
-			'tardanza'          => array( $j->minutosTardanza, 'tardanza' ),
-			'refrigerio'        => array( $j->minutosExcesoRefrigerio, 'de más en el refrigerio' ),
-			'anticipada'        => array( $j->minutosSalidaAnticipada, 'de salida anticipada' ),
-			'pagadas'           => array( $j->minutosSalidasPagadas, 'en salidas pagadas' ),
-			'extra'             => array( $j->minutosExtra1 + $j->minutosExtra2, 'de horas extra autorizadas' ),
-			'descanso'          => array( $j->minutosDescansoTrabajado, 'en descanso o feriado, autorizado' ),
-			'compensables'      => array( $j->minutosCompensables, 'a compensar con descanso' ),
+			array( $j->minutosTardanza, 'min de tardanza' ),
+			array( $j->minutosExcesoRefrigerio, 'min de más en la comida' ),
+			array( $j->minutosComidaDescontada, 'min de comida descontada (no la marcó)' ),
+			array( $j->minutosSalidaAnticipada, 'min de salida anticipada' ),
+			array( $j->minutosSalidasPagadas, 'min en salidas pagadas' ),
 		) as [ $min, $texto ] ) {
 			if ( $min > 0 ) {
-				$partes[] = $min . ' min ' . $texto;
+				$partes[] = $min . ' ' . $texto;
 			}
 		}
 		?>
-		<div class="notice notice-<?php echo $j->minutosSinAutorizar >= \Pekokis\Asistencia\WordPress\Ajustes::reglasPago()->avisoPermanenciaMin || \Pekokis\Asistencia\Nucleo\CalculoJornada::FALTA === $j->estado ? 'warning' : 'info'; ?> inline">
+		<div class="notice notice-<?php echo in_array( $j->estado, array( \Pekokis\Asistencia\Nucleo\CalculoJornada::FALTA, \Pekokis\Asistencia\Nucleo\CalculoJornada::INCOMPLETO ), true ) ? 'warning' : 'info'; ?> inline">
 			<p>
 				<strong><?php echo esc_html( \Pekokis\Asistencia\Nucleo\CalculoJornada::ESTADOS[ $j->estado ] ?? $j->estado ); ?>.</strong>
 				<?php echo esc_html( implode( ' · ', $partes ) . '.' ); ?>
-				<?php if ( $j->minutosSinAutorizar > 0 ) : ?>
-					<br><strong><?php echo (int) $j->minutosSinAutorizar; ?> min fuera de su horario sin autorizar.</strong>
-					<?php if ( current_user_can( Capacidades::APROBAR ) && ! Trabajadores::esPropio( (int) $t['id'] ) ) : ?>
-						<a href="<?php echo esc_url( PantallaHorasExtra::url( array( 'trabajador' => (int) $t['id'], 'fecha' => $dia ) ) ); ?>">Autorizar horas extra</a>
-					<?php endif; ?>
-				<?php endif; ?>
 			</p>
 		</div>
 		<?php

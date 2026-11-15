@@ -38,22 +38,16 @@ final class PantallaAjustes {
 		add_action( 'admin_post_pka_probar_avisos', array( self::class, 'probarAvisos' ) );
 	}
 
-	/** Datos del empleador (salen en el Excel y en el aviso) y el aviso de datos personales. */
 	/** Campos numéricos de las reglas de horas: clave => [etiqueta, mínimo, máximo, ayuda]. */
 	private const REGLAS = array(
-		'tasa_extra_1'          => array( 'Sobretasa de las primeras horas extra (%)', 0, 300, 'Mínimo legal: 25 %.' ),
-		'tramo_extra_1_min'     => array( 'Minutos del día que van a esa sobretasa', 0, 1440, 'Por ley, las 2 primeras horas (120 min).' ),
-		'tasa_extra_2'          => array( 'Sobretasa de las horas extra siguientes (%)', 0, 300, 'Mínimo legal: 35 %.' ),
-		'tasa_descanso'         => array( 'Sobretasa por trabajar en descanso o feriado (%)', 0, 300, 'Sin descanso sustitutorio: 100 % (D. Leg. 713).' ),
-		'horas_jornada_valor'   => array( 'Horas de la jornada para el valor hora', 1, 24, 'Valor hora = sueldo mensual ÷ 30 ÷ estas horas.' ),
-		'aviso_permanencia_min' => array( 'Avisar desde (minutos fuera de horario sin autorizar)', 1, 600, 'Por debajo de esto no se avisa al jefe, pero igual queda en la pre-planilla.' ),
+		'comida_no_marcada_min' => array( 'Comida descontada si no se marca (minutos)', 0, 180, 'Solo en días laborables, cuando la persona no marcó su salida a comer. Por confirmar (las maquetas proponen 60). Con 0 no se descuenta.' ),
 	);
 
 	private static function reglas(): void {
 		$a = Ajustes::todos();
 		?>
-		<h2 style="margin-top:32px" id="reglas">Reglas de horas y pre-planilla</h2>
-		<div class="notice notice-warning inline"><p><strong>Por confirmar con el contador.</strong> Los valores iniciales siguen la norma peruana, pero la fórmula del valor hora y la política de descuentos las decide la empresa. Los montos de la pre-planilla son estimados.</p></div>
+		<h2 style="margin-top:32px" id="reglas">Reglas de horas y pagos</h2>
+		<p>Se paga por recibos por honorarios: <strong>honorario + horas extra, de sábado, de domingo y de feriado, cada una por la tarifa de la persona</strong> (se registran en la ficha de cada trabajador). De lunes a viernes es hora extra todo lo que pase de la jornada de su horario (9 h 30 min con el horario base), sin autorizar nada. El sábado, el domingo y los feriados, todas las horas van con su tarifa. Las faltas y tardanzas se señalan, pero no se descuentan.</p>
 		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 			<input type="hidden" name="action" value="pka_guardar_reglas">
 			<?php wp_nonce_field( 'pka_guardar_reglas' ); ?>
@@ -74,13 +68,6 @@ final class PantallaAjustes {
 						<label><input type="radio" name="tardanza_desde" value="<?php echo esc_attr( ReglasPago::TARDANZA_DESDE_TOLERANCIA ); ?>" <?php checked( (string) $a['tardanza_desde'], ReglasPago::TARDANZA_DESDE_TOLERANCIA ); ?>> Desde el fin de la tolerancia (llegó 9:14 con 5 min → 9 min)</label>
 					</td>
 				</tr>
-				<tr>
-					<th scope="row">Descuentos</th>
-					<td>
-						<label><input type="checkbox" name="descontar_no_trabajado" value="1" <?php checked( ! empty( $a['descontar_no_trabajado'] ) ); ?>> Descontar en la pre-planilla el tiempo no trabajado (faltas, tardanzas, salidas sin goce)</label>
-						<p class="description">Solo a quienes tienen sueldo mensual. No se aplican multas: se descuenta el tiempo, nada más.</p>
-					</td>
-				</tr>
 			</table>
 			<?php submit_button( 'Guardar reglas', 'secondary' ); ?>
 		</form>
@@ -99,11 +86,10 @@ final class PantallaAjustes {
 			}
 		}
 
-		$ajustes['tardanza_desde']         = isset( $_POST['tardanza_desde'] ) && ReglasPago::TARDANZA_DESDE_TOLERANCIA === $_POST['tardanza_desde'] ? ReglasPago::TARDANZA_DESDE_TOLERANCIA : ReglasPago::TARDANZA_DESDE_ENTRADA;
-		$ajustes['descontar_no_trabajado'] = empty( $_POST['descontar_no_trabajado'] ) ? 0 : 1;
+		$ajustes['tardanza_desde'] = isset( $_POST['tardanza_desde'] ) && ReglasPago::TARDANZA_DESDE_TOLERANCIA === $_POST['tardanza_desde'] ? ReglasPago::TARDANZA_DESDE_TOLERANCIA : ReglasPago::TARDANZA_DESDE_ENTRADA;
 		update_option( Ajustes::OPCION, $ajustes );
 
-		$claves    = array_merge( array_keys( self::REGLAS ), array( 'tardanza_desde', 'descontar_no_trabajado' ) );
+		$claves    = array_merge( array_keys( self::REGLAS ), array( 'tardanza_desde' ) );
 		[ $a, $d ] = Auditoria::diferencias( array_intersect_key( $antes, array_flip( $claves ) ), array_intersect_key( $ajustes, array_flip( $claves ) ) );
 
 		if ( $d ) {

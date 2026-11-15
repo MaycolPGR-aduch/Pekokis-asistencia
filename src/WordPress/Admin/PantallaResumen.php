@@ -64,19 +64,21 @@ final class PantallaResumen {
 			<p class="description">
 				<?php echo is_array( $alcance ) ? 'Solo tu equipo.' : 'Todo el taller.'; ?>
 				<?php echo $hasta >= $mes . '-01' ? esc_html( 'Días calculados hasta el ' . $hasta . ' (el día de hoy no entra).' ) : 'Este mes todavía no tiene días terminados.'; ?>
-				<?php echo $sueldos ? 'Los montos son estimados.' : ''; ?>
+
 			</p>
 
 			<?php self::estilos(); ?>
 			<div class="pka-tarjetas">
 				<?php
 				self::tarjeta( 'Horas trabajadas', $h( $total->minutos['trabajados'] ), self::plural( $total->dias['trabajados'], 'día trabajado', 'días trabajados' ) );
-				self::tarjeta( 'Horas extra autorizadas', $h( $total->minutos['extra_1'] + $total->minutos['extra_2'] ), $sueldos ? 'Costo estimado ' . Sueldo::soles( $total->montos['extra_1'] + $total->montos['extra_2'] ) : '' );
-				self::tarjeta( 'Descanso o feriado trabajado', $h( $total->minutos['descanso'] ), $sueldos ? 'Costo estimado ' . Sueldo::soles( $total->montos['descanso'] ) : '' );
+				self::tarjeta( 'Horas extra', $h( $total->minutos['extra'] ), $sueldos ? Sueldo::soles( $total->montos['extra'] ) . ' · de lunes a viernes' : 'de lunes a viernes' );
+				self::tarjeta( 'Sábado, domingo y feriado', $h( ( $total->minutos['sabado'] + $total->minutos['domingo'] + $total->minutos['feriado'] ) ), $sueldos ? Sueldo::soles( $total->montos['sabado'] + $total->montos['domingo'] + $total->montos['feriado'] ) : self::plural( $total->dias['sabados'] + $total->dias['domingos'] + $total->dias['feriados'], 'día trabajado', 'días trabajados' ) );
 				self::tarjeta( 'Tardanzas', (string) $total->dias['con_tardanza'], $h( $total->minutos['tardanza'] ) . ' h en total', $total->dias['con_tardanza'] ? '#8a4b00' : '' );
 				self::tarjeta( 'Faltas', (string) $total->dias['faltas'], self::plural( $total->dias['justificados'], 'día justificado', 'días justificados' ), $total->dias['faltas'] ? '#b32d2e' : '' );
 				self::tarjeta( 'Puntualidad', null === $total->puntualidad() ? '—' : $total->puntualidad() . ' %', 'días que llegaron a tiempo' );
-				self::tarjeta( 'Fuera de horario sin autorizar', $h( $total->minutos['sin_autorizar'] ), $total->minutos['sin_autorizar'] ? '<a href="' . esc_url( PantallaHorasExtra::url() ) . '">Revisar en Horas extra</a>' : 'Nada pendiente', $total->minutos['sin_autorizar'] ? '#8a4b00' : '' );
+				if ( $sueldos ) {
+					self::tarjeta( 'Total a pagar', Sueldo::soles( $total->montos['total'] ), 'honorarios ' . Sueldo::soles( $total->montos['honorario'] ) . ' + horas ' . Sueldo::soles( $total->costoExtra() ) );
+				}
 				self::tarjeta( 'Días por revisar', (string) ( $total->dias['por_revisar'] + $total->dias['incompletos'] ), self::plural( $total->dias['incompletos'], 'incompleto', 'incompletos' ) . ' (sin salida)' );
 				?>
 			</div>
@@ -86,8 +88,8 @@ final class PantallaResumen {
 			<h2>Comparación con los meses anteriores</h2>
 			<table class="widefat striped" style="max-width:1100px">
 				<thead><tr>
-					<th>Mes</th><th>Horas trabajadas</th><th>Horas extra</th><th>Descanso/feriado</th><th>Tardanzas</th><th>Faltas</th><th>Puntualidad</th><th>Sin autorizar</th>
-					<?php if ( $sueldos ) : ?><th>Costo extra (S/)</th><?php endif; ?>
+					<th>Mes</th><th>Horas trabajadas</th><th>Horas extra</th><th>Sáb./dom./fer.</th><th>Tardanzas</th><th>Faltas</th><th>Puntualidad</th>
+					<?php if ( $sueldos ) : ?><th>Total a pagar (S/)</th><?php endif; ?>
 				</tr></thead>
 				<tbody>
 				<?php
@@ -99,13 +101,12 @@ final class PantallaResumen {
 					<tr<?php echo $m === $mes ? ' style="font-weight:600"' : ''; ?>>
 						<td><?php echo esc_html( self::nombreMes( $m ) ); ?></td>
 						<td><?php echo esc_html( $h( $t->minutos['trabajados'] ) ); ?><?php self::tendencia( $t->minutos['trabajados'], $previo?->minutos['trabajados'], false ); ?></td>
-						<td><?php echo esc_html( $h( $t->minutos['extra_1'] + $t->minutos['extra_2'] ) ); ?><?php self::tendencia( $t->minutos['extra_1'] + $t->minutos['extra_2'], $previo ? $previo->minutos['extra_1'] + $previo->minutos['extra_2'] : null, true ); ?></td>
-						<td><?php echo esc_html( $h( $t->minutos['descanso'] ) ); ?></td>
+						<td><?php echo esc_html( $h( $t->minutos['extra'] ) ); ?><?php self::tendencia( $t->minutos['extra'], $previo?->minutos['extra'], true ); ?></td>
+						<td><?php echo esc_html( $h( ( $t->minutos['sabado'] + $t->minutos['domingo'] + $t->minutos['feriado'] ) ) ); ?></td>
 						<td><?php echo (int) $t->dias['con_tardanza']; ?><?php self::tendencia( $t->dias['con_tardanza'], $previo?->dias['con_tardanza'], true ); ?></td>
 						<td><?php echo (int) $t->dias['faltas']; ?><?php self::tendencia( $t->dias['faltas'], $previo?->dias['faltas'], true ); ?></td>
 						<td><?php echo null === $t->puntualidad() ? '—' : (int) $t->puntualidad() . ' %'; ?></td>
-						<td><?php echo esc_html( $h( $t->minutos['sin_autorizar'] ) ); ?></td>
-						<?php if ( $sueldos ) : ?><td><?php echo esc_html( number_format( $t->costoExtra() / 100, 2, '.', ',' ) ); ?></td><?php endif; ?>
+						<?php if ( $sueldos ) : ?><td><?php echo esc_html( number_format( $t->montos['total'] / 100, 2, '.', ',' ) ); ?></td><?php endif; ?>
 					</tr>
 				<?php endforeach; ?>
 				</tbody>
@@ -115,8 +116,8 @@ final class PantallaResumen {
 			<h2>Por trabajador</h2>
 			<div style="overflow-x:auto"><table class="widefat striped">
 				<thead><tr>
-					<th>Trabajador</th><th>Días trabajados</th><th>Horas</th><th>Tardanzas</th><th>Faltas</th><th>Justificados</th><th>Horas extra</th><th>Descanso/feriado</th><th>Sin autorizar</th><th>Puntualidad</th>
-					<?php if ( $sueldos ) : ?><th>Costo extra (S/)</th><?php endif; ?>
+					<th>Trabajador</th><th>Días trabajados</th><th>Horas</th><th>Tardanzas</th><th>Faltas</th><th>Justificados</th><th>Horas extra</th><th>Sáb./dom./fer.</th><th>Puntualidad</th>
+					<?php if ( $sueldos ) : ?><th>Total (S/)</th><th>Estado</th><?php endif; ?>
 				</tr></thead>
 				<tbody>
 				<?php if ( ! $filas ) : ?>
@@ -131,11 +132,13 @@ final class PantallaResumen {
 						<td><?php echo $f->dias['con_tardanza'] ? (int) $f->dias['con_tardanza'] . ' (' . (int) $f->minutos['tardanza'] . ' min)' : '0'; ?></td>
 						<td<?php echo $f->dias['faltas'] ? ' style="color:#b32d2e;font-weight:600"' : ''; ?>><?php echo (int) $f->dias['faltas']; ?></td>
 						<td><?php echo (int) $f->dias['justificados']; ?></td>
-						<td><?php echo esc_html( $h( $f->minutos['extra_1'] + $f->minutos['extra_2'] ) ); ?></td>
-						<td><?php echo esc_html( $h( $f->minutos['descanso'] ) ); ?></td>
-						<td<?php echo $f->minutos['sin_autorizar'] ? ' style="color:#8a4b00"' : ''; ?>><?php echo esc_html( $h( $f->minutos['sin_autorizar'] ) ); ?></td>
+						<td><?php echo esc_html( $h( $f->minutos['extra'] ) ); ?></td>
+						<td><?php echo esc_html( $h( ( $f->minutos['sabado'] + $f->minutos['domingo'] + $f->minutos['feriado'] ) ) ); ?></td>
 						<td><?php echo null === $f->puntualidad() ? '—' : (int) $f->puntualidad() . ' %'; ?></td>
-						<?php if ( $sueldos ) : ?><td><?php echo esc_html( number_format( $f->costoExtra() / 100, 2, '.', ',' ) ); ?></td><?php endif; ?>
+						<?php if ( $sueldos ) : ?>
+							<td><?php echo $f->sueldoFinal ? esc_html( number_format( $f->montos['total'] / 100, 2, '.', ',' ) ) : '—'; ?></td>
+							<td<?php echo PrePlanilla::LISTO === $f->estado() ? ' style="color:#00733a"' : ' style="color:#b32d2e"'; ?>><?php echo esc_html( PrePlanilla::ESTADOS[ $f->estado() ] ); ?></td>
+						<?php endif; ?>
 					</tr>
 				<?php endforeach; ?>
 				</tbody>
@@ -157,7 +160,7 @@ final class PantallaResumen {
 		$meses  = array_reverse( $historico, true );
 		$series = array(
 			'Horas trabajadas por mes' => static fn( PrePlanilla $t ): int => $t->minutos['trabajados'],
-			'Horas extra autorizadas por mes' => static fn( PrePlanilla $t ): int => $t->minutos['extra_1'] + $t->minutos['extra_2'],
+			'Horas extra por mes'             => static fn( PrePlanilla $t ): int => $t->minutos['extra'] + $t->minutos['sabado'] + $t->minutos['domingo'] + $t->minutos['feriado'],
 		);
 
 		echo '<h2>Cómo va el mes</h2><div class="pka-graficos">';

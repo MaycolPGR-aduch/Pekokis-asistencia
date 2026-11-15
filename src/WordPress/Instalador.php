@@ -13,7 +13,7 @@ defined( 'ABSPATH' ) || exit;
  * lo que RR.HH. haya cambiado.
  */
 final class Instalador {
-	public const VERSION_BD = '4';
+	public const VERSION_BD = '5';
 
 	private const OPCION_VERSION = 'pka_version_bd';
 
@@ -273,12 +273,17 @@ final class Instalador {
 				KEY periodo (desde,hasta)
 			) {$c};",
 
-			// Historial de sueldos (versión 3). Un cambio cierra el anterior; un error se anula, no se edita.
+			// Honorario y tarifas por persona, con historial (versión 3; tarifas desde la 5).
+			// monto_centimos es el honorario mensual. Un cambio cierra el anterior; un error se anula, no se edita.
 			"CREATE TABLE {$t['sueldos']} (
 				id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
 				trabajador_id bigint(20) unsigned NOT NULL,
-				modalidad varchar(12) NOT NULL,
+				modalidad varchar(12) NOT NULL DEFAULT 'honorario',
 				monto_centimos int(10) unsigned NOT NULL,
+				tarifa_extra int(10) unsigned NOT NULL DEFAULT 0,
+				tarifa_sabado int(10) unsigned NOT NULL DEFAULT 0,
+				tarifa_domingo int(10) unsigned NOT NULL DEFAULT 0,
+				tarifa_feriado int(10) unsigned NOT NULL DEFAULT 0,
 				vigente_desde date NOT NULL,
 				vigente_hasta date NULL,
 				nota varchar(255) NOT NULL DEFAULT '',
@@ -292,7 +297,8 @@ final class Instalador {
 				KEY trabajador (trabajador_id,estado,vigente_desde)
 			) {$c};",
 
-			// Horas extra autorizadas: una franja de un día y cómo se compensa (versión 3).
+			// En desuso desde la versión 5: las horas extra ya no se autorizan (son automáticas).
+			// La tabla se conserva por si tiene datos de la 0.7.0.
 			"CREATE TABLE {$t['sobretiempo']} (
 				id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
 				trabajador_id bigint(20) unsigned NOT NULL,

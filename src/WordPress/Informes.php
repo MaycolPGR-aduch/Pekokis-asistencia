@@ -20,11 +20,12 @@ final class Informes {
 	/** Colores por estado del día: etiqueta, color del texto y fondo. */
 	public const COLORES = array(
 		'completo'          => array( 'Completo', '#00733a', '#e7f5ec' ),
+		'con_extra'         => array( 'Con horas extra', '#0b6e69', '#dff6f5' ),
 		'tarde'             => array( 'Tarde', '#8a4b00', '#fdf1dc' ),
 		'falta'             => array( 'Falta', '#b32d2e', '#fbe7e7' ),
 		'justificado'       => array( 'Justificado', '#1d5f99', '#e5f0fa' ),
 		'descanso'          => array( 'Descanso', '#50575e', '#f0f0f1' ),
-		'descanso_trabajado' => array( 'Descanso trabajado', '#6b3fa0', '#f1eafa' ),
+		'descanso_trabajado' => array( 'Sábado, domingo o feriado trabajado', '#6b3fa0', '#f1eafa' ),
 		'revisar'           => array( 'Por revisar', '#8a4b00', '#fff4d6' ),
 		'incompleto'        => array( 'Incompleto', '#b32d2e', '#fff4d6' ),
 		'pendiente'         => array( '—', '#8c8f94', '#ffffff' ),
@@ -42,7 +43,12 @@ final class Informes {
 			CalculoJornada::DESCANSO    => 'descanso',
 			CalculoJornada::INCOMPLETO  => 'incompleto',
 			CalculoJornada::A_REVISAR   => 'revisar',
-			default                     => ! $j->laborable ? 'descanso_trabajado' : ( $j->minutosTardanza > 0 ? 'tarde' : 'completo' ),
+			default                     => match ( true ) {
+				! $j->laborable              => 'descanso_trabajado',
+				$j->minutosTardanza > 0      => 'tarde',
+				$j->minutosExtra > 0         => 'con_extra',
+				default                      => 'completo',
+			},
 		};
 	}
 
@@ -165,21 +171,24 @@ final class Informes {
 			array( 'Días con tardanza', $fila->dias['con_tardanza'] ),
 			array( 'Tardanza (h)', $h( $fila->minutos['tardanza'] ) ),
 			array( 'Horas trabajadas', $h( $fila->minutos['trabajados'] ) ),
-			array( 'Horas extra autorizadas', $h( $fila->minutos['extra_1'] + $fila->minutos['extra_2'] ) ),
-			array( 'Descanso o feriado trabajado (h)', $h( $fila->minutos['descanso'] ) ),
-			array( 'Fuera de horario sin autorizar (h)', $h( $fila->minutos['sin_autorizar'] ) ),
+			array( 'Horas extra (lunes a viernes)', $h( $fila->minutos['extra'] ) ),
+			array( 'Horas de sábado', $h( $fila->minutos['sabado'] ) ),
+			array( 'Horas de domingo', $h( $fila->minutos['domingo'] ) ),
+			array( 'Horas de feriado', $h( $fila->minutos['feriado'] ) ),
 			array( 'Puntualidad', null === $fila->puntualidad() ? '—' : $fila->puntualidad() . ' %' ),
 		);
 
 		if ( $conSueldos ) {
-			$resumen[] = array( 'Costo estimado de horas extra y descanso (S/)', round( $fila->costoExtra() / 100, 2 ) );
+			$resumen[] = array( 'Honorario (S/)', round( $fila->montos['honorario'] / 100, 2 ) );
+			$resumen[] = array( 'Horas adicionales (S/)', round( $fila->costoExtra() / 100, 2 ) );
+			$resumen[] = array( 'Total del mes (S/)', round( $fila->montos['total'] / 100, 2 ) );
 		}
 
 		$resumen[] = array();
 		$resumen[] = array( 'Generado por', $generadoPor );
 		$resumen[] = array( 'Generado el', wp_date( 'Y-m-d H:i', null, Ajustes::zona() ) );
 
-		$hojaDias = array( array( '<b>Fecha</b>', '<b>Estado</b>', '<b>Marcas</b>', '<b>Trabajado (h)</b>', '<b>Tardanza (min)</b>', '<b>Salida anticipada (min)</b>', '<b>Horas extra (min)</b>', '<b>Sin autorizar (min)</b>', '<b>Detalle</b>' ) );
+		$hojaDias = array( array( '<b>Fecha</b>', '<b>Estado</b>', '<b>Marcas</b>', '<b>Trabajado (h)</b>', '<b>Tardanza (min)</b>', '<b>Salida anticipada (min)</b>', '<b>Extra (min)</b>', '<b>Sábado, domingo o feriado (min)</b>', '<b>Detalle</b>' ) );
 
 		foreach ( $dias as $dia => $j ) {
 			$vigentes   = array_filter( $marcas[ $dia ] ?? array(), static fn( $m ) => null === $m['anulada'] );
@@ -190,8 +199,8 @@ final class Informes {
 				$h( $j->minutosTrabajados ),
 				$j->minutosTardanza,
 				$j->minutosSalidaAnticipada,
-				$j->minutosExtra1 + $j->minutosExtra2 + $j->minutosDescansoTrabajado,
-				$j->minutosSinAutorizar,
+				$j->minutosExtra,
+				$j->minutosSabado + $j->minutosDomingo + $j->minutosFeriado,
 				$j->detalle,
 			);
 		}

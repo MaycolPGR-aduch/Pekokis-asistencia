@@ -3,7 +3,7 @@
 Este archivo lleva lo hecho, lo pendiente y la bitácora del proyecto. Se actualiza cada vez que avanzamos.
 El detalle técnico de cada punto está en [docs/plan-tecnico.md](docs/plan-tecnico.md).
 
-**Estado actual:** en producción está la **0.8.1** (`https://asistencia.pekokis.com`). Ya tiene el respaldo en Google Drive y los feriados de 2026 y 2027 cargados. En local está lista la **0.9.0**, que agrega la **fase 4**: avisos por correo (y un webhook para WhatsApp) a jefes, trabajadores y RR.HH. La cubren 129 pruebas del núcleo y 174 de punta a punta. **Siguiente:** subir la 0.9.0 y encender los avisos que gerencia quiera. Además, terminar el correo de RR.HH. y la red o pantalla del taller, cambiar `PKA_SECRETO`, que el abogado revise el aviso, hacer el piloto y revisar con el contador las reglas de horas.
+**Estado actual:** en producción está la **0.8.1**, con el respaldo en Google Drive y los feriados de 2026 y 2027 cargados. En local está lista la **0.10.0**: avisos por correo (fase 4) y, siguiendo las maquetas, **el pago por recibos por honorarios**, que tiene honorario y 4 tarifas por persona, horas extra automáticas y la planilla de pagos. La cubren 125 pruebas del núcleo y 166 de punta a punta. **Siguiente:** seguir con lo factible de las maquetas (calculadora con "pagado", recibos por honorarios, app del trabajador con su diseño) y subir la versión. También falta terminar el correo de RR.HH. y la red o pantalla del taller, cambiar `PKA_SECRETO` y hacer el piloto.
 
 **Estrategia:** primero un MVP con las fases 0 y 1 del plan (registro de asistencia funcionando y conforme a la norma). Después, mejoras por etapas según lo que opine gerencia.
 
@@ -137,8 +137,8 @@ Leyenda: `[x]` hecho · `[ ]` pendiente · `[~]` en curso
 
 ### 7. Calidad y puesta en marcha
 - [x] Pruebas automáticas:
-  - 129 del núcleo (`composer test`);
-  - 174 de todo el flujo contra el WordPress local, con un autenticador simulado (`tests/integracion/flujo-marcas.php`);
+  - 125 del núcleo (`composer test`);
+  - 166 de todo el flujo contra el WordPress local, con un autenticador simulado (`tests/integracion/flujo-marcas.php`);
   - `tests/integracion/datos-demo.php` carga 5 trabajadores de ejemplo, con casos de hoy y de ayer, para ver el panel.
 - [ ] Pruebas en celulares reales: Android (Chrome) e iPhone (Safari)
 - [~] Aviso de datos personales (Ley 29733):
@@ -152,20 +152,22 @@ Leyenda: `[x]` hecho · `[ ]` pendiente · `[~]` en curso
 
 ## Después del MVP (según lo que pida gerencia)
 
-- [~] **Fase 2 — Horas y sueldos** (versión 0.7.0):
-  - [x] Varios horarios, calendario y feriados, ausencias justificadas (ya venían de la 0.4.0 y la 0.6.0).
-  - [x] Cálculo del día (`CalculoJornada`): tiempo trabajado, salidas pagadas, tardanza, exceso de refrigerio, salida anticipada, lo no trabajado, horas extra al 25 % y 35 %, descanso o feriado trabajado, horas a compensar con descanso y permanencia sin autorizar. Estado del día: completo, incompleto, por revisar, falta, justificado o descanso.
-  - [x] Horas extra autorizadas (Asistencia → Horas extra): el jefe autoriza una franja de su equipo, antes o después del día, con pago o descanso; nunca para sí mismo. Lo trabajado fuera de horario sin autorizar se avisa en Hoy y se muestra en el detalle del día.
-  - [x] Sueldos con historial (ficha del trabajador → Remuneración): mensual o por hora, con fecha de vigencia; un cambio cierra el anterior y un error se anula. Solo con `pka_ver_sueldos`; el historial de cambios oculta los sueldos a quien no los puede ver. Nadie registra su propio sueldo.
-  - [x] Reglas en Ajustes (sobretasas, tramo de 2 h, valor hora = sueldo ÷ 30 ÷ 8, tardanza desde la entrada o la tolerancia, descontar o no lo no trabajado, umbral del aviso).
-  - [x] Pre-planilla en Excel (Exportar): resumen por trabajador con montos estimados, detalle por día y hoja de reglas.
-  - [ ] **Revisar las reglas con el contador** (todas están marcadas como "por confirmar").
+- [x] **Fase 2 — Horas y pagos** (versión 0.7.0, rehecha en la 0.10.0 para pagar por recibos por honorarios, como piden las maquetas):
+  - [x] Varios horarios, calendario y feriados, ausencias justificadas (de la 0.4.0 y la 0.6.0).
+  - [x] **Cálculo del día** (`CalculoJornada`):
+    - mide las horas trabajadas, la comida (y descuenta 60 min si no la marcó en un día laborable), la tardanza, la salida anticipada y las salidas pagadas;
+    - clasifica el día (laborable, libre, sábado, domingo o feriado) y saca las horas extra (lo que pasa de 9 h 30 de lunes a viernes, sin autorizar) y las de sábado, domingo y feriado;
+    - estado del día: completo, incompleto, por revisar, falta, justificado o descanso.
+  - [x] **Honorario y tarifas** (ficha del trabajador): honorario mensual más tarifa extra, de sábado, de domingo y de feriado, con historial. Un cambio cierra el anterior y un error se anula. El historial de cambios oculta los montos a quien no puede ver sueldos, y nadie registra los suyos.
+  - [x] **Pago del mes** (`PrePlanilla`): honorario + horas × tarifa, sin descuentos, con estado "Listo para pagar", "Resolver incidencia" o "Falta su honorario", y la explicación en palabras para "Ver cálculo".
+  - [x] **Planilla de pagos** en Excel (Exportar): una fila por persona con horas, tarifa y monto de cada tipo, total y estado; el detalle por día; las reglas.
+  - [x] **Se quitó** la autorización de horas extra de la 0.7.0 (pantalla Horas extra, aviso "sin autorizar", sobretasas 25/35 %, valor hora). La tabla `sobretiempo` queda sin uso.
+  - [ ] **Calculadora de pagos (G10)**: casilla "pagado", "Ver cálculo" en pantalla y descarga de las personas listas.
+  - [ ] Por confirmar con el responsable: los 60 min de comida no marcada, si las faltas o tardanzas descuentan algo, y cómo se pagan las horas de madrugada que caen en sábado, domingo o feriado.
   - [ ] Guardar los días calculados (`pka_dias`) si el cálculo al vuelo se vuelve lento.
-  - [ ] Permisos por horas con sustento y la regla de lactancia por fecha de nacimiento.
-  - [ ] Que Gerencia vea la pre-planilla (hoy solo RR.HH. y administradores, porque trae sueldos).
 - [x] **Fase 3 — Dashboard e informes** (versión 0.8.0):
   - [x] **Resumen del mes** (Asistencia → Resumen del mes):
-    - tarjetas con horas trabajadas, horas extra (y su costo estimado si ve sueldos), descanso o feriado trabajado, tardanzas, faltas, puntualidad, tiempo sin autorizar y días por revisar;
+    - tarjetas con horas trabajadas, horas extra, sábado, domingo y feriado, tardanzas, faltas, puntualidad, total a pagar (si ve sueldos) y días por revisar;
     - comparación con los 5 meses anteriores, con flechas ▲▼ (en rojo lo que empeoró);
     - tabla por trabajador. Un jefe solo ve a su equipo.
   - [x] **Informe por trabajador** (Asistencia → Informe):
@@ -208,8 +210,8 @@ Vienen de la sección 16 del plan; se resuelven con gerencia y el contador.
 - [ ] Jornada: ¿lunes a viernes? ¿Sábados? ¿Cuánto dura el refrigerio y en qué franja?
 - [ ] Tolerancia y desde cuándo se cuenta la tardanza (ya es configurable en Ajustes)
 - [ ] Qué salidas cuentan como tiempo trabajado
-- [ ] Fórmula del valor hora y quién cobra por hora (configurable; por defecto sueldo ÷ 30 ÷ 8)
-- [ ] Horas extra: quién las autoriza; ¿pago o descanso? (el sistema permite las dos por franja)
+- [x] Cómo se paga: recibos por honorarios, con honorario más tarifas por hora de cada persona (decidido en las maquetas; en la 0.10.0)
+- [x] Horas extra: automáticas, lo que pase de 9 h 30 de lunes a viernes (maquetas; en la 0.10.0)
 - [ ] Qué jefe aprueba las solicitudes de quién
 - [ ] ¿Todos tienen smartphone con bloqueo de pantalla?
 - [ ] Texto del aviso de datos personales
@@ -218,6 +220,23 @@ Vienen de la sección 16 del plan; se resuelven con gerencia y el contador.
 ---
 
 ## Bitácora
+
+### 14-11-2026 (noche, 6) — versión 0.10.0: pago por recibos por honorarios
+- **Por qué:** las maquetas que entregó Pekokis (`asistencia_pekokis_para_programador.zip`) deciden que se paga por recibos por honorarios, con honorario más tarifas por hora de cada persona y horas extra automáticas. Maycol: "es una recomendación… hay que seguir sus recomendaciones si las vemos factibles"; empezamos por esta.
+- **Núcleo:**
+  - se rehicieron `CalculoJornada`, `PrePlanilla`, `Sueldo` (honorario y 4 tarifas), `ReglasPago` (comida no marcada, tardanza) y `ValidacionPago`;
+  - `HorarioDelDia` ahora sabe si el día es feriado del calendario;
+  - se borró `AutorizacionSobretiempo`;
+  - 125 pruebas, con el ejemplo de las maquetas: 1,800 + 6,5 h × 12 + 4 h × 14 = S/ 1,934.
+- **WordPress:**
+  - base de datos versión 5, con las columnas `tarifa_extra`, `tarifa_sabado`, `tarifa_domingo` y `tarifa_feriado` en `sueldos`;
+  - nueva sección "Honorario y tarifas" en la ficha, y "Planilla de pagos" en Exportar;
+  - la regla de comida no marcada está en Ajustes;
+  - el resumen, el informe, el detalle del día y el calendario (estado nuevo "Con horas extra") usan los nuevos tipos de hora;
+  - se borraron `Sobretiempo` y `Admin/PantallaHorasExtra`, y el aviso "sin autorizar" de Hoy y de los correos.
+- **Pruebas y revisión:**
+  - prueba de punta a punta: 166 comprobaciones; la sección 11 se rehízo para honorarios y tarifas;
+  - en el navegador revisé la ficha (historial y formulario prellenado), el resumen (total a pagar S/ 8,520.87 con los datos de prueba; cuadra a mano) y la descarga de `pagos-2026-11.xlsx`.
 
 ### 14-11-2026 (noche, 5) — versión 0.9.0 (fase 4: avisos)
 - **Núcleo:** `ReglasAvisos`, que decide qué avisos tocan según la hora y el estado del día, con la clave única de cada uno. 6 pruebas nuevas, 129 en total.

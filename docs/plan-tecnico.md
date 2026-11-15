@@ -267,18 +267,18 @@ El resultado se guarda en `pka_dias` como caché. La fuente de verdad son siempr
 - **Permanencia fuera de horario**: la normativa de jornada presume sobretiempo por el tiempo que el trabajador se queda en el centro de trabajo fuera de su horario, salvo prueba en contrario. Por eso el sistema separa el sobretiempo autorizado de la permanencia sin autorizar y se lo muestra al jefe el mismo día.
 - **Tardanzas**: se descuenta el tiempo no trabajado. No se aplican multas.
 
-### 6.6 Sueldos y valor hora
+### 6.6 Pagos (recibos por honorarios)
 
-- **Dos modalidades por trabajador**:
-  - *Sueldo mensual*: valor hora = sueldo ÷ 30 ÷ horas de la jornada diaria. La fórmula está por confirmar con el contador.
-  - *Pago por hora*: precio fijo por hora.
-- **Historial**: cada cambio de sueldo se guarda con su fecha de vigencia, y el cálculo usa el sueldo vigente en cada día.
-- **Pre-planilla mensual** por trabajador, en Excel para el contador, con montos marcados como estimados:
-  - días trabajados y faltas;
-  - tardanzas, en minutos y en soles;
-  - horas extra al 25 % y al 35 %, en horas y en soles;
-  - horas en feriado o día de descanso, en horas y en soles;
-  - permisos y licencias.
+Decidido el 14-11-2026, siguiendo las maquetas entregadas por Pekokis (`CONTEXTO_SISTEMA_ASISTENCIA.md`, sección 8). Reemplaza el cálculo de la 0.7.0, que era al estilo planilla: sobretasas del 25 % y 35 %, valor hora y sobretiempo autorizado.
+
+- Cada persona tiene un **honorario mensual** y **4 tarifas por hora**: extra, sábado, domingo y feriado. Cada cambio se guarda con su fecha de vigencia.
+- **Total del mes** = honorario + horas extra × tarifa extra + horas de sábado × tarifa sábado + horas de domingo × tarifa domingo + horas de feriado × tarifa feriado.
+- **Horas extra de lunes a viernes:** lo trabajado por encima de la jornada efectiva del horario (9 h 30 min con el horario base). Son automáticas: no se autorizan.
+- **Sábado, domingo y feriado:** todas las horas van con su tarifa. Un día de semana libre en el horario de la persona: todo es hora extra.
+- **Comida no marcada:** en días laborables se descuentan 60 min (configurable; por confirmar).
+- **No hay descuentos:** las faltas, tardanzas y salidas anticipadas se señalan, pero no se descuentan (por confirmar).
+- **Estado del pago:** "Listo para pagar", "Resolver incidencia" (días incompletos o marcas por revisar) o "Falta su honorario". El recibo por honorarios no frena el pago.
+- **Planilla de pagos** en Excel (Exportar), con una fila por persona, el detalle por día y las reglas.
 
 ---
 

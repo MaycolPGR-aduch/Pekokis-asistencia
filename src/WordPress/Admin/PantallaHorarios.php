@@ -142,7 +142,7 @@ final class PantallaHorarios {
 				</table>
 			<?php endif; ?>
 
-			<p class="description">La jornada máxima legal es de 8 horas diarias o 48 semanales. Más que eso cuenta como sobretiempo (confírmalo con el contador).</p>
+			<p class="description">De lunes a viernes, lo que pase de esta jornada (sin la comida) se paga como hora extra con la tarifa de cada persona.</p>
 			<?php submit_button( $h ? 'Guardar cambios' : 'Agregar horario' ); ?>
 		</form>
 		<?php

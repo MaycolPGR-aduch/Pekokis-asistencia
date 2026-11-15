@@ -108,12 +108,12 @@ final class PantallaInforme {
 			self::tarjeta( 'Faltas', (string) $fila->dias['faltas'], PantallaResumen::plural( $fila->dias['justificados'], 'justificado', 'justificados' ) );
 			self::tarjeta( 'Tardanzas', (string) $fila->dias['con_tardanza'], $fila->minutos['tardanza'] . ' min en total' );
 			self::tarjeta( 'Puntualidad', null === $fila->puntualidad() ? '—' : $fila->puntualidad() . ' %' );
-			self::tarjeta( 'Horas extra', $h( $fila->minutos['extra_1'] + $fila->minutos['extra_2'] ), $fila->minutos['descanso'] ? $h( $fila->minutos['descanso'] ) . ' h en descanso o feriado' : '' );
-			if ( $fila->minutos['sin_autorizar'] ) {
-				self::tarjeta( 'Sin autorizar', $h( $fila->minutos['sin_autorizar'] ), 'fuera de su horario' );
+			self::tarjeta( 'Horas extra', $h( $fila->minutos['extra'] ), 'de lunes a viernes' );
+			if ( $fila->minutos['sabado'] + $fila->minutos['domingo'] + $fila->minutos['feriado'] ) {
+				self::tarjeta( 'Sábado, domingo y feriado', $h( $fila->minutos['sabado'] + $fila->minutos['domingo'] + $fila->minutos['feriado'] ), 'sáb ' . $h( $fila->minutos['sabado'] ) . ' · dom ' . $h( $fila->minutos['domingo'] ) . ' · fer ' . $h( $fila->minutos['feriado'] ) );
 			}
-			if ( $sueldos && $fila->costoExtra() ) {
-				self::tarjeta( 'Costo extra estimado', Sueldo::soles( $fila->costoExtra() ) );
+			if ( $sueldos ) {
+				self::tarjeta( 'Pago del mes', $fila->sueldoFinal ? Sueldo::soles( $fila->montos['total'] ) : '—', $fila->sueldoFinal ? 'honorario ' . Sueldo::soles( $fila->montos['honorario'] ) . ' + ' . Sueldo::soles( $fila->costoExtra() ) : 'falta su honorario' );
 			}
 			?>
 		</div>
@@ -173,7 +173,7 @@ final class PantallaInforme {
 
 		<h3>Detalle de cada día</h3>
 		<table class="widefat striped pka-detalle">
-			<thead><tr><th>Día</th><th>Estado</th><th>Marcas</th><th>Trabajado</th><th>Tardanza</th><th>Horas extra</th><th>Sin autorizar</th><th>Nota</th></tr></thead>
+			<thead><tr><th>Día</th><th>Estado</th><th>Marcas</th><th>Trabajado</th><th>Tardanza</th><th>Extra</th><th>Sáb./dom./fer.</th><th>Nota</th></tr></thead>
 			<tbody>
 			<?php if ( ! $dias ) : ?>
 				<tr><td colspan="8">Todavía no hay días terminados en este mes.</td></tr>
@@ -196,8 +196,8 @@ final class PantallaInforme {
 					</td>
 					<td><?php echo $j->minutosTrabajados ? esc_html( $h( $j->minutosTrabajados ) ) : ''; ?></td>
 					<td><?php echo $j->minutosTardanza ? (int) $j->minutosTardanza . ' min' : ''; ?></td>
-					<td><?php echo $j->minutosExtra1 + $j->minutosExtra2 + $j->minutosDescansoTrabajado ? esc_html( $h( $j->minutosExtra1 + $j->minutosExtra2 + $j->minutosDescansoTrabajado ) ) : ''; ?></td>
-					<td><?php echo $j->minutosSinAutorizar ? (int) $j->minutosSinAutorizar . ' min' : ''; ?></td>
+					<td><?php echo $j->minutosExtra ? esc_html( $h( $j->minutosExtra ) ) : ''; ?></td>
+					<td><?php echo $j->minutosSabado + $j->minutosDomingo + $j->minutosFeriado ? esc_html( $h( $j->minutosSabado + $j->minutosDomingo + $j->minutosFeriado ) ) : ''; ?></td>
 					<td><?php echo esc_html( $j->detalle ); ?><?php echo $j->minutosSalidaAnticipada ? esc_html( ( '' !== $j->detalle ? ' · ' : '' ) . 'Salió ' . $j->minutosSalidaAnticipada . ' min antes' ) : ''; ?></td>
 				</tr>
 			<?php endforeach; ?>

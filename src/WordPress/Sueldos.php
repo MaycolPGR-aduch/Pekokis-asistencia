@@ -65,7 +65,7 @@ final class Sueldos {
 		}
 
 		if ( Trabajadores::esPropio( $trabajadorId ) ) {
-			return new WP_Error( 'pka_propio', 'No puedes registrar tu propio sueldo: lo hace otra persona de RR.HH. o un administrador.' );
+			return new WP_Error( 'pka_propio', 'No puedes registrar tu propio honorario: lo hace otra persona de gerencia o un administrador.' );
 		}
 
 		$datos  = ValidacionPago::normalizarSueldo( $entrada );
@@ -73,7 +73,7 @@ final class Sueldos {
 		$errores = ValidacionPago::erroresSueldo( $datos, $actual['vigente_desde'] ?? null );
 
 		if ( $errores ) {
-			return new WP_Error( 'pka_sueldo', 'Revisa el sueldo.', array( 'errores' => $errores ) );
+			return new WP_Error( 'pka_sueldo', 'Revisa el honorario y las tarifas.', array( 'errores' => $errores ) );
 		}
 
 		$tabla = Tablas::nombre( 'sueldos' );
@@ -87,8 +87,12 @@ final class Sueldos {
 			$tabla,
 			array(
 				'trabajador_id'  => $trabajadorId,
-				'modalidad'      => $datos['modalidad'],
-				'monto_centimos' => $datos['monto'],
+				'modalidad'      => 'honorario',
+				'monto_centimos' => $datos['honorario'],
+				'tarifa_extra'   => $datos['tarifas']['extra'],
+				'tarifa_sabado'  => $datos['tarifas']['sabado'],
+				'tarifa_domingo' => $datos['tarifas']['domingo'],
+				'tarifa_feriado' => $datos['tarifas']['feriado'],
 				'vigente_desde'  => $datos['vigente_desde'],
 				'nota'           => $datos['nota'],
 				'estado'         => 'vigente',
@@ -103,7 +107,16 @@ final class Sueldos {
 			'trabajador',
 			$trabajadorId,
 			$actual ? self::paraAuditoria( $actual ) : null,
-			self::paraAuditoria( array( 'modalidad' => $datos['modalidad'], 'monto_centimos' => $datos['monto'], 'vigente_desde' => $datos['vigente_desde'] ) ),
+			self::paraAuditoria(
+				array(
+					'monto_centimos' => $datos['honorario'],
+					'tarifa_extra'   => $datos['tarifas']['extra'],
+					'tarifa_sabado'  => $datos['tarifas']['sabado'],
+					'tarifa_domingo' => $datos['tarifas']['domingo'],
+					'tarifa_feriado' => $datos['tarifas']['feriado'],
+					'vigente_desde'  => $datos['vigente_desde'],
+				)
+			),
 			$datos['nota']
 		);
 
@@ -117,15 +130,15 @@ final class Sueldos {
 		$fila  = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$tabla} WHERE id = %d AND estado = 'vigente'", $id ), ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 
 		if ( ! $fila ) {
-			return new WP_Error( 'pka_no_existe', 'Ese sueldo no existe o ya está anulado.' );
+			return new WP_Error( 'pka_no_existe', 'Ese registro no existe o ya está anulado.' );
 		}
 
 		if ( Trabajadores::esPropio( (int) $fila['trabajador_id'] ) ) {
-			return new WP_Error( 'pka_propio', 'No puedes cambiar tu propio sueldo.' );
+			return new WP_Error( 'pka_propio', 'No puedes cambiar tu propio honorario.' );
 		}
 
 		if ( null !== $fila['vigente_hasta'] ) {
-			return new WP_Error( 'pka_sueldo', 'Solo se puede anular el último sueldo registrado.' );
+			return new WP_Error( 'pka_sueldo', 'Solo se puede anular el último registro.' );
 		}
 
 		if ( '' === trim( $motivo ) ) {
@@ -152,14 +165,23 @@ final class Sueldos {
 
 	/** @param array<string, mixed> $fila */
 	public static function aSueldo( array $fila ): Sueldo {
-		return new Sueldo( (string) $fila['modalidad'], (int) $fila['monto_centimos'], (string) $fila['vigente_desde'], $fila['vigente_hasta'] ? (string) $fila['vigente_hasta'] : null, (int) $fila['id'] );
+		return new Sueldo(
+			(int) $fila['monto_centimos'],
+			(int) ( $fila['tarifa_extra'] ?? 0 ),
+			(int) ( $fila['tarifa_sabado'] ?? 0 ),
+			(int) ( $fila['tarifa_domingo'] ?? 0 ),
+			(int) ( $fila['tarifa_feriado'] ?? 0 ),
+			(string) $fila['vigente_desde'],
+			! empty( $fila['vigente_hasta'] ) ? (string) $fila['vigente_hasta'] : null,
+			(int) ( $fila['id'] ?? 0 )
+		);
 	}
 
-	/** @param array<string, mixed> $fila */
+	/** "S/ 1,800.00 al mes · extra S/ 12.00 · sábado S/ 14.00 · domingo S/ 20.00 · feriado S/ 24.00". */
 	public static function etiqueta( array $fila ): string {
 		$s = self::aSueldo( $fila + array( 'id' => 0, 'vigente_hasta' => null ) );
 
-		return Sueldo::soles( $s->montoCentimos ) . ( Sueldo::POR_HORA === $s->modalidad ? ' por hora' : ' al mes' );
+		return Sueldo::soles( $s->honorarioCentimos ) . ' al mes · extra ' . Sueldo::soles( $s->tarifaExtra ) . ' · sábado ' . Sueldo::soles( $s->tarifaSabado ) . ' · domingo ' . Sueldo::soles( $s->tarifaDomingo ) . ' · feriado ' . Sueldo::soles( $s->tarifaFeriado );
 	}
 
 	/** @return array<string, mixed>|null */
@@ -175,7 +197,7 @@ final class Sueldos {
 	/** @param array<string, mixed> $fila */
 	private static function paraAuditoria( array $fila ): array {
 		return array(
-			'sueldo'        => self::etiqueta( $fila ),
+			'honorario'     => self::etiqueta( $fila ),
 			'vigente_desde' => $fila['vigente_desde'],
 		);
 	}

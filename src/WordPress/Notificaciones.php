@@ -114,36 +114,9 @@ final class Notificaciones {
 			}
 		}
 
-		self::revisarSinAutorizar( $ahora, $zona );
 		self::revisarTaller( $ahora, $zona, $dia );
 
 		return self::contar() - $antes;
-	}
-
-	/** Una vez al día, desde las 08:00: quién se quedó fuera de horario ayer sin autorización. */
-	private static function revisarSinAutorizar( DateTimeImmutable $ahora, DateTimeZone $zona ): void {
-		if ( ! self::activo( ReglasAvisos::SIN_AUTORIZAR ) || (int) $ahora->setTimezone( $zona )->format( 'G' ) < 8 ) {
-			return;
-		}
-
-		$ayer   = Jornadas::ayer();
-		$umbral = Ajustes::reglasPago()->avisoPermanenciaMin;
-		$todos  = Trabajadores::listar();
-
-		foreach ( Jornadas::delRango( $todos, $ayer, $ayer ) as $id => $dias ) {
-			$j = $dias[ $ayer ] ?? null;
-
-			if ( $j && $j->minutosSinAutorizar >= $umbral ) {
-				$t = self::buscarEn( $todos, (int) $id );
-				self::encolar(
-					ReglasAvisos::SIN_AUTORIZAR,
-					'sin_autorizar|' . $id . '|' . $ayer,
-					$t,
-					sprintf( '%s se quedó %s h fuera de su horario el %s sin horas extra autorizadas.', Trabajadores::nombreCompleto( $t ), PrePlanilla::horas( $j->minutosSinAutorizar ), self::fecha( $ayer ) ),
-					admin_url( 'admin.php?page=pka-horas-extra' )
-				);
-			}
-		}
 	}
 
 	/** Pantallas sin conexión e IP nueva, solo en horario de taller (lunes a sábado, 7 a 20 h, sin feriado). */

@@ -475,6 +475,7 @@ final class Api {
 	private const CORTOS = array(
 		'hoy'                => 'Hoy',
 		'completo'           => 'OK',
+		'con_extra'          => 'Extra',
 		'tarde'              => 'Tarde',
 		'falta'              => 'Falta',
 		'justificado'        => 'Just.',

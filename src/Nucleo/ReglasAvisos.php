@@ -18,7 +18,6 @@ final class ReglasAvisos {
 	public const REFRIGERIO_LARGO = 'refrigerio_largo';
 	public const SALIDA_LARGA     = 'salida_larga';
 	public const SIN_SALIDA       = 'sin_salida';
-	public const SIN_AUTORIZAR    = 'sin_autorizar';
 	// Los dispara algo que pasó.
 	public const SOLICITUD        = 'solicitud';
 	public const REVISION         = 'revision';
@@ -37,7 +36,6 @@ final class ReglasAvisos {
 		self::SALIDA_LARGA     => array( 'Salida temporal que se alarga', self::PARA_JEFE, 'Salida que se alarga', 'Salidas que se alargan' ),
 		self::REVISION         => array( 'Marca por revisar (emergencia, permiso, salud)', self::PARA_JEFE, 'Marca por revisar', 'Marcas por revisar' ),
 		self::SOLICITUD        => array( 'Solicitud nueva de "olvidé marcar"', self::PARA_JEFE, 'Solicitud por aprobar', 'Solicitudes por aprobar' ),
-		self::SIN_AUTORIZAR    => array( 'Se quedó fuera de horario sin autorización (aviso del día siguiente)', self::PARA_JEFE, 'Tiempo fuera de horario sin autorizar', 'Tiempo fuera de horario sin autorizar' ),
 		self::SIN_SALIDA       => array( 'Sigue sin marcar la salida a la hora límite', self::PARA_TRABAJADOR, 'No marcaste tu salida', 'No marcaste tu salida' ),
 		self::RESUELTA         => array( 'Su solicitud fue aprobada o rechazada', self::PARA_TRABAJADOR, 'Tu solicitud fue revisada', 'Tus solicitudes fueron revisadas' ),
 		self::PANTALLA         => array( 'Pantalla QR sin conexión', self::PARA_ADMIN, 'Pantalla QR sin conexión', 'Pantallas QR sin conexión' ),

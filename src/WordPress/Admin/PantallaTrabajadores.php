@@ -2,7 +2,6 @@
 
 namespace Pekokis\Asistencia\WordPress\Admin;
 
-use Pekokis\Asistencia\Nucleo\Sueldo;
 use Pekokis\Asistencia\WordPress\Activaciones;
 use Pekokis\Asistencia\WordPress\Capacidades;
 use Pekokis\Asistencia\WordPress\Sueldos;
@@ -196,23 +195,35 @@ final class PantallaTrabajadores {
 		}
 	}
 
-	/** Sueldo vigente e historial. Solo para quien tiene pka_ver_sueldos. */
+	/** Honorario y tarifas por hora, con su historial. Solo para quien tiene pka_ver_sueldos. */
 	private static function remuneracion( array $t ): void {
 		$historial = Sueldos::historial( (int) $t['id'] );
 		$previo    = get_transient( 'pka_form_sueldo_' . get_current_user_id() );
 		$errores   = is_array( $previo ) ? $previo['errores'] : array();
-		$valores   = is_array( $previo ) ? $previo['valores'] : array( 'modalidad' => Sueldo::MENSUAL );
+		$actual    = Sueldos::vigente( (int) $t['id'] );
 		$propio    = Trabajadores::esPropio( (int) $t['id'] );
+		$monto     = static fn( int $c ): string => number_format( $c / 100, 2, '.', '' );
+		$valores   = is_array( $previo ) ? $previo['valores'] : (
+			$actual
+				? array(
+					'honorario'      => $monto( $actual->honorarioCentimos ),
+					'tarifa_extra'   => $monto( $actual->tarifaExtra ),
+					'tarifa_sabado'  => $monto( $actual->tarifaSabado ),
+					'tarifa_domingo' => $monto( $actual->tarifaDomingo ),
+					'tarifa_feriado' => $monto( $actual->tarifaFeriado ),
+				)
+				: array()
+		);
 
 		delete_transient( 'pka_form_sueldo_' . get_current_user_id() );
 		?>
-		<h2 id="remuneracion" style="margin-top:32px">Remuneración</h2>
-		<p class="description">Solo lo ven RR.HH. y los administradores. Sirve para estimar la pre-planilla; la boleta la hace el contador.</p>
-		<table class="widefat striped" style="max-width:900px">
-			<thead><tr><th>Sueldo</th><th>Desde</th><th>Hasta</th><th>Nota</th><th>Registró</th><th></th></tr></thead>
+		<h2 id="remuneracion" style="margin-top:32px">Honorario y tarifas</h2>
+		<p class="description">Se paga por recibos por honorarios: el honorario mensual incluye las horas normales y cada hora adicional va con su tarifa. Solo lo ve gerencia; el trabajador nunca ve estos montos.</p>
+		<table class="widefat striped" style="max-width:1000px">
+			<thead><tr><th>Honorario y tarifas por hora</th><th>Desde</th><th>Hasta</th><th>Nota</th><th>Registró</th><th></th></tr></thead>
 			<tbody>
 			<?php if ( ! $historial ) : ?>
-				<tr><td colspan="6">Todavía no tiene sueldo registrado: en la pre-planilla sus montos saldrán en blanco.</td></tr>
+				<tr><td colspan="6">Todavía no tiene honorario registrado: en la calculadora de pagos saldrá como "Falta su honorario".</td></tr>
 			<?php endif; ?>
 			<?php foreach ( $historial as $s ) : ?>
 				<?php $quien = get_userdata( (int) $s['creado_por'] ); ?>
@@ -241,44 +252,44 @@ final class PantallaTrabajadores {
 		</table>
 
 		<?php if ( $propio ) : ?>
-			<p><em>Es tu propio perfil: otra persona de RR.HH. o un administrador tiene que registrar tu sueldo.</em></p>
+			<p><em>Es tu propio perfil: otra persona de gerencia o un administrador tiene que registrar tu honorario.</em></p>
 			<?php
 			return;
 		endif;
 		?>
-		<h3><?php echo $historial ? 'Registrar un cambio de sueldo' : 'Registrar el sueldo'; ?></h3>
+		<h3><?php echo $historial ? 'Registrar un cambio de honorario o tarifas' : 'Registrar el honorario y las tarifas'; ?></h3>
 		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 			<input type="hidden" name="action" value="pka_sueldo_agregar">
 			<input type="hidden" name="trabajador_id" value="<?php echo esc_attr( $t['id'] ); ?>">
 			<?php wp_nonce_field( 'pka_sueldo_agregar' ); ?>
 			<table class="form-table" role="presentation">
 				<tr>
-					<th scope="row">Modalidad</th>
+					<th scope="row"><label for="pka-sueldo-honorario">Honorario mensual (S/)</label></th>
 					<td>
-						<?php foreach ( Sueldo::MODALIDADES as $clave => $etiqueta ) : ?>
-							<label style="margin-right:16px"><input type="radio" name="modalidad" value="<?php echo esc_attr( $clave ); ?>" <?php checked( (string) ( $valores['modalidad'] ?? '' ), $clave ); ?>> <?php echo esc_html( $etiqueta ); ?></label>
-						<?php endforeach; ?>
-						<?php self::error( $errores, 'modalidad' ); ?>
+						<input type="text" inputmode="decimal" id="pka-sueldo-honorario" name="honorario" required value="<?php echo esc_attr( (string) ( $valores['honorario'] ?? '' ) ); ?>" placeholder="1800.00">
+						<p class="description">Incluye las horas normales de su horario.</p>
+						<?php self::error( $errores, 'honorario' ); ?>
 					</td>
 				</tr>
-				<tr>
-					<th scope="row"><label for="pka-sueldo-monto">Monto (S/)</label></th>
-					<td>
-						<input type="text" inputmode="decimal" id="pka-sueldo-monto" name="monto" required value="<?php echo esc_attr( (string) ( $valores['monto'] ?? '' ) ); ?>" placeholder="1500.00">
-						<p class="description">Sueldo mensual bruto, o el precio de una hora si cobra por hora.</p>
-						<?php self::error( $errores, 'monto' ); ?>
-					</td>
-				</tr>
+				<?php foreach ( \Pekokis\Asistencia\Nucleo\Sueldo::TARIFAS as $tipo => $nombre ) : ?>
+					<tr>
+						<th scope="row"><label for="pka-sueldo-<?php echo esc_attr( $tipo ); ?>"><?php echo esc_html( $nombre ); ?> (S/)</label></th>
+						<td>
+							<input type="text" inputmode="decimal" id="pka-sueldo-<?php echo esc_attr( $tipo ); ?>" name="tarifa_<?php echo esc_attr( $tipo ); ?>" required value="<?php echo esc_attr( (string) ( $valores[ 'tarifa_' . $tipo ] ?? '' ) ); ?>" placeholder="0.00">
+							<?php self::error( $errores, 'tarifa_' . $tipo ); ?>
+						</td>
+					</tr>
+				<?php endforeach; ?>
 				<tr>
 					<th scope="row"><label for="pka-sueldo-desde">Rige desde</label></th>
-					<td><input type="date" id="pka-sueldo-desde" name="vigente_desde" required value="<?php echo esc_attr( (string) ( $valores['vigente_desde'] ?? ( $t['fecha_ingreso'] ?? '' ) ) ); ?>"><?php self::error( $errores, 'vigente_desde' ); ?></td>
+					<td><input type="date" id="pka-sueldo-desde" name="vigente_desde" required value="<?php echo esc_attr( (string) ( $valores['vigente_desde'] ?? ( $historial ? '' : ( $t['fecha_ingreso'] ?? '' ) ) ) ); ?>"><?php self::error( $errores, 'vigente_desde' ); ?></td>
 				</tr>
 				<tr>
 					<th scope="row"><label for="pka-sueldo-nota">Nota</label></th>
-					<td><input type="text" id="pka-sueldo-nota" name="nota" class="regular-text" maxlength="255" value="<?php echo esc_attr( (string) ( $valores['nota'] ?? '' ) ); ?>" placeholder="Aumento anual, contrato nuevo…"></td>
+					<td><input type="text" id="pka-sueldo-nota" name="nota" class="regular-text" maxlength="255" value="<?php echo esc_attr( (string) ( $valores['nota'] ?? '' ) ); ?>" placeholder="Aumento, campaña escolar…"></td>
 				</tr>
 			</table>
-			<?php submit_button( 'Guardar sueldo', 'secondary' ); ?>
+			<?php submit_button( 'Guardar honorario y tarifas', 'secondary' ); ?>
 		</form>
 		<?php
 	}
@@ -294,7 +305,7 @@ final class PantallaTrabajadores {
 			set_transient( 'pka_form_sueldo_' . get_current_user_id(), array( 'errores' => $result->get_error_data()['errores'] ?? array(), 'valores' => $entrada ), 5 * MINUTE_IN_SECONDS );
 			Avisos::agregar( 'error', esc_html( $result->get_error_message() ) );
 		} else {
-			Avisos::agregar( 'success', 'Sueldo registrado.' );
+			Avisos::agregar( 'success', 'Honorario y tarifas guardados.' );
 		}
 
 		Menu::volverA( add_query_arg( array( 'page' => self::SLUG, 'vista' => 'editar', 'id' => $id ), admin_url( 'admin.php' ) ) . '#remuneracion' );
@@ -307,7 +318,7 @@ final class PantallaTrabajadores {
 		$motivo = isset( $_POST['motivo'] ) ? sanitize_text_field( wp_unslash( $_POST['motivo'] ) ) : '';
 		$result = Sueldos::anular( isset( $_POST['id'] ) ? absint( $_POST['id'] ) : 0, $motivo );
 
-		Avisos::agregar( $result instanceof WP_Error ? 'error' : 'success', esc_html( $result instanceof WP_Error ? $result->get_error_message() : 'Sueldo anulado. Rige otra vez el anterior, si lo había.' ) );
+		Avisos::agregar( $result instanceof WP_Error ? 'error' : 'success', esc_html( $result instanceof WP_Error ? $result->get_error_message() : 'Registro anulado. Rige otra vez el anterior, si lo había.' ) );
 		Menu::volverA( add_query_arg( array( 'page' => self::SLUG, 'vista' => 'editar', 'id' => $id ), admin_url( 'admin.php' ) ) . '#remuneracion' );
 	}
 

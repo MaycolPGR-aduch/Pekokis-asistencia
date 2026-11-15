@@ -59,8 +59,8 @@ final class PantallaExportar {
 			</form>
 
 			<?php if ( current_user_can( Capacidades::VER_SUELDOS ) ) : ?>
-				<h2 style="margin-top:32px">Pre-planilla (para el contador)</h2>
-				<p>Días trabajados, faltas, tardanzas, horas extra autorizadas y horas en descanso o feriado, con montos <strong>estimados</strong> según el sueldo de cada uno y las <a href="<?php echo esc_url( admin_url( 'admin.php?page=' . PantallaAjustes::SLUG ) . '#reglas' ); ?>">reglas de horas</a>. Solo cuenta los días ya terminados. Contiene sueldos: no la compartas fuera de RR.HH. y el contador.</p>
+				<h2 style="margin-top:32px">Planilla de pagos</h2>
+				<p>El pago de cada persona por recibos por honorarios: honorario, horas extra, de sábado, de domingo y de feriado con su tarifa, total y si ya se puede pagar ("Resolver incidencia" si tiene días incompletos o marcas por revisar). Trae el detalle por día y las <a href="<?php echo esc_url( admin_url( 'admin.php?page=' . PantallaAjustes::SLUG ) . '#reglas' ); ?>">reglas</a>. Solo cuenta los días ya terminados. Tiene montos: no la compartas fuera de gerencia.</p>
 				<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 					<input type="hidden" name="action" value="pka_descargar_preplanilla">
 					<?php wp_nonce_field( 'pka_descargar_preplanilla' ); ?>
@@ -70,7 +70,7 @@ final class PantallaExportar {
 							<option value="<?php echo esc_attr( $mes ); ?>"><?php echo esc_html( $mes ); ?></option>
 						<?php endforeach; ?>
 					</select>
-					<button class="button">Descargar pre-planilla</button>
+					<button class="button">Descargar planilla de pagos</button>
 				</form>
 			<?php endif; ?>
 

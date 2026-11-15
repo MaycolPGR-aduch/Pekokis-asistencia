@@ -20,7 +20,7 @@ if ( 'local' !== wp_get_environment_type() ) {
 
 global $wpdb;
 
-foreach ( array( 'trabajadores', 'marcas', 'auditoria', 'credenciales', 'dispositivos', 'activaciones', 'redes', 'correcciones', 'pantallas', 'revisiones', 'calendario', 'ausencias', 'sueldos', 'sobretiempo', 'avisos' ) as $tabla ) {
+foreach ( array( 'trabajadores', 'marcas', 'auditoria', 'credenciales', 'dispositivos', 'activaciones', 'redes', 'correcciones', 'pantallas', 'revisiones', 'calendario', 'ausencias', 'sueldos', 'avisos' ) as $tabla ) {
 	$wpdb->query( 'TRUNCATE TABLE ' . Tablas::nombre( $tabla ) ); // phpcs:ignore
 }
 
@@ -108,13 +108,19 @@ foreach ( $ids as $i => $tid ) {
 	)
 );
 
-// Sueldos de ejemplo (fase 2): mensual para todos menos Jorge, que cobra por hora.
+// Honorarios y tarifas de ejemplo (pago por recibos por honorarios).
 foreach ( $ids as $i => $tid ) {
 	\Pekokis\Asistencia\WordPress\Sueldos::agregar(
 		(int) $tid,
-		3 === $i
-			? array( 'modalidad' => 'por_hora', 'monto' => '9.50', 'vigente_desde' => '2026-01-01', 'nota' => 'Demo' )
-			: array( 'modalidad' => 'mensual', 'monto' => (string) ( 1500 + 250 * $i ), 'vigente_desde' => '2026-01-01', 'nota' => 'Demo' )
+		array(
+			'honorario'      => (string) ( 1500 + 100 * $i ),
+			'tarifa_extra'   => (string) ( 10 + $i ),
+			'tarifa_sabado'  => (string) ( 12 + $i ),
+			'tarifa_domingo' => (string) ( 18 + $i ),
+			'tarifa_feriado' => (string) ( 20 + $i ),
+			'vigente_desde'  => '2026-01-01',
+			'nota'           => 'Demo',
+		)
 	);
 }
 

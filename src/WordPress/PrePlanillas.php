@@ -11,14 +11,23 @@ use Shuchkin\SimpleXLSXGen;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Pre-planilla mensual en Excel para el contador (fase 2). Solo la descarga
- * quien puede ver sueldos. Los montos son ESTIMADOS.
+ * Planilla de pagos del mes en Excel (pago por recibos por honorarios). Solo la
+ * descarga quien puede ver sueldos.
  *
- * - "Pre-planilla": un renglón por trabajador con días, horas y montos.
+ * - "Pagos": un renglón por persona con honorario, horas por tipo, tarifa,
+ *   monto, total y si ya se puede pagar.
  * - "Detalle por día": cómo se calculó cada día.
- * - "Reglas": las reglas con que se calculó, para que el contador las revise.
+ * - "Reglas": cómo se calcula, para revisarlo.
  */
 final class PrePlanillas {
+	public const TIPOS_DIA = array(
+		CalculoJornada::DIA_LABORABLE => 'Laborable',
+		CalculoJornada::DIA_LIBRE     => 'Libre en su horario',
+		CalculoJornada::DIA_SABADO    => 'Sábado',
+		CalculoJornada::DIA_DOMINGO   => 'Domingo',
+		CalculoJornada::DIA_FERIADO   => 'Feriado',
+	);
+
 	/** Trabajadores que estuvieron activos en algún día del mes. */
 	public static function trabajadoresDelMes( string $mes ): array {
 		$desde = $mes . '-01';
@@ -48,110 +57,113 @@ final class PrePlanillas {
 		$jornadas = $hasta >= $desde ? Jornadas::delRango( $personas, $desde, $hasta ) : array();
 		$horas    = static fn( int $min ): float => round( $min / 60, 2 );
 		$soles    = static fn( int $cts ): float => round( $cts / 100, 2 );
+		$total    = PrePlanilla::sumar( $filas );
 
-		$t1 = $reglas->tasaExtra1;
-		$t2 = $reglas->tasaExtra2;
-		$td = $reglas->tasaDescanso;
-
-		$resumen = array(
-			array( '<b>Pre-planilla ' . $mes . ' — ' . $ajustes['razon_social'] . ' (RUC ' . $ajustes['ruc'] . ')</b>' ),
-			array( 'MONTOS ESTIMADOS: reglas por confirmar con el contador. Días calculados hasta el ' . $hasta . '.' ),
+		$pagos = array(
+			array( '<b>Pagos de ' . $mes . ' — ' . $ajustes['razon_social'] . ' (RUC ' . $ajustes['ruc'] . ')</b>' ),
+			array( 'Recibos por honorarios: honorario + horas extra, de sábado, de domingo y de feriado por la tarifa de cada persona. Días calculados hasta el ' . $hasta . '.' ),
 			array(),
 			array(
-				'<b>DNI</b>', '<b>Apellidos y nombres</b>', '<b>Modalidad</b>', '<b>Sueldo (S/)</b>', '<b>Valor hora (S/)</b>',
-				'<b>Días laborables</b>', '<b>Días trabajados</b>', '<b>Faltas</b>', '<b>Justificados</b>', '<b>Incompletos</b>', '<b>Por revisar</b>',
-				'<b>Tardanza (h)</b>', '<b>No trabajado (h)</b>',
-				'<b>Extra ' . $t1 . ' % (h)</b>', '<b>Extra ' . $t2 . ' % (h)</b>', '<b>Descanso/feriado (h)</b>', '<b>A compensar con descanso (h)</b>', '<b>Fuera de horario sin autorizar (h)</b>',
-				'<b>Base (S/)</b>', '<b>Descuento (S/)</b>', '<b>Extra ' . $t1 . ' % (S/)</b>', '<b>Extra ' . $t2 . ' % (S/)</b>', '<b>Descanso/feriado (S/)</b>', '<b>Total estimado (S/)</b>',
-				'<b>Observaciones</b>',
+				'<b>DNI</b>', '<b>Apellidos y nombres</b>', '<b>Honorario (S/)</b>',
+				'<b>Horas extra</b>', '<b>Tarifa extra</b>', '<b>Extra (S/)</b>',
+				'<b>Horas sábado</b>', '<b>Tarifa sábado</b>', '<b>Sábado (S/)</b>',
+				'<b>Horas domingo</b>', '<b>Tarifa domingo</b>', '<b>Domingo (S/)</b>',
+				'<b>Horas feriado</b>', '<b>Tarifa feriado</b>', '<b>Feriado (S/)</b>',
+				'<b>Total (S/)</b>', '<b>Estado</b>',
+				'<b>Días trabajados</b>', '<b>Faltas</b>', '<b>Justificados</b>', '<b>Tardanzas</b>', '<b>Incompletos</b>', '<b>Por revisar</b>', '<b>Observaciones</b>',
 			),
 		);
 
 		$detalle = array(
 			array(
-				'<b>DNI</b>', '<b>Apellidos y nombres</b>', '<b>Fecha</b>', '<b>Estado</b>', '<b>Esperado (min)</b>', '<b>Trabajado (min)</b>', '<b>En horario (min)</b>',
-				'<b>Salidas pagadas (min)</b>', '<b>Refrigerio (min)</b>', '<b>Tardanza (min)</b>', '<b>Salida anticipada (min)</b>', '<b>Exceso refrigerio (min)</b>',
-				'<b>No trabajado (min)</b>', '<b>Extra ' . $t1 . ' % (min)</b>', '<b>Extra ' . $t2 . ' % (min)</b>', '<b>Descanso/feriado (min)</b>', '<b>A compensar (min)</b>', '<b>Sin autorizar (min)</b>', '<b>Detalle</b>',
+				'<b>DNI</b>', '<b>Apellidos y nombres</b>', '<b>Fecha</b>', '<b>Tipo de día</b>', '<b>Estado</b>', '<b>Jornada (min)</b>', '<b>Trabajado (min)</b>',
+				'<b>Comida descontada (min)</b>', '<b>Tardanza (min)</b>', '<b>Salida anticipada (min)</b>',
+				'<b>Extra (min)</b>', '<b>Sábado (min)</b>', '<b>Domingo (min)</b>', '<b>Feriado (min)</b>', '<b>Detalle</b>',
 			),
 		);
 
 		foreach ( $personas as $t ) {
 			$id     = (int) $t['id'];
 			$nombre = $t['apellidos'] . ', ' . $t['nombres'];
-			$f      = $filas[ $id ] ?? PrePlanilla::calcular( array(), array(), $reglas );
+			$f      = $filas[ $id ] ?? PrePlanilla::calcular( array(), array() );
 			$s      = $f->sueldoFinal;
 			$obs    = array();
 
-			if ( $f->diasSinSueldo ) {
-				$obs[] = $f->diasSinSueldo . ' días sin sueldo registrado';
-			}
-
 			if ( $f->cambioDeSueldo ) {
-				$obs[] = 'cambió el sueldo en el mes (base prorrateada)';
+				$obs[] = 'cambió la tarifa en el mes';
 			}
 
-			if ( $f->dias['por_revisar'] || $f->dias['incompletos'] ) {
-				$obs[] = 'hay días por revisar o incompletos';
+			if ( $f->diasSinSueldo ) {
+				$obs[] = $f->diasSinSueldo . ' día(s) con horas adicionales sin tarifa vigente';
 			}
 
 			if ( Trabajadores::CESADO === $t['estado'] ) {
 				$obs[] = 'cesó el ' . $t['fecha_cese'];
 			}
 
-			$resumen[] = array(
-				$t['dni'], $nombre,
-				$s ? Sueldo::MODALIDADES[ $s->modalidad ] : 'Sin sueldo',
-				$s ? $soles( $s->montoCentimos ) : '',
-				$s ? round( $s->valorHora( $reglas ) / 100, 2 ) : '',
-				$f->dias['laborables'], $f->dias['trabajados'], $f->dias['faltas'], $f->dias['justificados'], $f->dias['incompletos'], $f->dias['por_revisar'],
-				$horas( $f->minutos['tardanza'] ), $horas( $f->minutos['no_trabajados'] ),
-				$horas( $f->minutos['extra_1'] ), $horas( $f->minutos['extra_2'] ), $horas( $f->minutos['descanso'] ), $horas( $f->minutos['compensables'] ), $horas( $f->minutos['sin_autorizar'] ),
-				$soles( $f->montos['base'] ), $soles( $f->montos['descuento'] ), $soles( $f->montos['extra_1'] ), $soles( $f->montos['extra_2'] ), $soles( $f->montos['descanso'] ), $soles( $f->montos['total'] ),
+			$tarifa = static fn( string $tipo ): float|string => $s ? round( $s->tarifa( $tipo ) / 100, 2 ) : '';
+
+			$pagos[] = array(
+				$t['dni'], $nombre, $soles( $f->montos['honorario'] ),
+				$horas( $f->minutos['extra'] ), $tarifa( 'extra' ), $soles( $f->montos['extra'] ),
+				$horas( $f->minutos['sabado'] ), $tarifa( 'sabado' ), $soles( $f->montos['sabado'] ),
+				$horas( $f->minutos['domingo'] ), $tarifa( 'domingo' ), $soles( $f->montos['domingo'] ),
+				$horas( $f->minutos['feriado'] ), $tarifa( 'feriado' ), $soles( $f->montos['feriado'] ),
+				$soles( $f->montos['total'] ), PrePlanilla::ESTADOS[ $f->estado() ],
+				$f->dias['trabajados'], $f->dias['faltas'], $f->dias['justificados'], $f->dias['con_tardanza'], $f->dias['incompletos'], $f->dias['por_revisar'],
 				implode( '; ', $obs ),
 			);
 
 			foreach ( $jornadas[ $id ] ?? array() as $dia => $j ) {
 				/** @var CalculoJornada $j */
 				$detalle[] = array(
-					$t['dni'], $nombre, $dia, CalculoJornada::ESTADOS[ $j->estado ] ?? $j->estado,
-					$j->minutosEsperados, $j->minutosTrabajados, $j->minutosOrdinarios, $j->minutosSalidasPagadas, $j->minutosRefrigerio,
-					$j->minutosTardanza, $j->minutosSalidaAnticipada, $j->minutosExcesoRefrigerio, $j->minutosNoTrabajados,
-					$j->minutosExtra1, $j->minutosExtra2, $j->minutosDescansoTrabajado, $j->minutosCompensables, $j->minutosSinAutorizar,
+					$t['dni'], $nombre, $dia, self::TIPOS_DIA[ $j->tipoDia ] ?? $j->tipoDia, CalculoJornada::ESTADOS[ $j->estado ] ?? $j->estado,
+					$j->minutosEsperados, $j->minutosTrabajados, $j->minutosComidaDescontada, $j->minutosTardanza, $j->minutosSalidaAnticipada,
+					$j->minutosExtra, $j->minutosSabado, $j->minutosDomingo, $j->minutosFeriado,
 					$j->detalle,
 				);
 			}
 		}
 
+		$pagos[] = array();
+		$pagos[] = array(
+			'', '<b>Total</b>', $soles( $total->montos['honorario'] ),
+			$horas( $total->minutos['extra'] ), '', $soles( $total->montos['extra'] ),
+			$horas( $total->minutos['sabado'] ), '', $soles( $total->montos['sabado'] ),
+			$horas( $total->minutos['domingo'] ), '', $soles( $total->montos['domingo'] ),
+			$horas( $total->minutos['feriado'] ), '', $soles( $total->montos['feriado'] ),
+			$soles( $total->montos['total'] ),
+		);
+
 		$reglasHoja = array(
-			array( '<b>Regla</b>', '<b>Valor</b>' ),
-			array( 'Sobretasa de las primeras horas extra', $t1 . ' %' ),
-			array( 'Minutos del día a esa sobretasa', $reglas->tramoExtra1Min ),
-			array( 'Sobretasa de las siguientes horas extra', $t2 . ' %' ),
-			array( 'Sobretasa por descanso o feriado trabajado', $td . ' %' ),
-			array( 'Valor hora (sueldo mensual)', 'sueldo ÷ 30 ÷ ' . $reglas->horasJornadaValor . ' h' ),
+			array( '<b>Regla</b>', '<b>Cómo se aplica</b>' ),
+			array( 'Total del mes', 'honorario + horas extra × tarifa extra + horas de sábado × tarifa sábado + horas de domingo × tarifa domingo + horas de feriado × tarifa feriado' ),
+			array( 'Honorario', 'incluye las horas normales; es el vigente al final del mes' ),
+			array( 'Horas extra (lunes a viernes)', 'lo trabajado por encima de la jornada efectiva del horario (9 h 30 min con el horario base); es automático' ),
+			array( 'Sábado, domingo y feriado', 'todas las horas del día van con su tarifa' ),
+			array( 'Día libre en su horario', 'todas las horas van con la tarifa extra' ),
+			array( 'Comida no marcada', $reglas->comidaNoMarcadaMin . ' min descontados en días laborables (por confirmar)' ),
 			array( 'Tardanza contada desde', 'tolerancia' === $reglas->tardanzaDesde ? 'el fin de la tolerancia' : 'la hora de entrada' ),
-			array( 'Se descuenta lo no trabajado', $reglas->descontarNoTrabajado ? 'Sí (solo sueldo mensual; una falta = ' . $reglas->horasJornadaValor . ' h; los días incompletos no se descuentan hasta corregirlos)' : 'No' ),
-			array( 'Base del sueldo mensual', 'sueldo vigente de cada día ÷ días del mes; si alguien ingresó o cesó en el mes, solo sus días' ),
-			array( 'Pago por hora', 'horas trabajadas dentro del horario × precio de la hora' ),
-			array( 'Horas extra', 'solo lo trabajado dentro de una franja autorizada; valor hora × (1 + sobretasa)' ),
-			array( 'Salidas que cuentan como trabajadas', 'las de motivo pagado (encargo, lactancia); si requieren aprobación, solo aprobadas' ),
+			array( 'Faltas, tardanzas y salidas anticipadas', 'se señalan, no se descuentan' ),
+			array( 'Estado', '"Resolver incidencia" si hay días incompletos o marcas por revisar; el recibo por honorarios no frena el pago' ),
+			array( 'Tarifas', 'cada día usa la tarifa vigente ese día' ),
 			array(),
 			array( 'Generado por', $generadoPor ),
 			array( 'Generado el', wp_date( 'Y-m-d H:i', null, Ajustes::zona() ) ),
-			array( 'Aviso', 'Montos estimados para el contador. No reemplazan la boleta ni el cálculo de planilla.' ),
 		);
 
-		$contenido = (string) SimpleXLSXGen::fromArray( $resumen, 'Pre-planilla' )
+		$contenido = (string) SimpleXLSXGen::fromArray( $pagos, 'Pagos' )
 			->addSheet( $detalle, 'Detalle por día' )
 			->addSheet( $reglasHoja, 'Reglas' )
-			->setTitle( 'Pre-planilla ' . $mes )
+			->setTitle( 'Pagos ' . $mes )
 			->setCompany( (string) $ajustes['razon_social'] );
 
 		return array(
-			'nombre'       => 'pre-planilla-' . $mes . '.xlsx',
+			'nombre'       => 'pagos-' . $mes . '.xlsx',
 			'contenido'    => $contenido,
 			'hash'         => hash( 'sha256', $contenido ),
 			'trabajadores' => count( $personas ),
 		);
 	}
 }
+
