@@ -27,6 +27,7 @@ final class ReglasAvisos {
 	public const RECIBO_ENVIADO   = 'recibo_enviado';
 	public const RECIBO_OBSERVADO = 'recibo_observado';
 	public const RECIBO_PENDIENTE = 'recibo_pendiente';
+	public const JORNADA_LARGA    = 'jornada_larga';
 
 	public const PARA_JEFE       = 'jefe';
 	public const PARA_TRABAJADOR = 'trabajador';
@@ -39,6 +40,7 @@ final class ReglasAvisos {
 		self::SALIDA_LARGA     => array( 'Salida temporal que se alarga', self::PARA_JEFE, 'Salida que se alarga', 'Salidas que se alargan' ),
 		self::REVISION         => array( 'Marca por revisar (emergencia, permiso, salud)', self::PARA_JEFE, 'Marca por revisar', 'Marcas por revisar' ),
 		self::SOLICITUD        => array( 'Solicitud nueva de "olvidé marcar"', self::PARA_JEFE, 'Solicitud por aprobar', 'Solicitudes por aprobar' ),
+		self::JORNADA_LARGA    => array( 'Jornada muy larga (pasó el límite de horas)', self::PARA_JEFE, 'Jornada muy larga por revisar', 'Jornadas muy largas por revisar' ),
 		self::SIN_SALIDA       => array( 'Sigue sin marcar la salida a la hora límite', self::PARA_TRABAJADOR, 'No marcaste tu salida', 'No marcaste tu salida' ),
 		self::RESUELTA         => array( 'Su solicitud fue aprobada o rechazada', self::PARA_TRABAJADOR, 'Tu solicitud fue revisada', 'Tus solicitudes fueron revisadas' ),
 		self::PANTALLA         => array( 'Pantalla QR sin conexión', self::PARA_ADMIN, 'Pantalla QR sin conexión', 'Pantallas QR sin conexión' ),

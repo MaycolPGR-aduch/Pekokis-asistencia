@@ -41,6 +41,8 @@ final class Ajustes {
 			'aviso_version'   => 1,
 			// Reglas de horas (pago por recibos por honorarios). POR CONFIRMAR con el responsable.
 			'comida_no_marcada_min'  => 60,
+			// Jornadas que pasan la medianoche: más de estas horas se aceptan, pero quedan por revisar.
+			'jornada_larga_horas'    => 16,
 			'tardanza_desde'         => ReglasPago::TARDANZA_DESDE_ENTRADA,
 			// Avisos (fase 4). Todos empiezan apagados; se encienden en Ajustes.
 			'avisos_activos'          => array(),

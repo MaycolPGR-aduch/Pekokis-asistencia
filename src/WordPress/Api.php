@@ -6,6 +6,7 @@ use DateTimeImmutable;
 use DateTimeZone;
 use Pekokis\Asistencia\Nucleo\Accion;
 use Pekokis\Asistencia\Nucleo\Estado;
+use Pekokis\Asistencia\Nucleo\JornadaAbierta;
 use Pekokis\Asistencia\Nucleo\MaquinaEstados;
 use Pekokis\Asistencia\Nucleo\Motivo;
 use Pekokis\Asistencia\Nucleo\ResumenDia;
@@ -269,10 +270,12 @@ final class Api {
 
 		try {
 			$ahora     = new DateTimeImmutable( 'now', new DateTimeZone( 'UTC' ) );
-			$dia       = Ajustes::diaLaboral()->de( $ahora );
+			// Si la jornada de ayer sigue abierta (pasó la medianoche), la marca va a ese día.
+			$dia       = Jornadas::diaActual( $trabajadorId, $ahora );
+			$delDia    = Marcas::delDia( $trabajadorId, $dia );
 			$contexto  = Presencia::contexto();
 			$validador = new ValidadorMarca( Ajustes::modoPresencia(), (int) Ajustes::todos()['antirrebote_seg'] );
-			$resultado = $validador->decidir( Marcas::delDia( $trabajadorId, $dia ), new SolicitudMarca( $accion->tipo(), $motivo ), $contexto, $ahora );
+			$resultado = $validador->decidir( $delDia, new SolicitudMarca( $accion->tipo(), $motivo ), $contexto, $ahora );
 
 			if ( $resultado->esRechazada() ) {
 				// El ticket sigue vivo: puede escanear el QR y reintentar sin volver a poner la huella.
@@ -295,15 +298,20 @@ final class Api {
 				);
 			}
 
+			// Jornada muy larga (maquetas T3F): la salida se acepta, pero queda por revisar.
+			$minutosJornada = Accion::FIN_JORNADA === $accion ? JornadaAbierta::minutosDesdeLaEntrada( $delDia, $ahora ) : 0;
+			$larga          = Accion::FIN_JORNADA === $accion && JornadaAbierta::esLarga( $delDia, $ahora, (int) Ajustes::todos()['jornada_larga_horas'] );
+
 			$id = Marcas::registrar(
 				array(
 					'trabajador_id'     => $trabajadorId,
+					'dia_laboral'       => $dia,
 					'tipo'              => $accion->tipo(),
 					'motivo_clave'      => $motivo?->clave,
 					'nota'              => sanitize_text_field( (string) $peticion->get_param( 'nota' ) ),
 					'marcado'           => $ahora,
 					'prueba'            => $resultado->prueba,
-					'requiere_revision' => $resultado->requiereRevision,
+					'requiere_revision' => $resultado->requiereRevision || $larga,
 					'dispositivo_id'    => $ticket['dispositivo_id'],
 					'credencial_id'     => $ticket['credencial_id'],
 					'pantalla_id'       => $contexto->pantallaQr,
@@ -316,7 +324,9 @@ final class Api {
 
 		Temporales::borrar( 'ticket', $clave );
 
-		if ( $resultado->requiereRevision ) {
+		if ( $larga ) {
+			Notificaciones::jornadaLarga( (int) $id, $trabajadorId, $dia, $minutosJornada );
+		} elseif ( $resultado->requiereRevision ) {
 			Notificaciones::revision( (int) $id );
 		}
 
@@ -328,7 +338,10 @@ final class Api {
 				'marca_id'  => $id,
 				'mensaje'   => $texto,
 				'revision'  => $resultado->requiereRevision,
-			) + self::estadoDe( $trabajadorId )
+				// T3F: la jornada pasó el límite; T3E: a qué jornada pertenece una salida de madrugada.
+				'larga'     => $larga ? VistaDia::duracion( $minutosJornada ) : '',
+				'jornada'   => self::jornadaDe( $dia, $ahora ),
+			) + self::estadoDe( $trabajadorId, $dia )
 		);
 	}
 
@@ -356,9 +369,10 @@ final class Api {
 	 *
 	 * @return array<string, mixed>
 	 */
-	private static function estadoDe( int $trabajadorId ): array {
+	private static function estadoDe( int $trabajadorId, ?string $diaJornada = null ): array {
 		$trabajador = Trabajadores::buscar( $trabajadorId );
-		$dia        = Ajustes::diaLaboral()->de( new DateTimeImmutable( 'now', new DateTimeZone( 'UTC' ) ) );
+		$ahoraUtc   = new DateTimeImmutable( 'now', new DateTimeZone( 'UTC' ) );
+		$dia        = $diaJornada ?? Jornadas::diaActual( $trabajadorId, $ahoraUtc );
 		$marcas     = MaquinaEstados::ordenar( Marcas::delDia( $trabajadorId, $dia ) );
 		$estado     = MaquinaEstados::estadoActual( $marcas );
 		$ultima     = $marcas ? $marcas[ count( $marcas ) - 1 ] : null;
@@ -395,6 +409,7 @@ final class Api {
 				'descanso' => $horario->descanso,
 			),
 			'vista'    => $vista,
+			'jornada'  => self::jornadaDe( $dia, $ahoraUtc ),
 			'estado'   => array(
 				'clave'    => $estado->value,
 				'etiqueta' => $estado->etiqueta(),
@@ -766,6 +781,23 @@ final class Api {
 
 	private static function iniciales( array $t ): string {
 		return mb_strtoupper( mb_substr( trim( (string) $t['nombres'] ), 0, 1 ) . mb_substr( trim( (string) $t['apellidos'] ), 0, 1 ) );
+	}
+
+	/**
+	 * A qué jornada pertenece este momento: "de_ayer" si se continúa la de ayer
+	 * pasada la hora de corte (T2G), "otro_dia" si ya es otra fecha en el reloj (T2F, T3E).
+	 *
+	 * @return array{dia: string, texto: string, de_ayer: bool, otro_dia: bool}
+	 */
+	private static function jornadaDe( string $dia, DateTimeImmutable $ahora ): array {
+		$zona = Ajustes::zona();
+
+		return array(
+			'dia'      => $dia,
+			'texto'    => wp_date( 'l j', ( new DateTimeImmutable( $dia . ' 12:00', $zona ) )->getTimestamp(), $zona ),
+			'de_ayer'  => $dia < Ajustes::diaLaboral()->de( $ahora ),
+			'otro_dia' => $dia !== $ahora->setTimezone( $zona )->format( 'Y-m-d' ),
+		);
 	}
 
 	/** "09:00:00" → "9:00". */

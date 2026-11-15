@@ -671,7 +671,8 @@ $N::revision( $marcaRev );
 $comprobar( 'una marca por revisar avisa una sola vez', $marcaRev > 0 && 1 === count( $colaDe( $RA::REVISION ) ) );
 
 // El próximo lunes a las 9:20: nadie marcó, todos "no llegaron".
-$lunes   = ( new DateTimeImmutable( 'next monday 09:20', $zonaLima ) )->setTimezone( new DateTimeZone( 'UTC' ) );
+// Un lunes sin nada el domingo anterior (si hoy es domingo, la jornada de hoy seguiría abierta el lunes).
+$lunes   = ( new DateTimeImmutable( 'next monday 09:20', $zonaLima ) )->modify( '+7 days' )->setTimezone( new DateTimeZone( 'UTC' ) );
 $nuevos  = $N::revisar( $lunes );
 $ausentes = $colaDe( $RA::AUSENTE );
 $comprobar( 'a las 9:20 se encola un aviso por cada ausente', $nuevos >= 1 && count( $ausentes ) === count( Trabajadores::listar() ) && str_contains( implode( ' ', array_column( $ausentes, 'linea' ) ), 'Luis Pérez entra a las 09:00' ), $nuevos . ' / ' . count( $ausentes ) );
@@ -795,6 +796,37 @@ $comprobar( 'los recibos y pagos quedan en el historial, ocultos para el rol de 
 $envio = array_values( array_filter( $histA, static fn( $f ) => 'recibo.enviar' === $f['accion'] ) );
 $comprobar( 'el envío del recibo figura como hecho por el trabajador', $envio && $id2 === (int) $envio[0]['actor_trabajador_id'] && null === $envio[0]['actor_user_id'], wp_json_encode( $envio[0] ?? array() ) );
 wp_delete_user( $gerente3 );
+
+// ---- 3d-quater. Jornada que pasa la medianoche (maquetas T2F, T2G, T3E, T3F).
+WP_CLI::line( '3d-quater. Jornada que pasa la medianoche' );
+$J0     = \Pekokis\Asistencia\WordPress\Jornadas::class;
+$ayerN  = $J0::ayer();
+$hoyN   = \Pekokis\Asistencia\WordPress\Ajustes::diaLaboral()->de( new DateTimeImmutable( 'now', new DateTimeZone( 'UTC' ) ) );
+$entrar = static function ( int $tid, string $dia, string $hora ): void {
+	\Pekokis\Asistencia\WordPress\Marcas::registrar( array( 'trabajador_id' => $tid, 'tipo' => \Pekokis\Asistencia\Nucleo\TipoMarca::ENTRADA, 'motivo_clave' => null, 'nota' => '', 'marcado' => new DateTimeImmutable( $dia . ' ' . $hora, new DateTimeZone( 'America/Lima' ) ), 'prueba' => \Pekokis\Asistencia\Nucleo\PruebaPresencia::WIFI, 'requiere_revision' => false, 'dispositivo_id' => null, 'credencial_id' => null, 'pantalla_id' => null, 'origen' => 'trabajador' ) );
+};
+$noche = Trabajadores::guardar( array( 'dni' => '70000001', 'nombres' => 'Nora', 'apellidos' => 'Noche', 'horario_id' => $horario ) );
+$entrar( $noche, $ayerN, '05:00' ); // Entró ayer de madrugada y sigue sin salida.
+$comprobar( 'la jornada de ayer sin salida sigue abierta: es el día de trabajo', $ayerN === $J0::diaActual( $noche ) );
+$_SERVER['REMOTE_ADDR'] = '203.0.113.10';
+$tkNoche     = \Pekokis\Asistencia\WordPress\Temporales::guardar( 'ticket', array( 'trabajador_id' => $noche, 'credencial_id' => 0, 'dispositivo_id' => null ), 120 );
+[ $st, $r ] = $api( 'POST', 'marcas', array( 'ticket' => $tkNoche, 'accion' => 'fin_jornada' ) );
+$filaNoche   = $wpdb->get_row( $wpdb->prepare( 'SELECT dia_laboral, requiere_revision FROM ' . Tablas::nombre( 'marcas' ) . ' WHERE id = %d', (int) ( $r['marca_id'] ?? 0 ) ), ARRAY_A ); // phpcs:ignore
+$comprobar( 'la salida va a la jornada de ayer, aunque sea otro día', 200 === $st && $ayerN === ( $filaNoche['dia_laboral'] ?? '' ) && $ayerN === $r['jornada']['dia'], wp_json_encode( array( $st, $filaNoche, $r['jornada'] ?? null ) ) );
+$comprobar( 'más de 16 h: se acepta, queda por revisar y lo dice', '' !== $r['larga'] && 1 === (int) $filaNoche['requiere_revision'], (string) $r['larga'] );
+$comprobar( 'cerrada la de ayer, lo siguiente ya es hoy', $hoyN === $J0::diaActual( $noche ) );
+
+$olvido = Trabajadores::guardar( array( 'dni' => '70000002', 'nombres' => 'Omar', 'apellidos' => 'Olvido', 'horario_id' => $horario ) );
+$entrar( $olvido, $ayerN, '09:00' );
+$tkOlv      = \Pekokis\Asistencia\WordPress\Temporales::guardar( 'ticket', array( 'trabajador_id' => $olvido, 'credencial_id' => 0, 'dispositivo_id' => null ), 120 );
+[ $st, $r ] = $api( 'POST', 'identificar/opciones' ); // Solo para no dejar el ticket sin uso: el estado sale de "yo".
+\Pekokis\Asistencia\WordPress\Correcciones::solicitar( $olvido, $ayerN, '19:30', \Pekokis\Asistencia\Nucleo\Accion::FIN_JORNADA, null, 'Salí ayer y olvidé marcar' );
+$comprobar( '"Salí ayer y olvidé marcar" deja empezar el día de hoy', $hoyN === $J0::diaActual( $olvido ) );
+[ $st, $r ] = $api( 'POST', 'marcas', array( 'ticket' => $tkOlv, 'accion' => 'entrada' ) );
+$filaOlv    = $wpdb->get_row( $wpdb->prepare( 'SELECT dia_laboral FROM ' . Tablas::nombre( 'marcas' ) . ' WHERE id = %d', (int) ( $r['marca_id'] ?? 0 ) ), ARRAY_A ); // phpcs:ignore
+$comprobar( 'y su entrada de hoy cuenta para hoy', 200 === $st && $hoyN === ( $filaOlv['dia_laboral'] ?? '' ), wp_json_encode( array( $st, $filaOlv ) ) );
+Trabajadores::cesar( $noche, gmdate( 'Y-m-d' ), 'Prueba' );
+Trabajadores::cesar( $olvido, gmdate( 'Y-m-d' ), 'Prueba' );
 
 $comprobar( 'presencia por IP del taller', ( $_SERVER['REMOTE_ADDR'] = '203.0.113.10' ) && Presencia::enRedDelTaller() );
 

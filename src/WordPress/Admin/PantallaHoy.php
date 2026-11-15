@@ -77,9 +77,11 @@ final class PantallaHoy {
 				continue;
 			}
 
-			$resumen = ResumenDia::calcular( Marcas::delDia( (int) $t['id'], $dia ), Horarios::delDia( (int) $t['horario_id'], $dia ), $dia, $zona, $ahora, $ausencias[ (int) $t['id'] ][ $dia ] ?? null );
+			// Quien sigue en la jornada de ayer (pasó la medianoche) se muestra con esa jornada.
+			$diaT    = \Pekokis\Asistencia\WordPress\Jornadas::diaActual( (int) $t['id'], $ahora );
+			$resumen = ResumenDia::calcular( Marcas::delDia( (int) $t['id'], $diaT ), Horarios::delDia( (int) $t['horario_id'], $diaT ), $diaT, $zona, $ahora, $diaT === $dia ? ( $ausencias[ (int) $t['id'] ][ $dia ] ?? null ) : null );
 			$cuentas[ $resumen->situacion ]++;
-			$filas[] = array( 't' => $t, 'r' => $resumen );
+			$filas[] = array( 't' => $t, 'r' => $resumen, 'dia' => $diaT );
 		}
 
 		// Primero lo que requiere atención.
@@ -115,15 +117,19 @@ final class PantallaHoy {
 				<?php if ( ! $filas ) : ?>
 					<tr><td colspan="5"><?php echo is_array( $alcance ) ? 'No tienes trabajadores a tu cargo.' : 'No hay trabajadores activos.'; ?></td></tr>
 				<?php endif; ?>
-				<?php foreach ( $filas as [ 't' => $t, 'r' => $r ] ) : ?>
+				<?php foreach ( $filas as [ 't' => $t, 'r' => $r, 'dia' => $diaT ] ) : ?>
 					<?php [ $etiqueta, $color ] = self::SITUACIONES[ $r->situacion ]; ?>
 					<tr>
-						<td><strong><a href="<?php echo esc_url( PantallaDia::url( (int) $t['id'], $dia ) ); ?>"><?php echo esc_html( $t['apellidos'] . ', ' . $t['nombres'] ); ?></a></strong><br><span class="description"><?php echo esc_html( $t['area'] ); ?></span></td>
+						<td><strong><a href="<?php echo esc_url( PantallaDia::url( (int) $t['id'], $diaT ) ); ?>"><?php echo esc_html( $t['apellidos'] . ', ' . $t['nombres'] ); ?></a></strong><br><span class="description"><?php echo esc_html( $t['area'] ); ?></span></td>
 						<td><span style="color:<?php echo esc_attr( $color ); ?>;font-weight:600"><?php echo esc_html( $etiqueta ); ?></span></td>
 						<td><?php echo esc_html( $hora( $r->primeraEntrada ) ); ?><?php echo $r->minutosTardanza ? ' <span style="color:#b26200">(+' . (int) $r->minutosTardanza . ' min)</span>' : ''; ?></td>
 						<td><?php echo Estado::FUERA !== $r->estado || $r->desde ? esc_html( $hora( $r->desde ) ) : '—'; ?></td>
 						<td>
 							<?php
+							if ( $diaT !== $dia ) {
+								echo '<strong style="color:#6b3fa0">Sigue en la jornada de ayer</strong> (pasó la medianoche). ';
+							}
+
 							if ( '' !== $r->detalle && in_array( $r->situacion, array( ResumenDia::JUSTIFICADO, ResumenDia::LIBRE ), true ) ) {
 								echo esc_html( $r->detalle );
 							} elseif ( ResumenDia::REFRIGERIO === $r->situacion ) {

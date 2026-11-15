@@ -241,6 +241,13 @@ Vienen de la sección 16 del plan; se resuelven con gerencia y el contador.
 
 ### 15-11-2026 — etapa B de la app (maquetas), en curso
 - **QR con vigencia configurable** (Ajustes → "El QR de la pantalla cambia cada": 30 s, 5, 15 o 30 min; las maquetas piden 30 min). Al escanear, el enlace dura lo mismo que el QR ("Enlace vigente · 24 min"). La pantalla muestra una barra que pasa a ámbar en los últimos minutos, y con el enlace vencido el botón principal de la app es "Escanear el QR". Durante el primer minuto del QR nuevo se sigue aceptando el anterior. El periodo va en la firma: un token de 30 s no sirve como si fuera de 30 min. **Queda en 30 s por defecto**, para no cambiar lo que está en producción; con 15 o 30 min conviene "WiFi del taller y QR", porque un QR largo se puede reenviar por WhatsApp.
+- **Jornadas que pasan la medianoche** (`JornadaAbierta` en el núcleo, `Jornadas::diaActual`):
+  - la jornada no se corta: si la de ayer sigue abierta, hoy no hay marcas y no pidió una corrección para ayer, lo que marque va al día de ayer (antes se cortaba a las 4 a. m.);
+  - en la app, de madrugada: "Pasó la medianoche: sigues en tu jornada del jueves 12" (T2F). Pasada la hora de corte: "Tu jornada del jueves 12 sigue abierta", con "Sigo aquí: marcar salida" o "Salí ayer y olvidé marcar", que lleva a pedir la corrección (T2G);
+  - la salida de madrugada dice a qué jornada pertenece (T3E);
+  - si al cerrarla pasa de **16 h** (Ajustes → Reglas, "Revisar jornadas de más de"), se acepta igual, queda por revisar y se avisa al jefe con el aviso nuevo "Jornada muy larga" (T3F);
+  - Hoy muestra "Sigue en la jornada de ayer" en vez de "no llegó", y el cron no avisa "no llegó" a quien sigue trabajando desde ayer.
+  - Prueba de punta a punta: 6 comprobaciones nuevas. Se ajustó la prueba de avisos, que usaba "el próximo lunes": hoy es domingo, y la jornada de hoy de Luis seguía abierta.
 
 ### 14-11-2026 (noche, 8) — versión 0.12.0: app del trabajador con el diseño de las maquetas (etapa A)
 - **Núcleo:** `VistaDia` arma la pantalla de marcar: los 4 pasos de "Tu día", el botón principal y las otras salidas, lo trabajado (con el tramo abierto), lo que falta, la comida y la salida en curso. 6 pruebas nuevas, 135 en total.

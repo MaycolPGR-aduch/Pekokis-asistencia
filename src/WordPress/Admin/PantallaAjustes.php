@@ -42,6 +42,7 @@ final class PantallaAjustes {
 	/** Campos numéricos de las reglas de horas: clave => [etiqueta, mínimo, máximo, ayuda]. */
 	private const REGLAS = array(
 		'comida_no_marcada_min' => array( 'Comida descontada si no se marca (minutos)', 0, 180, 'Solo en días laborables, cuando la persona no marcó su salida a comer. Por confirmar (las maquetas proponen 60). Con 0 no se descuenta.' ),
+		'jornada_larga_horas'   => array( 'Revisar jornadas de más de (horas)', 0, 48, 'La jornada no se corta a medianoche: sigue abierta hasta que marca su salida y cuenta en el día en que empezó. Si al cerrarla pasa de estas horas, se acepta igual, queda por revisar y se avisa a gerencia. Por confirmar (las maquetas proponen 16). Con 0 no se revisa.' ),
 	);
 
 	private static function reglas(): void {

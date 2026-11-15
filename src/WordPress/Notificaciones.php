@@ -109,6 +109,11 @@ final class Notificaciones {
 				continue;
 			}
 
+			// Sigue en la jornada de ayer (pasó la medianoche): hoy todavía no empieza.
+			if ( ! ( $marcas[ $id ][ $dia ] ?? array() ) && Jornadas::diaActual( $id, $ahora ) !== $dia ) {
+				continue;
+			}
+
 			foreach ( $reglas->evaluar( $r, $horario, $dia, $zona, $ahora ) as $tipo => $clave ) {
 				self::encolar( $tipo, $clave . '|' . $id, $t, self::lineaDelDia( $tipo, $t, $r, $horario, $zona ) );
 			}
@@ -233,6 +238,25 @@ final class Notificaciones {
 					sprintf( '%s marcó %s a las %s%s.%s', Trabajadores::nombreCompleto( $t ), $motivo ? '"' . $motivo->nombre . '"' : 'una salida', self::horaLocal( $m['marcado_utc'] ), $fuera, '' !== $m['nota'] ? ' Nota: "' . $m['nota'] . '".' : '' ),
 					admin_url( 'admin.php?page=pka-asistencia' )
 				);
+			}
+		);
+	}
+
+	/** Una jornada pasó el límite de horas (maquetas T3F): se acepta, pero gerencia la revisa. */
+	public static function jornadaLarga( int $marcaId, int $trabajadorId, string $dia, int $minutos ): void {
+		self::seguro(
+			static function () use ( $marcaId, $trabajadorId, $dia, $minutos ): void {
+				$t = Trabajadores::buscar( $trabajadorId );
+
+				if ( $t ) {
+					self::encolar(
+						ReglasAvisos::JORNADA_LARGA,
+						'jornada_larga|' . $marcaId,
+						$t,
+						sprintf( '%s cerró su jornada del %s con %d h %02d min desde su entrada. Revisa si la salida es correcta.', Trabajadores::nombreCompleto( $t ), wp_date( 'l j', strtotime( $dia . ' 12:00:00' ) ), intdiv( $minutos, 60 ), $minutos % 60 ),
+						admin_url( 'admin.php?page=pka-asistencia&vista=dia&trabajador=' . $trabajadorId . '&dia=' . $dia )
+					);
+				}
 			}
 		);
 	}

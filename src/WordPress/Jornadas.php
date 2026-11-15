@@ -4,6 +4,7 @@ namespace Pekokis\Asistencia\WordPress;
 
 use DateTimeImmutable;
 use Pekokis\Asistencia\Nucleo\CalculoJornada;
+use Pekokis\Asistencia\Nucleo\JornadaAbierta;
 use Pekokis\Asistencia\Nucleo\PrePlanilla;
 
 defined( 'ABSPATH' ) || exit;
@@ -84,6 +85,39 @@ final class Jornadas {
 		}
 
 		return $filas;
+	}
+
+	/**
+	 * Día de la jornada en curso de un trabajador: hoy o, si la de ayer sigue
+	 * abierta (pasó la medianoche), ayer. Ver JornadaAbierta.
+	 */
+	public static function diaActual( int $trabajadorId, ?DateTimeImmutable $ahora = null ): string {
+		$ahora ??= new DateTimeImmutable( 'now', new \DateTimeZone( 'UTC' ) );
+		$hoy     = Ajustes::diaLaboral()->de( $ahora );
+		$marcasH = Marcas::delDia( $trabajadorId, $hoy );
+
+		if ( $marcasH ) {
+			return $hoy;
+		}
+
+		$ayer    = ( new DateTimeImmutable( $hoy ) )->modify( '-1 day' )->format( 'Y-m-d' );
+		$marcasA = Marcas::delDia( $trabajadorId, $ayer );
+
+		if ( ! JornadaAbierta::sigueAbierta( $marcasA ) ) {
+			return $hoy;
+		}
+
+		return JornadaAbierta::diaDeTrabajo( $hoy, $marcasA, $marcasH, self::conSolicitudDesde( $trabajadorId, $ayer ) );
+	}
+
+	/** ¿Pidió alguna corrección (pendiente) para ese día o después? */
+	private static function conSolicitudDesde( int $trabajadorId, string $dia ): bool {
+		global $wpdb;
+
+		$desde = Ajustes::diaLaboral()->rangoUtc( $dia )[0]->format( 'Y-m-d H:i:s' );
+		$c     = Tablas::nombre( 'correcciones' );
+
+		return (bool) $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$c} WHERE trabajador_id = %d AND estado = 'pendiente' AND marcado_utc >= %s LIMIT 1", $trabajadorId, $desde ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 	}
 
 	/** El día laboral anterior al actual. */

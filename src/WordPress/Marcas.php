@@ -135,7 +135,7 @@ final class Marcas {
 	 *   trabajador_id: int, tipo: TipoMarca, motivo_clave: ?string, nota: string,
 	 *   marcado: DateTimeImmutable, prueba: PruebaPresencia, requiere_revision: bool,
 	 *   dispositivo_id: ?int, credencial_id: ?int, pantalla_id: ?int,
-	 *   origen: string, correccion_id?: ?int, registrado_por?: ?int
+	 *   origen: string, correccion_id?: ?int, registrado_por?: ?int, dia_laboral?: string
 	 * } $datos
 	 */
 	public static function registrar( array $datos ): int {
@@ -145,7 +145,8 @@ final class Marcas {
 			'marcas',
 			array(
 				'trabajador_id'     => $datos['trabajador_id'],
-				'dia_laboral'       => Ajustes::diaLaboral()->de( $utc ),
+				// La jornada que pasó la medianoche sigue en su día (Jornadas::diaActual).
+				'dia_laboral'       => $datos['dia_laboral'] ?? Ajustes::diaLaboral()->de( $utc ),
 				'tipo'              => $datos['tipo']->value,
 				'motivo_clave'      => $datos['motivo_clave'],
 				'nota'              => mb_substr( $datos['nota'], 0, 255 ),

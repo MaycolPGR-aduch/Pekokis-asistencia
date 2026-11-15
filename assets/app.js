@@ -524,6 +524,7 @@
 		mostrarPestanas( 'marcar' );
 		var v = yo.vista;
 		var p = yo.presencia || { cumple: true };
+		var j = yo.jornada || {};
 
 		var principal = null;
 		var escanear = null;
@@ -531,7 +532,9 @@
 			// Enlace vencido o fuera del WiFi: lo primero es escanear (T2E).
 			principal = boton( 'principal', 'Escanear el QR', vistaEscanear, 'qr' );
 		} else if ( v.siguiente ) {
-			principal = boton( 'principal', v.siguiente.etiqueta, function () {
+			// T2G: la jornada de ayer sigue abierta: "Sigo aquí: marcar salida".
+			var etiqueta = j.de_ayer && 'fin_jornada' === v.siguiente.accion ? 'Sigo aquí: marcar salida' : v.siguiente.etiqueta;
+			principal = boton( 'principal', etiqueta, function () {
 				elegirAccion( v.siguiente.accion, v.siguiente.etiqueta );
 			}, 'huella' );
 			principal.disabled = ! p.cumple;
@@ -547,9 +550,13 @@
 		} );
 
 		pintar(
-			el( 'p', { class: 'fecha', texto: yo.dia.texto + ( yo.dia.horario ? ' · ' + yo.dia.horario : '' ) } ),
+			el( 'p', { class: 'fecha', texto: ( j.otro_dia ? 'Jornada del ' : '' ) + yo.dia.texto + ( yo.dia.horario ? ' · ' + yo.dia.horario : '' ) } ),
 			el( 'h1', {}, [ 'Hola, ', el( 'em', { texto: yo.nombre } ) ] ),
 			mensaje || null,
+			j.de_ayer ? aviso( 'espera', 'Tu jornada del ' + j.texto + ' sigue abierta: no marcaste la salida.', boton( 'simple', 'Salí ayer y olvidé marcar', function () {
+				vistaHoras( '', j.dia );
+			} ) ) : null,
+			j.otro_dia && ! j.de_ayer && ! v.terminado ? aviso( 'info', 'Pasó la medianoche: sigues en tu jornada del ' + j.texto + '. Sus horas cuentan en ese día.' ) : null,
 			yo.ayer ? aviso( 'espera', 'Ayer no marcaste tu salida.', boton( 'simple', 'Pedir la corrección', function () {
 				vistaHoras( '', yo.ayer.fecha );
 			} ) ) : null,
@@ -804,7 +811,8 @@
 				el( 'p', { class: 'hora', texto: horaAhora() } ),
 				el( 'p', { class: 'ayuda', texto: r.mensaje } ),
 			] ),
-			r.revision ? aviso( 'espera', 'Tu jefe revisará esta marca porque no se pudo comprobar que estabas en el taller.' ) : null,
+			r.larga ? aviso( 'espera', 'Tu jornada duró ' + r.larga + ' desde tu entrada. Se registró igual y gerencia la revisará.' ) : ( r.revision ? aviso( 'espera', 'Tu jefe revisará esta marca porque no se pudo comprobar que estabas en el taller.' ) : null ),
+			'fin_jornada' === accion && r.jornada && r.jornada.otro_dia ? aviso( 'info', 'Es la salida de tu jornada del ' + r.jornada.texto + '. Las horas de madrugada cuentan en ese día.' ) : null,
 			resumen,
 			v.pasos ? lineaDelDia( v.pasos, false ) : null,
 			el( 'div', { class: 'pie-fila' }, [ boton( 'principal', 'Listo', function () {
