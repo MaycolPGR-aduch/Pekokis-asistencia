@@ -1,0 +1,401 @@
+/*
+ * Panel de gerencia con el estilo de las maquetas (G1 a G17), dentro de wp-admin:
+ * letra Poligon, franja rosa con aros, estrella y onda en cada título, tarjetas
+ * pastel, tablas con encabezado rosado y el menú agrupado (Resumen, Control,
+ * Pagos, Personas, Sistema). Solo se carga en las pantallas de Asistencia, o en
+ * todo wp-admin para quien solo usa Asistencia (gerencia, RR.HH., jefes).
+ */
+
+@font-face { font-family: Poligon; font-weight: 400; font-display: swap; src: url("fuentes/poligon-400.otf") format("opentype"); }
+@font-face { font-family: Poligon; font-weight: 600; font-display: swap; src: url("fuentes/poligon-600.otf") format("opentype"); }
+@font-face { font-family: Poligon; font-weight: 700; font-display: swap; src: url("fuentes/poligon-700.otf") format("opentype"); }
+
+body.pka-tema {
+	--pk-bg: #FFF8FB;
+	--pk-fondo: #F4EEF1;
+	--pk-fg: #212322;
+	--pk-verde: #243B34;
+	--pk-muted: #62716B;
+	--pk-line: #EFE3EA;
+	--pk-rosa: #F048A5;
+	--pk-rosa-oscuro: #C2287F;
+	--pk-rosa-suave: #FFEAF3;
+	--pk-rosa-claro: #F794CC;
+	--pk-ok: #1F7A4D;
+	--pk-ok-suave: #E6F5EC;
+	--pk-aviso: #9A5B00;
+	--pk-aviso-suave: #FFF1D6;
+	--pk-error: #B3261E;
+	--pk-error-suave: #FDE7E5;
+	--pk-info: #3B4CC0;
+	--pk-info-suave: #E8EBFB;
+	--pk-turq-suave: #E4FAF9;
+	--pk-lima-suave: #F1FCD9;
+}
+
+/* ---------- Menú lateral (blanco, grupos, activo en rosa) ---------- */
+
+body.pka-tema #adminmenuback,
+body.pka-tema #adminmenuwrap,
+body.pka-tema #adminmenu { background: #fff; }
+body.pka-tema #adminmenuback { border-right: 1px solid var(--pk-line); }
+body.pka-tema #adminmenu { font-family: Poligon, system-ui, sans-serif; padding-top: 6px; }
+body.pka-tema #adminmenuwrap::before {
+	content: "";
+	display: block;
+	height: 44px;
+	margin: 10px 14px 0;
+	background: url("logo-pekokis.png") left center / auto 28px no-repeat;
+}
+body.pka-tema.folded #adminmenuwrap::before { display: none; }
+body.pka-tema #adminmenu a,
+body.pka-tema #adminmenu div.wp-menu-image::before { color: var(--pk-fg); }
+body.pka-tema #adminmenu li.menu-top:hover > a,
+body.pka-tema #adminmenu li > a.menu-top:focus { background: var(--pk-rosa-suave); color: var(--pk-rosa-oscuro); }
+body.pka-tema #adminmenu li.wp-has-current-submenu > a.menu-top,
+body.pka-tema #adminmenu li.current > a.menu-top {
+	background: #fff;
+	color: var(--pk-verde);
+	font-weight: 700;
+}
+body.pka-tema #adminmenu li.wp-has-current-submenu div.wp-menu-image::before { color: var(--pk-rosa-oscuro); }
+body.pka-tema #adminmenu .wp-submenu,
+body.pka-tema #adminmenu .wp-has-current-submenu .wp-submenu,
+body.pka-tema #adminmenu .wp-has-current-submenu.opensub .wp-submenu { background: #fff; }
+body.pka-tema #adminmenu .wp-has-current-submenu .wp-submenu { padding: 2px 8px 10px; }
+body.pka-tema #adminmenu .wp-submenu a { color: var(--pk-fg); font-size: 13.5px; border-radius: 12px; padding: 7px 10px; margin: 1px 0; }
+body.pka-tema #adminmenu .wp-submenu a:hover,
+body.pka-tema #adminmenu .wp-submenu a:focus { background: var(--pk-rosa-suave); color: var(--pk-rosa-oscuro); box-shadow: none; }
+body.pka-tema #adminmenu .wp-submenu li.current a,
+body.pka-tema #adminmenu .wp-submenu li.current a:hover {
+	background: var(--pk-rosa);
+	color: #fff;
+	font-weight: 600;
+	box-shadow: 0 2px 0 var(--pk-rosa-oscuro);
+}
+body.pka-tema #adminmenu li.wp-has-current-submenu .wp-submenu-head,
+body.pka-tema #adminmenu .wp-menu-arrow { display: none; }
+/* Títulos de grupo: entradas del menú que no se pueden tocar. */
+body.pka-tema #adminmenu .wp-submenu a[href*="page=pka-g-"] {
+	pointer-events: none;
+	cursor: default;
+	background: none !important;
+	box-shadow: none !important;
+	color: var(--pk-muted) !important;
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: .06em;
+	margin-top: 10px;
+	padding-bottom: 2px;
+}
+body.pka-tema #adminmenu .awaiting-mod { background: var(--pk-rosa); color: #fff; }
+body.pka-tema #adminmenu .current .awaiting-mod { background: #fff; color: var(--pk-rosa-oscuro); }
+body.pka-tema #collapse-button { color: var(--pk-muted); }
+
+/* Barra superior más sobria. */
+body.pka-tema #wpadminbar { background: var(--pk-verde); }
+
+/* ---------- Página ---------- */
+
+body.pka-pagina,
+body.pka-pagina #wpwrap,
+body.pka-pagina #wpcontent { background: var(--pk-bg); }
+body.pka-pagina #wpbody-content { padding-bottom: 60px; }
+body.pka-pagina .wrap {
+	margin: 18px 22px 0 2px;
+	color: var(--pk-fg);
+	font: 14px/1.5 Poligon, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+body.pka-pagina .wrap h1,
+body.pka-pagina .wrap h2,
+body.pka-pagina .wrap h3 { font-family: Poligon, system-ui, sans-serif; color: var(--pk-verde); }
+body.pka-pagina .wrap h2 { font-size: 19px; }
+
+/* Franja rosa del título, con aros, estrella y onda (como .top de las maquetas). */
+body.pka-pagina .wrap > h1:first-of-type {
+	position: relative;
+	overflow: hidden;
+	margin: 0 0 18px;
+	padding: 22px 26px 34px 40px;
+	border-radius: 20px 20px 0 0;
+	font-size: 25px;
+	line-height: 1.25;
+	color: #fff;
+	text-shadow: 0 3px 0 rgba(194, 40, 127, .5);
+	background-color: var(--pk-rosa-claro);
+	background-image:
+		radial-gradient(circle at 0 0, transparent 0 16px, #D6FB9A 17px 34px, transparent 35px),
+		radial-gradient(circle at 58% 130%, transparent 0 22px, #FBC6E3 23px 48px, transparent 49px);
+}
+body.pka-pagina .wrap > h1:first-of-type::before {
+	content: "";
+	position: absolute;
+	top: 14px;
+	right: 28%;
+	width: 24px;
+	height: 24px;
+	background: #fff;
+	clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+}
+body.pka-pagina .wrap > h1:first-of-type::after {
+	content: "";
+	position: absolute;
+	left: 0;
+	right: 0;
+	bottom: -1px;
+	height: 12px;
+	background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='12' viewBox='0 0 44 12'%3E%3Cpath d='M0 6Q11 -2 22 6T44 6V12H0Z' fill='%23FFF8FB'/%3E%3C/svg%3E") repeat-x;
+}
+body.pka-pagina .wrap > h1:first-of-type a,
+body.pka-pagina .wrap > h1:first-of-type .page-title-action {
+	position: relative;
+	z-index: 1;
+	text-shadow: none;
+}
+body.pka-pagina .wrap .page-title-action { top: -2px; margin-left: 12px; }
+
+body.pka-pagina .description,
+body.pka-pagina p.description { color: var(--pk-muted); }
+
+/* ---------- Tablas ---------- */
+
+body.pka-pagina table.widefat {
+	border: 1px solid var(--pk-line);
+	border-radius: 18px;
+	border-collapse: separate;
+	border-spacing: 0;
+	overflow: hidden;
+	box-shadow: 0 3px 0 #F6E3EC;
+	background: #fff;
+	font-variant-numeric: tabular-nums;
+}
+body.pka-pagina table.widefat thead th,
+body.pka-pagina table.widefat thead td {
+	background: var(--pk-rosa-suave);
+	color: var(--pk-muted);
+	font-size: 11.5px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: .05em;
+	border-bottom: 0;
+	padding: 10px 12px;
+}
+body.pka-pagina table.widefat td,
+body.pka-pagina table.widefat tbody th { padding: 10px 12px; border-top: 1px solid var(--pk-line); vertical-align: middle; }
+body.pka-pagina table.widefat.striped > tbody > :nth-child(odd) { background: #fff; }
+body.pka-pagina table.widefat.striped > tbody > :nth-child(even) { background: #FFFBFD; }
+body.pka-pagina table.widefat tbody tr:hover { background: var(--pk-rosa-suave); }
+body.pka-pagina table.widefat a { color: var(--pk-rosa-oscuro); font-weight: 600; }
+body.pka-pagina table.form-table { background: #fff; border: 1px solid var(--pk-line); border-radius: 18px; border-collapse: separate; }
+body.pka-pagina table.form-table th { padding-left: 18px; color: var(--pk-verde); font-weight: 600; }
+
+/* ---------- Botones y campos ---------- */
+
+body.pka-pagina .button,
+body.pka-pagina .button-secondary {
+	border: 2px solid var(--pk-rosa);
+	border-radius: 999px;
+	background: #fff;
+	color: var(--pk-rosa-oscuro);
+	font-weight: 600;
+	box-shadow: 0 2px 0 #EFCFE0;
+	padding: 0 14px;
+	min-height: 32px;
+	line-height: 28px;
+}
+body.pka-pagina .button:hover,
+body.pka-pagina .button:focus { background: var(--pk-rosa-suave); border-color: var(--pk-rosa); color: var(--pk-rosa-oscuro); }
+body.pka-pagina .button-primary,
+body.pka-pagina .button.button-primary {
+	background: var(--pk-rosa);
+	border-color: var(--pk-rosa);
+	color: #fff;
+	box-shadow: 0 3px 0 var(--pk-rosa-oscuro);
+	text-shadow: none;
+}
+body.pka-pagina .button-primary:hover,
+body.pka-pagina .button-primary:focus { background: var(--pk-rosa-oscuro); border-color: var(--pk-rosa-oscuro); color: #fff; }
+body.pka-pagina .button:focus,
+body.pka-pagina input:focus,
+body.pka-pagina select:focus,
+body.pka-pagina textarea:focus { outline: 3px solid #5A35F0; outline-offset: 1px; box-shadow: none; }
+
+body.pka-pagina input[type="text"],
+body.pka-pagina input[type="email"],
+body.pka-pagina input[type="number"],
+body.pka-pagina input[type="date"],
+body.pka-pagina input[type="time"],
+body.pka-pagina input[type="month"],
+body.pka-pagina input[type="search"],
+body.pka-pagina select,
+body.pka-pagina textarea {
+	border: 2px solid var(--pk-line);
+	border-radius: 12px;
+	min-height: 34px;
+	background: #fff;
+	color: var(--pk-verde);
+}
+
+/* ---------- Avisos ---------- */
+
+body.pka-pagina .notice,
+body.pka-pagina div.updated,
+body.pka-pagina div.error { border: 0; border-radius: 14px; box-shadow: none; padding: 4px 14px; }
+body.pka-pagina .notice-success,
+body.pka-pagina div.updated { background: var(--pk-ok-suave); color: var(--pk-ok); }
+body.pka-pagina .notice-error,
+body.pka-pagina div.error { background: var(--pk-error-suave); color: var(--pk-error); }
+body.pka-pagina .notice-warning { background: var(--pk-aviso-suave); color: var(--pk-aviso); }
+body.pka-pagina .notice-info { background: var(--pk-info-suave); color: var(--pk-info); }
+body.pka-pagina .notice p { color: inherit; }
+
+/* ---------- Pestañas (ficha, recibos por mes) ---------- */
+
+body.pka-pagina .nav-tab-wrapper,
+body.pka-pagina .pka-pestanas { border: 0; display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 16px; padding: 0; }
+body.pka-pagina .nav-tab,
+body.pka-pagina .pka-pestanas a {
+	border: 1px solid var(--pk-line);
+	border-radius: 999px;
+	background: #fff;
+	color: var(--pk-fg);
+	margin: 0;
+	padding: 6px 16px;
+	font-size: 13.5px;
+	font-weight: 600;
+	text-decoration: none;
+}
+body.pka-pagina .nav-tab-active,
+body.pka-pagina .nav-tab-active:hover,
+body.pka-pagina .pka-pestanas a.activa {
+	background: var(--pk-rosa);
+	border-color: var(--pk-rosa);
+	color: #fff;
+	box-shadow: 0 2px 0 var(--pk-rosa-oscuro);
+}
+
+/* ---------- Componentes propios ---------- */
+
+.pka-tarjetas { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 0 0 12px; }
+.pka-kpi { background: #fff; border: 1px solid var(--pk-line); border-radius: 16px; padding: 12px 14px; color: var(--pk-verde); text-decoration: none; display: block; }
+a.pka-kpi:hover { box-shadow: 0 3px 0 #F6E3EC; }
+.pka-kpi span { display: block; font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--pk-muted); }
+.pka-kpi b { display: block; font: 600 24px/1.2 Poligon, system-ui, sans-serif; color: var(--pk-verde); font-variant-numeric: tabular-nums; margin: 4px 0 2px; }
+.pka-kpi small { display: block; font-size: 12px; color: var(--pk-muted); }
+.pka-kpi.turq { background: var(--pk-turq-suave); border-color: #BDEFED; }
+.pka-kpi.lima { background: var(--pk-lima-suave); border-color: #DCF3A8; }
+.pka-kpi.rosa { background: var(--pk-rosa-suave); border-color: #F9CFE5; }
+.pka-kpi.dest { background: linear-gradient(135deg, #D8369A, #A81F6B); border-color: #A81F6B; }
+.pka-kpi.dest span, .pka-kpi.dest b, .pka-kpi.dest small { color: #fff; }
+
+.pka-dos { display: grid; grid-template-columns: 1.25fr 1fr; gap: 12px; align-items: start; }
+.pka-tres { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-items: start; }
+.pka-caja { background: #fff; border: 1px solid var(--pk-line); border-radius: 20px; padding: 14px 16px; box-shadow: 0 3px 0 #F6E3EC; margin-bottom: 12px; }
+.pka-caja h2, .pka-caja h3 { margin: 0 0 8px; font-size: 15px; }
+.pka-caja dl { margin: 0; }
+.pka-caja dl div { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--pk-line); }
+.pka-caja dl div:last-child { border-bottom: 0; }
+.pka-caja dt { color: var(--pk-muted); font-size: 13px; }
+.pka-caja dd { margin: 0; font-weight: 600; color: var(--pk-verde); text-align: right; }
+
+.pka-alertas { list-style: none; margin: 6px 0 0; padding: 0; }
+.pka-alertas li { display: flex; gap: 10px; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--pk-line); margin: 0; }
+.pka-alertas li:last-child { border-bottom: 0; }
+.pka-alertas .dashicons { color: var(--pk-aviso); width: 22px; height: 22px; font-size: 22px; }
+.pka-alertas li.error .dashicons { color: var(--pk-error); }
+.pka-alertas li.info .dashicons { color: var(--pk-info); }
+.pka-alertas div { flex: 1; min-width: 0; }
+.pka-alertas b { display: block; font-size: 13.5px; }
+.pka-alertas span { font-size: 12px; color: var(--pk-muted); }
+.pka-alertas .vacio { color: var(--pk-ok); font-weight: 600; }
+
+.pka-chip { display: inline-block; font-size: 12px; font-weight: 600; padding: 2px 10px; border-radius: 99px; white-space: nowrap; }
+.pka-chip.ok { background: var(--pk-ok-suave); color: var(--pk-ok); }
+.pka-chip.aviso { background: var(--pk-aviso-suave); color: var(--pk-aviso); }
+.pka-chip.error { background: var(--pk-error-suave); color: var(--pk-error); }
+.pka-chip.info { background: var(--pk-info-suave); color: var(--pk-info); }
+.pka-chip.gris { background: #EFEDEE; color: var(--pk-muted); }
+.pka-chip.solo { background: var(--pk-aviso-suave); color: var(--pk-aviso); font-size: 11px; }
+
+.pka-av { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--pk-rosa-suave); color: var(--pk-rosa-oscuro); font-size: 10.5px; font-weight: 700; margin-right: 8px; vertical-align: middle; }
+.pka-av.grande { width: 64px; height: 64px; font-size: 20px; margin: 0; }
+
+/* Gráfico de barras apiladas (horas por día). */
+.pka-barras { display: flex; align-items: flex-end; gap: 4px; height: 170px; border-bottom: 1px solid var(--pk-line); padding-top: 6px; }
+.pka-barras .col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; height: 100%; justify-content: flex-end; min-width: 0; }
+.pka-barras .pila { width: 100%; height: calc(100% - 16px); display: flex; flex-direction: column; justify-content: flex-end; }
+.pka-barras .pila i { display: block; width: 100%; }
+.pka-barras i.no { background: #F8A8D4; }
+.pka-barras i.ex { background: var(--pk-rosa-oscuro); border-radius: 4px 4px 0 0; }
+.pka-barras .col span { font-size: 10px; color: var(--pk-muted); }
+.pka-leyenda-graf { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--pk-muted); margin-bottom: 6px; }
+.pka-leyenda-graf i { width: 12px; height: 12px; border-radius: 4px; display: inline-block; }
+.pka-leyenda-graf i.no { background: #F8A8D4; }
+.pka-leyenda-graf i.ex { background: var(--pk-rosa-oscuro); margin-left: 8px; }
+
+/* Cabecera de la ficha (G3). */
+.pka-ficha-cab { display: flex; align-items: center; gap: 18px; background: #fff; border: 1px solid var(--pk-line); border-radius: 20px; padding: 16px 20px; margin-bottom: 14px; box-shadow: 0 3px 0 #F6E3EC; }
+.pka-ficha-cab .quien { flex: 1; min-width: 0; }
+.pka-ficha-cab .quien b { display: block; font: 600 22px/1.2 Poligon, system-ui, sans-serif; color: var(--pk-verde); }
+.pka-ficha-cab .quien span { color: var(--pk-muted); font-size: 13px; }
+.pka-ficha-cab .acciones { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Interruptores (G17). */
+.pka-permisos { list-style: none; margin: 0; padding: 0; }
+.pka-permisos li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--pk-line); margin: 0; }
+.pka-permisos li small { display: block; color: var(--pk-muted); }
+.pka-switch { position: relative; width: 44px; height: 24px; flex: none; }
+.pka-switch input { position: absolute; opacity: 0; width: 44px; height: 24px; margin: 0; cursor: pointer; z-index: 1; }
+.pka-switch span { position: absolute; inset: 0; border-radius: 99px; background: #E3DCE0; transition: background .15s; }
+.pka-switch span::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: left .15s; }
+.pka-switch input:checked + span { background: var(--pk-ok); }
+.pka-switch input:checked + span::after { left: 23px; }
+.pka-switch input:focus-visible + span { outline: 3px solid #5A35F0; outline-offset: 2px; }
+.pka-nota-rosa { display: flex; gap: 8px; align-items: flex-start; background: var(--pk-rosa-suave); border-radius: 12px; padding: 10px 12px; margin: 14px 0; font-size: 12.5px; }
+
+/* iPad y pantallas angostas: dos columnas (maquetas TG1, TG7). */
+@media (max-width: 1180px) {
+	.pka-tarjetas { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+	.pka-dos, .pka-tres { grid-template-columns: 1fr; }
+}
+@media (max-width: 782px) {
+	body.pka-pagina .wrap { margin: 12px 10px 0 0; }
+	body.pka-pagina .wrap > h1:first-of-type { padding: 16px 16px 28px 20px; font-size: 21px; }
+	.pka-ficha-cab { flex-wrap: wrap; }
+}
+
+/* Fecha a la derecha de la franja (Dashboard, Hoy). */
+body.pka-pagina .wrap > h1 .pka-h1-der {
+	position: absolute;
+	right: 22px;
+	top: 22px;
+	z-index: 1;
+	background: #fff;
+	color: var(--pk-verde);
+	text-shadow: none;
+	border-radius: 99px;
+	padding: 4px 14px;
+	font: 600 13px/1.5 Poligon, system-ui, sans-serif;
+}
+@media (max-width: 782px) {
+	body.pka-pagina .wrap > h1 .pka-h1-der { position: static; display: inline-block; margin-top: 8px; }
+}
+
+/* Botón dentro de la franja ("+ Nuevo trabajador", "Editar datos"). */
+body.pka-pagina .wrap > h1:first-of-type .page-title-action {
+	background: #fff;
+	border: 2px solid #fff;
+	border-radius: 99px;
+	color: var(--pk-rosa-oscuro);
+	font: 600 13px/1.5 Poligon, system-ui, sans-serif;
+	padding: 5px 16px;
+	box-shadow: 0 3px 0 rgba(194, 40, 127, .35);
+	vertical-align: middle;
+}
+body.pka-pagina .wrap > h1:first-of-type .page-title-action:hover { background: var(--pk-rosa-suave); }
+
+body.pka-pagina .wrap a:not(.button):not(.page-title-action):not(.pka-kpi):not(.nav-tab) { color: var(--pk-rosa-oscuro); }
+body.pka-pagina .wrap .pka-pestanas a.activa { color: #fff !important; }
+body.pka-pagina .wrap .pka-pestanas a { color: var(--pk-fg) !important; }
+body.pka-pagina .subsubsub a.current { color: var(--pk-verde); font-weight: 700; }

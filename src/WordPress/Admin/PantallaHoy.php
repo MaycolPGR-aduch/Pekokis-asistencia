@@ -145,8 +145,10 @@ final class PantallaHoy {
 				</tbody>
 			</table>
 
-			<?php self::revisiones( $alcance, $zona ); ?>
-			<?php PantallaDia::bandejas( $alcance, $dia ); ?>
+			<?php $porDecidir = PantallaSolicitudes::pendientes(); ?>
+			<?php if ( $porDecidir ) : ?>
+				<div class="notice notice-warning inline"><p><strong><?php echo (int) $porDecidir; ?> <?php echo 1 === $porDecidir ? 'cosa espera' : 'cosas esperan'; ?> tu decisión</strong> (solicitudes "olvidé marcar" y marcas por revisar). <a href="<?php echo esc_url( PantallaSolicitudes::url() ); ?>">Ir a Solicitudes</a></p></div>
+			<?php endif; ?>
 		</div>
 		<?php
 	}
@@ -174,14 +176,14 @@ final class PantallaHoy {
 		}
 	}
 
-	private static function revisiones( ?array $alcance, DateTimeZone $zona ): void {
+	public static function revisiones( ?array $alcance, DateTimeZone $zona ): void {
 		if ( ! current_user_can( Capacidades::APROBAR ) ) {
 			return;
 		}
 
 		$pendientes = Revisiones::pendientes( $alcance );
 		?>
-		<h2 style="margin-top:32px">Marcas por revisar (<?php echo count( $pendientes ); ?>)</h2>
+		<h2 style="margin-top:32px" id="revisar">Marcas por revisar (<?php echo count( $pendientes ); ?>)</h2>
 		<p class="description">Emergencias marcadas fuera del taller y salidas que requieren aprobación.</p>
 		<?php if ( ! $pendientes ) : ?>
 			<p>No hay nada pendiente.</p>
@@ -247,6 +249,6 @@ final class PantallaHoy {
 			Avisos::agregar( 'success', Revisiones::APROBADA === $decision ? 'Marca aprobada.' : 'Marca rechazada.' );
 		}
 
-		Menu::volver( Menu::SLUG );
+		Menu::volver( PantallaSolicitudes::SLUG );
 	}
 }

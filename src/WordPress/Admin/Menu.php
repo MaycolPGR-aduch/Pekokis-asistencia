@@ -7,13 +7,16 @@ use Pekokis\Asistencia\WordPress\Capacidades;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Menú "Asistencia" en wp-admin.
+ * Menú "Asistencia" en wp-admin, agrupado como el panel de gerencia de las maquetas.
  */
 final class Menu {
 	public const SLUG = 'pka-asistencia';
 
 	public static function registrar(): void {
 		add_action( 'admin_menu', array( self::class, 'menu' ) );
+		Tema::registrar();
+		PantallaSolicitudes::registrar();
+		PantallaDelegar::registrar();
 		PantallaHoy::registrar();
 		PantallaDia::registrar();
 		PantallaExportar::registrar();
@@ -29,22 +32,55 @@ final class Menu {
 		PantallaAjustes::registrar();
 	}
 
+	/**
+	 * Menú agrupado como en las maquetas (Resumen, Control, Pagos, Personas,
+	 * Sistema). Los títulos de grupo son entradas que no se pueden tocar
+	 * ("pka-g-…"); el CSS del tema las muestra como encabezados.
+	 */
 	public static function menu(): void {
-		add_menu_page( 'Asistencia de hoy', 'Asistencia', Capacidades::VER_EQUIPO, self::SLUG, array( PantallaHoy::class, 'pintar' ), 'dashicons-clock', 3 );
+		add_menu_page( 'Dashboard de asistencia', 'Asistencia', Capacidades::VER_EQUIPO, PantallaDashboard::SLUG, array( PantallaDashboard::class, 'pintar' ), 'dashicons-clock', 3 );
 
-		add_submenu_page( self::SLUG, 'Asistencia de hoy', 'Hoy', Capacidades::VER_EQUIPO, self::SLUG, array( PantallaHoy::class, 'pintar' ) );
-		add_submenu_page( self::SLUG, 'Resumen del mes', 'Resumen del mes', Capacidades::VER_EQUIPO, PantallaResumen::SLUG, array( PantallaResumen::class, 'pintar' ) );
-		add_submenu_page( self::SLUG, 'Informe por trabajador', 'Informe', Capacidades::VER_EQUIPO, PantallaInforme::SLUG, array( PantallaInforme::class, 'pintar' ) );
-		add_submenu_page( self::SLUG, 'Calculadora de pagos', 'Pagos', Capacidades::VER_SUELDOS, PantallaPagos::SLUG, array( PantallaPagos::class, 'pintar' ) );
-		add_submenu_page( self::SLUG, 'Recibos por honorarios', 'Recibos', Capacidades::VER_SUELDOS, PantallaRecibos::SLUG, array( PantallaRecibos::class, 'pintar' ) );
-		add_submenu_page( self::SLUG, 'Trabajadores', 'Trabajadores', Capacidades::GESTIONAR_PERSONAL, PantallaTrabajadores::SLUG, array( PantallaTrabajadores::class, 'pintar' ) );
-		add_submenu_page( self::SLUG, 'Celulares y llaves', PantallaCelulares::titulo(), Capacidades::GESTIONAR_PERSONAL, PantallaCelulares::SLUG, array( PantallaCelulares::class, 'pintar' ) );
-		add_submenu_page( self::SLUG, 'Ausencias justificadas', 'Ausencias', Capacidades::GESTIONAR_PERSONAL, PantallaAusencias::SLUG, array( PantallaAusencias::class, 'pintar' ) );
-		add_submenu_page( self::SLUG, 'Exportar registro', 'Exportar', Capacidades::EXPORTAR, PantallaExportar::SLUG, array( PantallaExportar::class, 'pintar' ) );
-		add_submenu_page( self::SLUG, 'Horarios', 'Horarios', Capacidades::AJUSTES, PantallaHorarios::SLUG, array( PantallaHorarios::class, 'pintar' ) );
-		add_submenu_page( self::SLUG, 'Calendario', 'Calendario', Capacidades::AJUSTES, PantallaCalendario::SLUG, array( PantallaCalendario::class, 'pintar' ) );
-		add_submenu_page( self::SLUG, 'Historial de cambios', 'Historial', Capacidades::AUDITORIA, PantallaHistorial::SLUG, array( PantallaHistorial::class, 'pintar' ) );
-		add_submenu_page( self::SLUG, 'Ajustes de asistencia', 'Ajustes', Capacidades::AJUSTES, PantallaAjustes::SLUG, array( PantallaAjustes::class, 'pintar' ) );
+		$p = PantallaDashboard::SLUG;
+
+		// Resumen (el primer grupo no lleva título: el menú arranca con el Dashboard).
+		add_submenu_page( $p, 'Dashboard de asistencia', 'Dashboard', Capacidades::VER_EQUIPO, $p, array( PantallaDashboard::class, 'pintar' ) );
+		add_submenu_page( $p, 'Asistencia de hoy', 'Asistencia de hoy', Capacidades::VER_EQUIPO, self::SLUG, array( PantallaHoy::class, 'pintar' ) );
+
+		self::grupo( 'control', 'Control', Capacidades::VER_EQUIPO );
+		add_submenu_page( $p, 'Solicitudes y revisión', PantallaSolicitudes::titulo(), Capacidades::VER_EQUIPO, PantallaSolicitudes::SLUG, array( PantallaSolicitudes::class, 'pintar' ) );
+		add_submenu_page( $p, 'Registros por persona', 'Registros por persona', Capacidades::VER_EQUIPO, PantallaInforme::SLUG, array( PantallaInforme::class, 'pintar' ) );
+		add_submenu_page( $p, 'Horarios', 'Horarios', Capacidades::HORARIOS, PantallaHorarios::SLUG, array( PantallaHorarios::class, 'pintar' ) );
+		add_submenu_page( $p, 'Feriados y calendario', 'Feriados', Capacidades::HORARIOS, PantallaCalendario::SLUG, array( PantallaCalendario::class, 'pintar' ) );
+		add_submenu_page( $p, 'Ausencias justificadas', 'Ausencias', Capacidades::GESTIONAR_PERSONAL, PantallaAusencias::SLUG, array( PantallaAusencias::class, 'pintar' ) );
+		add_submenu_page( $p, 'Auditoría de cambios', 'Auditoría', Capacidades::AUDITORIA, PantallaHistorial::SLUG, array( PantallaHistorial::class, 'pintar' ) );
+
+		self::grupo( 'pagos', 'Pagos', current_user_can( Capacidades::VER_SUELDOS ) ? Capacidades::VER_SUELDOS : Capacidades::RECIBOS );
+		add_submenu_page( $p, 'Calculadora de pagos', 'Calculadora de pagos', Capacidades::VER_SUELDOS, PantallaPagos::SLUG, array( PantallaPagos::class, 'pintar' ) );
+		add_submenu_page( $p, 'Recibos por honorarios', 'Recibos por honorarios', Capacidades::RECIBOS, PantallaRecibos::SLUG, array( PantallaRecibos::class, 'pintar' ) );
+
+		self::grupo( 'personas', 'Personas', Capacidades::GESTIONAR_PERSONAL );
+		add_submenu_page( $p, 'Perfiles', 'Perfiles', Capacidades::GESTIONAR_PERSONAL, PantallaTrabajadores::SLUG, array( PantallaTrabajadores::class, 'pintar' ) );
+		add_submenu_page( $p, 'Celulares y llaves', PantallaCelulares::titulo(), Capacidades::GESTIONAR_PERSONAL, PantallaCelulares::SLUG, array( PantallaCelulares::class, 'pintar' ) );
+		add_submenu_page( $p, 'Delegar permisos', 'Delegar permisos', Capacidades::AJUSTES, PantallaDelegar::SLUG, array( PantallaDelegar::class, 'pintar' ) );
+
+		self::grupo( 'sistema', 'Sistema', Capacidades::VER_EQUIPO );
+		add_submenu_page( $p, 'Resumen del mes', 'Resumen del mes', Capacidades::VER_EQUIPO, PantallaResumen::SLUG, array( PantallaResumen::class, 'pintar' ) );
+		add_submenu_page( $p, 'Informes y exportación', 'Exportar', Capacidades::EXPORTAR, PantallaExportar::SLUG, array( PantallaExportar::class, 'pintar' ) );
+		add_submenu_page( $p, 'Seguridad y reglas', 'Ajustes', Capacidades::AJUSTES, PantallaAjustes::SLUG, array( PantallaAjustes::class, 'pintar' ) );
+	}
+
+	/** Título de grupo del menú (no lleva a ninguna parte). */
+	private static function grupo( string $clave, string $titulo, string $capacidad ): void {
+		add_submenu_page(
+			PantallaDashboard::SLUG,
+			$titulo,
+			$titulo,
+			$capacidad,
+			'pka-g-' . $clave,
+			static function (): void {
+				echo '<div class="wrap"><p>Elige una opción del menú.</p></div>';
+			}
+		);
 	}
 
 	/** URL de una acción admin-post con nonce. */

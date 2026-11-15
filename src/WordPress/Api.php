@@ -856,6 +856,7 @@ final class Api {
 				'paso'      => 'entrada' === $f['tipo'] ? 'Entrada' : self::nombreDeSalida( (string) $f['motivo_clave'] ),
 				'hora'      => Ajustes::local( (string) $f['marcado_utc'], 'H:i' ),
 				'estado'    => $f['estado'],
+				'pedida'    => $f['hora_pedida_utc'] ? Ajustes::local( (string) $f['hora_pedida_utc'], 'H:i' ) : '',
 				'respuesta' => (string) $f['nota_resolucion'],
 			);
 		}

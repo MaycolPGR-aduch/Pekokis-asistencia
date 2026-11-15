@@ -46,7 +46,9 @@ final class PantallaTrabajadores {
 		echo '<div class="wrap">';
 		Avisos::mostrar();
 
-		if ( 'editar' === $vista ) {
+		if ( 'ficha' === $vista && $id && Trabajadores::buscar( $id ) ) {
+			PantallaFicha::pintar( Trabajadores::buscar( $id ) );
+		} elseif ( 'editar' === $vista ) {
 			self::formulario( $id ? Trabajadores::buscar( $id ) : null );
 		} elseif ( 'cesar' === $vista && $id ) {
 			self::formularioCese( Trabajadores::buscar( $id ) );
@@ -63,8 +65,7 @@ final class PantallaTrabajadores {
 		$filas    = Trabajadores::listar( $estado, $busqueda );
 		$base     = admin_url( 'admin.php?page=' . self::SLUG );
 		?>
-		<h1 class="wp-heading-inline">Trabajadores</h1>
-		<a href="<?php echo esc_url( add_query_arg( 'vista', 'editar', $base ) ); ?>" class="page-title-action">Agregar trabajador</a>
+		<h1>Perfiles de trabajadores <a href="<?php echo esc_url( add_query_arg( 'vista', 'editar', $base ) ); ?>" class="page-title-action">+ Nuevo trabajador</a></h1>
 		<hr class="wp-header-end">
 
 		<ul class="subsubsub">
@@ -82,19 +83,21 @@ final class PantallaTrabajadores {
 
 		<table class="widefat striped" style="clear:both">
 			<thead>
-				<tr><th>Nombre</th><th>DNI</th><th>Cargo · Área</th><th>Celular</th><th>Acciones</th></tr>
+				<tr><th>Nombre</th><th>Celular o WhatsApp</th><th>DNI</th><th>Cumpleaños</th><th>Celular para marcar</th><th>Acciones</th></tr>
 			</thead>
 			<tbody>
 			<?php if ( ! $filas ) : ?>
-				<tr><td colspan="5">No hay trabajadores <?php echo Trabajadores::ACTIVO === $estado ? 'activos' : 'cesados'; ?>.</td></tr>
+				<tr><td colspan="6">No hay trabajadores <?php echo Trabajadores::ACTIVO === $estado ? 'activos' : 'cesados'; ?>.</td></tr>
 			<?php endif; ?>
 			<?php foreach ( $filas as $t ) : ?>
 				<tr>
-					<td><strong><?php echo esc_html( $t['apellidos'] . ', ' . $t['nombres'] ); ?></strong></td>
-					<td><?php echo esc_html( $t['dni'] ); ?></td>
-					<td><?php echo esc_html( trim( $t['cargo'] . ' · ' . $t['area'], ' ·' ) ); ?></td>
-					<td><?php echo (int) $t['celulares'] > 0 ? '✔ Activado' : '<span style="color:#b32d2e">Sin activar</span>'; ?></td>
+					<td><span class="pka-av"><?php echo esc_html( mb_strtoupper( mb_substr( (string) $t['nombres'], 0, 1 ) . mb_substr( (string) $t['apellidos'], 0, 1 ) ) ); ?></span><a href="<?php echo esc_url( PantallaFicha::url( (int) $t['id'] ) ); ?>"><strong><?php echo esc_html( $t['apellidos'] . ', ' . $t['nombres'] ); ?></strong></a><?php echo '' !== trim( $t['cargo'] . $t['area'] ) ? '<br><span class="description">' . esc_html( trim( $t['cargo'] . ' · ' . $t['area'], ' ·' ) ) . '</span>' : ''; ?></td>
+					<td><?php echo esc_html( '' !== (string) $t['telefono'] ? (string) $t['telefono'] : '—' ); ?></td>
+					<td><?php echo esc_html( PantallaCelulares::dniOculto( (string) $t['dni'] ) ); ?></td>
+					<td><?php echo '' !== (string) $t['cumpleanos'] ? esc_html( wp_date( 'j M', strtotime( '2024-' . $t['cumpleanos'] . ' 12:00:00' ) ) ) : '<span class="description">—</span>'; ?></td>
+					<td><?php echo (int) $t['celulares'] > 0 ? '<span class="pka-chip ok">Registrado</span>' : '<span class="pka-chip aviso">Sin celular</span>'; ?></td>
 					<td>
+						<a href="<?php echo esc_url( PantallaFicha::url( (int) $t['id'] ) ); ?>">Ver ficha</a> |
 						<?php if ( Trabajadores::ACTIVO === $t['estado'] ) : ?>
 							<a href="<?php echo esc_url( add_query_arg( array( 'vista' => 'editar', 'id' => $t['id'] ), $base ) ); ?>">Editar</a> |
 							<a href="<?php echo esc_url( Menu::urlAccion( 'pka_enlace_activacion', array( 'id' => $t['id'] ) ) ); ?>"
@@ -390,8 +393,8 @@ final class PantallaTrabajadores {
 			Menu::volver( self::SLUG, array( 'vista' => 'editar' ) + ( $id ? array( 'id' => $id ) : array() ) );
 		}
 
-		Avisos::agregar( 'success', $id ? 'Cambios guardados.' : 'Trabajador agregado. Ahora genera su <strong>enlace de activación</strong> para que active su celular.' );
-		Menu::volver( self::SLUG );
+		Avisos::agregar( 'success', $id ? 'Cambios guardados.' : 'Trabajador agregado. Ahora genera su <strong>enlace de activación</strong> (pestaña Celular), o que se registre en el taller con "Cambié de celular" si tiene su cumpleaños.' );
+		Menu::volverA( PantallaFicha::url( (int) $result, $id ? '' : 'celular' ) );
 	}
 
 	public static function enlace(): void {

@@ -99,7 +99,7 @@ final class PantallaInforme {
 		self::estilos();
 		?>
 		<h2 style="margin-bottom:2px"><?php echo esc_html( Trabajadores::nombreCompleto( $t ) ); ?> · <?php echo esc_html( PantallaResumen::nombreMes( $mes ) ); ?></h2>
-		<p class="description">DNI <?php echo esc_html( $t['dni'] ); ?><?php echo '' !== (string) $t['area'] ? ' · ' . esc_html( $t['area'] ) : ''; ?><?php echo '' !== (string) $t['cargo'] ? ' · ' . esc_html( $t['cargo'] ) : ''; ?><?php echo Trabajadores::CESADO === $t['estado'] ? ' · Cesó el ' . esc_html( (string) $t['fecha_cese'] ) : ''; ?></p>
+		<p class="description">DNI <?php echo esc_html( $imprimir ? (string) $t['dni'] : PantallaCelulares::dniOculto( (string) $t['dni'] ) ); ?><?php echo '' !== (string) $t['area'] ? ' · ' . esc_html( $t['area'] ) : ''; ?><?php echo '' !== (string) $t['cargo'] ? ' · ' . esc_html( $t['cargo'] ) : ''; ?><?php echo Trabajadores::CESADO === $t['estado'] ? ' · Cesó el ' . esc_html( (string) $t['fecha_cese'] ) : ''; ?></p>
 
 		<div class="pka-tarjetas">
 			<?php

@@ -205,7 +205,7 @@ final class PantallaDia {
 			<p>No hay solicitudes pendientes.</p>
 		<?php else : ?>
 			<table class="widefat striped">
-				<thead><tr><th>Trabajador</th><th>Marca pedida</th><th>Qué pasó</th><th>Decisión</th></tr></thead>
+				<thead><tr><th>Trabajador</th><th>Marca pedida</th><th>Qué pasó</th><th style="width:44%">Decisión</th></tr></thead>
 				<tbody>
 				<?php foreach ( $solicitudes as $c ) : ?>
 					<?php
@@ -221,8 +221,10 @@ final class PantallaDia {
 								<input type="hidden" name="action" value="pka_resolver_correccion">
 								<input type="hidden" name="correccion" value="<?php echo esc_attr( $c['id'] ); ?>">
 								<?php wp_nonce_field( 'pka_resolver_correccion' ); ?>
-								<label class="screen-reader-text" for="pka-nota-c<?php echo esc_attr( $c['id'] ); ?>">Nota</label>
-								<input type="text" id="pka-nota-c<?php echo esc_attr( $c['id'] ); ?>" name="nota" placeholder="Nota (obligatoria si rechazas)">
+								<label for="pka-hora-c<?php echo esc_attr( $c['id'] ); ?>" title="Si la hora pedida no es la correcta, cámbiala: el trabajador verá «Aprobada con corrección».">Hora final</label>
+								<input type="time" id="pka-hora-c<?php echo esc_attr( $c['id'] ); ?>" name="hora_final" value="<?php echo esc_attr( $momento->format( 'H:i' ) ); ?>">
+								<label class="screen-reader-text" for="pka-nota-c<?php echo esc_attr( $c['id'] ); ?>">Respuesta</label>
+								<input type="text" id="pka-nota-c<?php echo esc_attr( $c['id'] ); ?>" name="nota" placeholder="Respuesta (obligatoria si rechazas)" style="flex:1;min-width:150px">
 								<button class="button button-primary" name="decision" value="aprobar">Aprobar</button>
 								<button class="button" name="decision" value="rechazar">Rechazar</button>
 							</form>
@@ -314,6 +316,7 @@ final class PantallaDia {
 		$id       = isset( $_POST['correccion'] ) ? absint( $_POST['correccion'] ) : 0;
 		$decision = isset( $_POST['decision'] ) ? sanitize_key( wp_unslash( $_POST['decision'] ) ) : '';
 		$nota     = isset( $_POST['nota'] ) ? sanitize_text_field( wp_unslash( $_POST['nota'] ) ) : '';
+		$horaFin  = isset( $_POST['hora_final'] ) ? sanitize_text_field( wp_unslash( $_POST['hora_final'] ) ) : '';
 		$propia   = array_filter( Correcciones::pendientes( PantallaHoy::alcance() ), static fn( array $c ): bool => (int) $c['id'] === $id );
 
 		if ( ! $propia ) {
@@ -321,11 +324,11 @@ final class PantallaDia {
 		} elseif ( Trabajadores::esPropio( (int) array_values( $propia )[0]['trabajador_id'] ) ) {
 			$result = new WP_Error( 'pka_propia', 'No puedes aprobar tus propias solicitudes: lo hace otra persona con permiso.' );
 		} else {
-			$result = 'aprobar' === $decision ? Correcciones::aprobar( $id, $nota ) : Correcciones::rechazar( $id, $nota );
+			$result = 'aprobar' === $decision ? Correcciones::aprobar( $id, $nota, $horaFin ) : Correcciones::rechazar( $id, $nota );
 		}
 
 		self::avisar( $result, 'aprobar' === $decision ? 'Solicitud aprobada: la marca ya cuenta.' : 'Solicitud rechazada.' );
-		Menu::volver( Menu::SLUG );
+		Menu::volver( PantallaSolicitudes::SLUG );
 	}
 
 	private static function accionDeMotivo( string $categoria ): Accion {

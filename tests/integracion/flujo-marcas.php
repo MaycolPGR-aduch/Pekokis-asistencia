@@ -943,6 +943,62 @@ $hist = \Pekokis\Asistencia\WordPress\Historial::buscar( array( 'trabajador' => 
 $comprobar( 'todo queda en el historial', 6 <= count( array_filter( $hist, static fn( $f ) => str_starts_with( $f['accion'], 'celular.' ) || str_starts_with( $f['accion'], 'trabajador.pin' ) || 'trabajador.registrarse' === $f['accion'] ) ) );
 Trabajadores::cesar( $rita, gmdate( 'Y-m-d' ), 'Prueba' );
 
+// ---- 16. Panel de gerencia (maquetas G1, G3, G6B, G17).
+WP_CLI::line( '16. Panel de gerencia' );
+wp_set_current_user( 1 );
+$_SERVER['REMOTE_ADDR'] = '203.0.113.10';
+$CO = \Pekokis\Asistencia\WordPress\Correcciones::class;
+
+// G6B: aprobar con otra hora.
+$g6  = Trabajadores::guardar( array( 'dni' => '70000016', 'nombres' => 'Gema', 'apellidos' => 'Seis', 'horario_id' => $horario, 'correo' => 'gema@example.test' ) );
+$entrar( $g6, $ayerN, '09:00' );
+$sol = $CO::solicitar( $g6, $ayerN, '19:30', \Pekokis\Asistencia\Nucleo\Accion::FIN_JORNADA, null, 'Olvidé marcar' );
+$r   = $CO::aprobar( (int) $sol, '', '18:45' );
+$fila = $wpdb->get_row( $wpdb->prepare( 'SELECT estado, marcado_utc, hora_pedida_utc, nota_resolucion FROM ' . Tablas::nombre( 'correcciones' ) . ' WHERE id = %d', (int) $sol ), ARRAY_A ); // phpcs:ignore
+$comprobar( 'aprobar con otra hora: guarda la final y la pedida', true === $r && 'aprobada' === $fila['estado'] && '18:45' === \Pekokis\Asistencia\WordPress\Ajustes::local( $fila['marcado_utc'], 'H:i' ) && '19:30' === \Pekokis\Asistencia\WordPress\Ajustes::local( $fila['hora_pedida_utc'], 'H:i' ) && str_contains( $fila['nota_resolucion'], 'pediste 19:30' ), wp_json_encode( $fila ) );
+$salidaG6 = array_values( array_filter( \Pekokis\Asistencia\WordPress\Marcas::delDia( $g6, $ayerN ), static fn( $m ) => \Pekokis\Asistencia\Nucleo\TipoMarca::SALIDA === $m->tipo ) );
+$comprobar( 'y la marca queda con la hora final', 1 === count( $salidaG6 ) && '18:45' === \Pekokis\Asistencia\WordPress\Marcas::horaLocal( $salidaG6[0]->marcadoUtc ) );
+
+// G17: delegar permisos (crea su acceso al panel con un correo para elegir contraseña).
+$DE      = \Pekokis\Asistencia\WordPress\Admin\PantallaDelegar::class;
+$C       = \Pekokis\Asistencia\WordPress\Capacidades::class;
+$antesCorreos = count( $correos );
+$sinCorreo    = $DE::delegar( $g6, array( 'corregir' ), 'no-es-correo' );
+$r            = $DE::delegar( $g6, array( 'corregir', 'sueldos' ), 'gema@example.test' );
+$uG6          = get_userdata( (int) Trabajadores::buscar( $g6 )['user_id'] );
+$comprobar( 'delegar crea su acceso (rol delegado) y le manda el correo para elegir contraseña', is_wp_error( $sinCorreo ) && true === $r && $uG6 && in_array( $C::ROL_DELEGADO, $uG6->roles, true ) && count( $correos ) > $antesCorreos );
+$comprobar( 'tiene solo lo que se encendió', user_can( $uG6, $C::APROBAR ) && user_can( $uG6, $C::MARCA_MANUAL ) && user_can( $uG6, $C::VER_SUELDOS ) && ! user_can( $uG6, $C::VER_TODO ) && ! user_can( $uG6, $C::AJUSTES ) && ! user_can( $uG6, $C::RECIBOS ) );
+$comprobar( 'entra al panel con el tema y sin lo de WordPress', \Pekokis\Asistencia\WordPress\Admin\Tema::soloAsistencia( $uG6 ) && $DE::esDelegado( $uG6->ID ) );
+$DE::delegar( $g6, array( 'asistencia', 'horarios' ) );
+$uG6 = get_userdata( $uG6->ID );
+$comprobar( 'cambiar permisos quita los que se apagan', user_can( $uG6, $C::VER_TODO ) && user_can( $uG6, $C::HORARIOS ) && ! user_can( $uG6, $C::APROBAR ) && ! user_can( $uG6, $C::VER_SUELDOS ) );
+$DE::delegar( $g6, array() );
+$uG6 = get_userdata( $uG6->ID );
+$comprobar( 'quitar todos lo deja sin permisos', ! user_can( $uG6, $C::VER_EQUIPO ) && ! user_can( $uG6, $C::HORARIOS ) && ! $DE::esDelegado( $uG6->ID ) && 3 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Tablas::nombre( 'auditoria' ) . " WHERE accion = 'permiso.delegar' AND entidad_id = %d", $g6 ) ) ); // phpcs:ignore
+$comprobar( 'RR.HH. tiene los permisos nuevos (horarios y recibos)', get_role( $C::ROL_RRHH )->has_cap( $C::HORARIOS ) && get_role( $C::ROL_RRHH )->has_cap( $C::RECIBOS ) );
+
+// G1, G6, G3: las pantallas se dibujan sin errores.
+$dibujar = static function ( callable $f ): string {
+	ob_start();
+	$f();
+	return (string) ob_get_clean();
+};
+$htmlDash = $dibujar( array( \Pekokis\Asistencia\WordPress\Admin\PantallaDashboard::class, 'pintar' ) );
+$comprobar( 'Dashboard: cifras, gráfico y "Requiere tu atención"', str_contains( $htmlDash, 'En el taller hoy' ) && str_contains( $htmlDash, 'Horas por día' ) && str_contains( $htmlDash, 'Requiere tu atención' ) && str_contains( $htmlDash, 'Por pagar de' ) );
+$htmlSol = $dibujar( array( \Pekokis\Asistencia\WordPress\Admin\PantallaSolicitudes::class, 'pintar' ) );
+$comprobar( 'Solicitudes: bandeja con la hora final para aprobar con otra hora', str_contains( $htmlSol, 'Solicitudes "olvidé marcar"' ) && str_contains( $htmlSol, 'Marcas por revisar' ) );
+$fichaOk = true;
+foreach ( array( 'resumen', 'asistencia', 'pagos', 'celular', 'cambios' ) as $pest ) {
+	$_GET['pestana'] = $pest;
+	$html            = $dibujar( static fn() => \Pekokis\Asistencia\WordPress\Admin\PantallaFicha::pintar( Trabajadores::buscar( $id2 ) ) );
+	$fichaOk         = $fichaOk && str_contains( $html, 'Ficha de Luis' ) && str_contains( $html, 'pka-pestanas' );
+}
+unset( $_GET['pestana'] );
+$comprobar( 'Ficha: las 5 pestañas se dibujan', $fichaOk );
+$comprobar( 'la ficha oculta el DNI', ! str_contains( $dibujar( static fn() => \Pekokis\Asistencia\WordPress\Admin\PantallaFicha::pintar( Trabajadores::buscar( $id2 ) ) ), '40404040' ) );
+Trabajadores::cesar( $g6, gmdate( 'Y-m-d' ), 'Prueba' );
+wp_delete_user( $uG6->ID );
+
 $comprobar( 'presencia por IP del taller', ( $_SERVER['REMOTE_ADDR'] = '203.0.113.10' ) && Presencia::enRedDelTaller() );
 
 // Deja los ajustes como estaban (la prueba cambia el aviso y el webhook).

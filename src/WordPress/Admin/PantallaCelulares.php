@@ -176,7 +176,7 @@ final class PantallaCelulares {
 
 	/** "•••• 8912". */
 	public static function dniOculto( string $dni ): string {
-		return '•••• ' . substr( $dni, -4 );
+		return "••••\u{00A0}" . substr( $dni, -4 ); // Espacio que no corta la línea.
 	}
 
 	/** "iPhone · Safari", "Android · Chrome"… a partir del navegador. */

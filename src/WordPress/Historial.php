@@ -17,7 +17,7 @@ final class Historial {
 
 	/** Grupos para el filtro: etiqueta => prefijos de acción. */
 	public const GRUPOS = array(
-		'trabajadores' => array( 'Trabajadores, celulares y ausencias', array( 'trabajador.', 'activacion.', 'passkey.', 'celular.', 'ausencia.', 'aviso.' ) ),
+		'trabajadores' => array( 'Trabajadores, celulares y ausencias', array( 'trabajador.', 'activacion.', 'passkey.', 'celular.', 'permiso.', 'ausencia.', 'aviso.' ) ),
 		'marcas'       => array( 'Marcas y correcciones', array( 'marca.', 'correccion.' ) ),
 		'pagos'        => array( 'Pagos, honorarios y recibos', array( 'sobretiempo.', 'sueldo.', 'preplanilla.', 'pago.', 'recibo.' ) ),
 		'ajustes'      => array( 'Ajustes, horarios, calendario, redes y pantallas', array( 'ajustes.', 'horario.', 'calendario.', 'red.', 'pantalla.' ) ),
@@ -67,6 +67,8 @@ final class Historial {
 		'ajustes.modo_presencia' => 'Cambio del modo de presencia',
 		'ajustes.campana'        => 'Cambio de los avisos de campaña',
 		'ajustes.pin'            => 'Cambio del PIN de ingreso',
+		'permiso.delegar'        => 'Permisos delegados',
+		'permiso.crear_acceso'   => 'Acceso al panel creado',
 		'ajustes.correo_rrhh'    => 'Cambio del correo del respaldo',
 		'registro.descargar'     => 'Excel del registro descargado',
 		'respaldo.enviar'        => 'Respaldo enviado por correo',
@@ -339,7 +341,7 @@ final class Historial {
 		if ( $f['actor_user_id'] ) {
 			$u = get_userdata( (int) $f['actor_user_id'] );
 
-			return $u ? $u->display_name : 'Usuario #' . $f['actor_user_id'];
+			return $u ? $u->display_name . ( \Pekokis\Asistencia\WordPress\Admin\PantallaDelegar::esDelegado( (int) $u->ID ) ? ' (supervisor delegado)' : '' ) : 'Usuario #' . $f['actor_user_id'];
 		}
 
 		if ( $f['actor_trabajador_id'] && isset( $contexto['trabajadores'][ (int) $f['actor_trabajador_id'] ] ) ) {

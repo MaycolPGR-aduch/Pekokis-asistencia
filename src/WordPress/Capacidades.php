@@ -21,10 +21,15 @@ final class Capacidades {
 	public const AJUSTES            = 'pka_ajustes';
 	public const AUDITORIA          = 'pka_auditoria';
 	public const EXPORTAR           = 'pka_exportar';
+	// Se pueden delegar por separado (maquetas G17).
+	public const HORARIOS           = 'pka_horarios';
+	public const RECIBOS            = 'pka_recibos';
 
 	public const ROL_JEFE     = 'pka_jefe';
 	public const ROL_RRHH     = 'pka_rrhh';
 	public const ROL_GERENCIA = 'pka_gerencia';
+	// Trabajador con permisos delegados (G17): el rol no da nada; los permisos van en su usuario.
+	public const ROL_DELEGADO = 'pka_delegado';
 
 	/** @return string[] */
 	public static function deJefe(): array {
@@ -43,6 +48,8 @@ final class Capacidades {
 			self::AJUSTES,
 			self::AUDITORIA,
 			self::EXPORTAR,
+			self::HORARIOS,
+			self::RECIBOS,
 		);
 	}
 
@@ -55,6 +62,7 @@ final class Capacidades {
 		self::asegurarRol( self::ROL_JEFE, 'Jefe de área (asistencia)', self::deJefe() );
 		self::asegurarRol( self::ROL_RRHH, 'RR.HH. (asistencia)', self::deRrhh() );
 		self::asegurarRol( self::ROL_GERENCIA, 'Gerencia (asistencia, solo lectura)', self::deGerencia() );
+		self::asegurarRol( self::ROL_DELEGADO, 'Supervisor delegado (asistencia)', array() );
 
 		$administrador = get_role( 'administrator' );
 

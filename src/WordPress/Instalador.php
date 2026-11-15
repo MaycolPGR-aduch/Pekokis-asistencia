@@ -13,7 +13,7 @@ defined( 'ABSPATH' ) || exit;
  * lo que RR.HH. haya cambiado.
  */
 final class Instalador {
-	public const VERSION_BD = '7';
+	public const VERSION_BD = '8';
 
 	private const OPCION_VERSION = 'pka_version_bd';
 
@@ -175,6 +175,7 @@ final class Instalador {
 				resuelto_por bigint(20) unsigned NULL,
 				resuelto_en datetime NULL,
 				nota_resolucion varchar(500) NOT NULL DEFAULT '',
+				hora_pedida_utc datetime NULL,
 				creado_en datetime NOT NULL,
 				PRIMARY KEY  (id),
 				KEY estado (estado,creado_en),

@@ -295,6 +295,12 @@ Decidido el 14-11-2026, siguiendo las maquetas entregadas por Pekokis (`CONTEXTO
 - **Mis horas (T5/T6):** horas, extra y días completos (sin dinero), "Te falta marcar", calendario con cada día tocable y el detalle con sus pasos, otras salidas y correcciones pedidas. "Pedir corrección" manda la hora, qué pasó y un comentario a `POST /correcciones`.
 - **Perfil (T7):** DNI oculto; "Ver" lo trae con `POST /yo/dni` y queda en el historial.
 
+### 6.10 Panel de gerencia (versión 0.14.0)
+
+- Se quedó dentro de wp-admin, con el estilo de las maquetas (`assets/admin.css`, `Admin\Tema`) y el menú por grupos. Quien solo usa Asistencia entra directo al Dashboard y no ve lo de WordPress.
+- Pantallas nuevas: Dashboard (G1), Solicitudes (G6, con "Hora final" para aprobar con otra hora, G6B), ficha con pestañas (G3), Delegar permisos (G17).
+- Delegar = capacidades en el usuario del trabajador (`add_cap`/`remove_cap`), marcadas en el meta `pka_delegado`; si no tiene usuario, se crea con el rol `pka_delegado` (sin permisos propios) y `wp_new_user_notification()`.
+
 ### 6.9 Identidad y celulares (versión 0.13.0, etapa B de las maquetas)
 
 - **Dos cosas distintas:** entrar (ver horas, recibo, perfil) se hace desde cualquier lugar con la huella o el PIN; marcar, registrar o cambiar el celular solo en el taller (WiFi o QR) y siempre con la huella.

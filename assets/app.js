@@ -1660,6 +1660,9 @@
 
 		var solicitudes = d.solicitudes.map( function ( s ) {
 			var e = ESTADOS_SOLICITUD[ s.estado ] || [ 'espera', s.estado ];
+			if ( 'aprobada' === s.estado && s.pedida ) {
+				e = [ 'bien', 'Aprobada con corrección (pediste ' + s.pedida + ')' ];
+			}
 			return el( 'li', { class: 'aprobada' === s.estado ? 'hecho' : ( 'pendiente' === s.estado ? 'sig' : 'falta' ) }, [
 				el( 'span', { class: 'pt', 'aria-hidden': 'true' }, [ 'aprobada' === s.estado ? icono( 'check' ) : null ] ),
 				el( 'div', { class: 'tx' }, [ el( 'span', { texto: s.paso + ' · ' + s.hora } ), el( 'b', { class: 'pd', texto: e[1] } ) ] ),

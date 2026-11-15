@@ -184,7 +184,7 @@ final class Notificaciones {
 					'solicitud|' . $correccionId,
 					$t,
 					sprintf( '%s pide registrar %s del %s a las %s: "%s".', Trabajadores::nombreCompleto( $t ), self::queMarca( $c ), self::fecha( self::diaLocal( $c['marcado_utc'] ) ), self::horaLocal( $c['marcado_utc'] ), $c['justificacion'] ),
-					admin_url( 'admin.php?page=pka-asistencia' )
+					admin_url( 'admin.php?page=pka-solicitudes' )
 				);
 			}
 		);
@@ -236,7 +236,7 @@ final class Notificaciones {
 					'revision|' . $marcaId,
 					$t,
 					sprintf( '%s marcó %s a las %s%s.%s', Trabajadores::nombreCompleto( $t ), $motivo ? '"' . $motivo->nombre . '"' : 'una salida', self::horaLocal( $m['marcado_utc'] ), $fuera, '' !== $m['nota'] ? ' Nota: "' . $m['nota'] . '".' : '' ),
-					admin_url( 'admin.php?page=pka-asistencia' )
+					admin_url( 'admin.php?page=pka-solicitudes' )
 				);
 			}
 		);

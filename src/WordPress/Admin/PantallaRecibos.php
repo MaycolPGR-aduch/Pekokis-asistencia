@@ -44,7 +44,7 @@ final class PantallaRecibos {
 	}
 
 	public static function pintar(): void {
-		if ( ! current_user_can( Capacidades::VER_SUELDOS ) ) {
+		if ( ! current_user_can( Capacidades::RECIBOS ) ) {
 			wp_die( 'No tienes permiso para ver esta página.' );
 		}
 
@@ -113,8 +113,12 @@ final class PantallaRecibos {
 					</td>
 					<td><?php echo $r ? esc_html( Sueldo::soles( (int) $r['monto_centimos'] ) ) : '—'; ?></td>
 					<td>
+						<?php if ( ! current_user_can( Capacidades::VER_SUELDOS ) ) : ?>
+							<span class="description">Lo ve quien ve los pagos</span>
+						<?php else : ?>
 						<?php echo $f->sueldoFinal ? esc_html( Sueldo::soles( $f->montos['total'] ) ) : 'Sin honorario'; ?>
-						<?php if ( $r && $f->sueldoFinal ) : ?>
+						<?php endif; ?>
+						<?php if ( $r && $f->sueldoFinal && current_user_can( Capacidades::VER_SUELDOS ) ) : ?>
 							<?php $comp = ValidacionRecibo::textoComparacion( (int) $r['monto_centimos'], $f->montos['total'] ); ?>
 							<br><strong style="color:<?php echo 'Coincide' === $comp ? '#00733a' : '#8a4b00'; ?>"><?php echo esc_html( $comp ); ?></strong>
 						<?php endif; ?>
@@ -219,7 +223,7 @@ final class PantallaRecibos {
 
 	/** Descarga del PDF, solo para quien ve sueldos; queda en el historial. */
 	public static function pdf(): void {
-		if ( ! current_user_can( Capacidades::VER_SUELDOS ) ) {
+		if ( ! current_user_can( Capacidades::RECIBOS ) ) {
 			wp_die( 'No tienes permiso para hacer esto.', 403 );
 		}
 
@@ -244,7 +248,7 @@ final class PantallaRecibos {
 	}
 
 	private static function exigir( string $accion ): void {
-		if ( ! current_user_can( Capacidades::VER_SUELDOS ) ) {
+		if ( ! current_user_can( Capacidades::RECIBOS ) ) {
 			wp_die( 'No tienes permiso para hacer esto.', 403 );
 		}
 

@@ -121,11 +121,39 @@ final class Correcciones {
 		return true;
 	}
 
-	public static function aprobar( int $id, string $nota ): true|WP_Error {
+	/**
+	 * Aprueba la solicitud. Con $horaFinal ("HH:MM", maquetas G6B) se aprueba con
+	 * otra hora: se guarda la que pidió y el trabajador ve "Aprobada con corrección".
+	 */
+	public static function aprobar( int $id, string $nota, string $horaFinal = '' ): true|WP_Error {
+		global $wpdb;
+
 		$c = self::pendiente( $id );
 
 		if ( $c instanceof WP_Error ) {
 			return $c;
+		}
+
+		$pedida = new DateTimeImmutable( $c['marcado_utc'], new DateTimeZone( 'UTC' ) );
+		$local  = $pedida->setTimezone( Ajustes::zona() );
+
+		if ( '' !== $horaFinal && $horaFinal !== $local->format( 'H:i' ) ) {
+			// Misma fecha del reloj que la hora pedida (una salida de madrugada sigue en su madrugada).
+			$final = self::momento( $local->format( 'Y-m-d' ), $horaFinal );
+
+			if ( $final instanceof WP_Error ) {
+				return $final;
+			}
+
+			$c['marcado_utc'] = $final->format( 'Y-m-d H:i:s' );
+			$problema         = self::problemaAlAgregar( $c );
+
+			if ( null !== $problema ) {
+				return new WP_Error( 'pka_secuencia', 'No se puede aprobar con esa hora: ' . $problema );
+			}
+
+			$wpdb->update( Tablas::nombre( 'correcciones' ), array( 'marcado_utc' => $c['marcado_utc'], 'hora_pedida_utc' => $pedida->format( 'Y-m-d H:i:s' ) ), array( 'id' => $id ) );
+			$nota = '' !== trim( $nota ) ? $nota : 'Aprobada con la hora ' . $horaFinal . ' (pediste ' . $local->format( 'H:i' ) . ').';
 		}
 
 		$problema = self::problemaAlAgregar( $c );

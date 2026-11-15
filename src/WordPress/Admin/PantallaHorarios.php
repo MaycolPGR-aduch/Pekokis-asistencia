@@ -21,7 +21,7 @@ final class PantallaHorarios {
 	}
 
 	public static function pintar(): void {
-		if ( ! current_user_can( Capacidades::AJUSTES ) ) {
+		if ( ! current_user_can( Capacidades::HORARIOS ) ) {
 			wp_die( 'No tienes permiso para ver esta página.' );
 		}
 
@@ -227,7 +227,7 @@ final class PantallaHorarios {
 	}
 
 	private static function exigir( string $accion ): void {
-		if ( ! current_user_can( Capacidades::AJUSTES ) ) {
+		if ( ! current_user_can( Capacidades::HORARIOS ) ) {
 			wp_die( 'No tienes permiso para hacer esto.', 403 );
 		}
 
