@@ -11,7 +11,7 @@ Lo que tienes que hacer tú está marcado con ☐. Los nombres de los menús de 
 ## 0. Antes de empezar
 
 - ☐ **Recursos del plan.** En hPanel, revisa qué mide el 77 % de "Uso de recursos". Este sitio consume poco, pero suma archivos (unos 3.000 de WordPress y 200 del plugin) y un cron cada 5 minutos.
-- ☐ **El zip del plugin.** Ya está en `dist/pekokis-asistencia-0.14.1.zip`. Si cambia el código, se vuelve a generar con:
+- ☐ **El zip del plugin.** Ya está en `dist/pekokis-asistencia-0.15.0.zip`. Si cambia el código, se vuelve a generar con:
   ```bash
   php scripts/empaquetar.php
   ```
@@ -74,7 +74,7 @@ No lo compartas ni lo subas a git. Si algún día cambia, solo se invalidan los 
 
 ## 6. Instalar el plugin y el tema
 
-1. ☐ **Plugins → Añadir nuevo → Subir plugin:** sube `pekokis-asistencia-0.14.1.zip` y actívalo. Al activarse crea sus tablas, roles, motivos y el horario base.
+1. ☐ **Plugins → Añadir nuevo → Subir plugin:** sube `pekokis-asistencia-0.15.0.zip` y actívalo. Al activarse crea sus tablas, roles, motivos y el horario base.
 2. ☐ **Apariencia → Temas:** activa **"Pekokis Asistencia (vacío)"** y borra los demás temas, salvo uno por defecto como respaldo.
 3. ☐ Revisa **Asistencia → Ajustes → Estado del sistema.**
 
@@ -154,6 +154,8 @@ Es igual que en producción: **nunca** se llama a `wp-cron.php` por URL.
 | 28 | Cambio de celular: poner el cumpleaños en la ficha; en el celular nuevo "Cambié de celular" → buscar → DNI y cumpleaños → llave; el anterior sigue marcando hasta aprobar; después ya no | ☐ | ☐ |
 | 30 | Panel: entrar como RR.HH. → abre el Dashboard; las cifras y "Requiere tu atención" cuadran con Hoy; en Solicitudes aprobar una con otra hora y verla como "Aprobada con corrección" en la app | ☐ | ☐ |
 | 31 | Perfiles → una ficha: las 5 pestañas, "Mostrar" el DNI (queda en Auditoría); Delegar permisos a alguien con correo, que le llegue el correo y que entre solo a lo que se le dio | ☐ | — |
+| 32 | Registros y revisión: los incompletos salen primero; "Editar" un día sin salida, poner la salida con motivo y verlo en Auditoría ("Día editado") y en la app del trabajador | ☐ | ☐ |
+| 33 | Sueldos y tarifas: cambiar la tarifa de dos personas, ver "2 cambios sin guardar", guardar desde mañana y revisar el historial en la ficha | ☐ | — |
 | 29 | Ajustes: QR a 30 min y la pantalla muestra la barra; "Avisos de campaña" con una fecha de hoy y ver el aviso en la app antes de marcar (y volver a dejarlo como estaba) | ☐ | ☐ |
 | 19 | Ajustes → Avisos: "Enviarme un correo de prueba"; encender "No llegó", pedir un "olvidé marcar" y ver que el correo llega al jefe (revisa también spam) | ☐ | — |
 

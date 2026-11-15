@@ -295,6 +295,11 @@ Decidido el 14-11-2026, siguiendo las maquetas entregadas por Pekokis (`CONTEXTO
 - **Mis horas (T5/T6):** horas, extra y días completos (sin dinero), "Te falta marcar", calendario con cada día tocable y el detalle con sus pasos, otras salidas y correcciones pedidas. "Pedir corrección" manda la hora, qué pasó y un comentario a `POST /correcciones`.
 - **Perfil (T7):** DNI oculto; "Ver" lo trae con `POST /yo/dni` y queda en el historial.
 
+### 6.12 Registros y revisión y Sueldos y tarifas (versión 0.15.0)
+
+- `Admin\PantallaRegistros` (G4/G4B): filas desde `Jornadas::delRango` + `Marcas::delRango` + `PasosDelDia`; "Editado" = alguna marca con `origen <> 'trabajador'`; "Por revisar" = `Revisiones::pendientes`. Edición con `Correcciones::editarDia( trabajador, día, [paso => "HH:MM" o ''], motivo )`: valida el día final con `MaquinaEstados::problemaEnSecuencia` y horas repetidas antes de anular o agregar; marcas nuevas con `origen = 'manual'` y el `dia_laboral` del día editado; auditoría `marca.editar_dia`.
+- `Admin\PantallaSueldos` (G8): `aplicar()` compara cada fila con lo que se mostró (`antes[]`) y llama a `Sueldos::agregar` solo en las que cambian.
+
 ### 6.11 Estilos compartidos (versión 0.14.1)
 
 - `tokens.css` (letra y colores, `--pk-*`) → `componentes.css` (`.pk-chip`, `.pk-kpi`, `.pk-caja`, `.pk-datos`, `.pk-aviso`, `.pk-av`, `.pk-cal` + `.pk-est-*`, `.pk-leyenda`, `.pk-barras`, `.pk-viz`, utilidades) → la hoja propia de cada interfaz (`app.css`, `admin.css`, `imprimir.css`).

@@ -17,6 +17,8 @@ final class Menu {
 		Tema::registrar();
 		PantallaSolicitudes::registrar();
 		PantallaDelegar::registrar();
+		PantallaRegistros::registrar();
+		PantallaSueldos::registrar();
 		PantallaHoy::registrar();
 		PantallaDia::registrar();
 		PantallaExportar::registrar();
@@ -48,13 +50,15 @@ final class Menu {
 
 		self::grupo( 'control', 'Control', Capacidades::VER_EQUIPO );
 		add_submenu_page( $p, 'Solicitudes y revisión', PantallaSolicitudes::titulo(), Capacidades::VER_EQUIPO, PantallaSolicitudes::SLUG, array( PantallaSolicitudes::class, 'pintar' ) );
-		add_submenu_page( $p, 'Registros por persona', 'Registros por persona', Capacidades::VER_EQUIPO, PantallaInforme::SLUG, array( PantallaInforme::class, 'pintar' ) );
+		add_submenu_page( $p, 'Registros y revisión', 'Registros y revisión', Capacidades::VER_EQUIPO, PantallaRegistros::SLUG, array( PantallaRegistros::class, 'pintar' ) );
+		add_submenu_page( $p, 'Informe por persona', 'Informe por persona', Capacidades::VER_EQUIPO, PantallaInforme::SLUG, array( PantallaInforme::class, 'pintar' ) );
 		add_submenu_page( $p, 'Horarios', 'Horarios', Capacidades::HORARIOS, PantallaHorarios::SLUG, array( PantallaHorarios::class, 'pintar' ) );
 		add_submenu_page( $p, 'Feriados y calendario', 'Feriados', Capacidades::HORARIOS, PantallaCalendario::SLUG, array( PantallaCalendario::class, 'pintar' ) );
 		add_submenu_page( $p, 'Ausencias justificadas', 'Ausencias', Capacidades::GESTIONAR_PERSONAL, PantallaAusencias::SLUG, array( PantallaAusencias::class, 'pintar' ) );
 		add_submenu_page( $p, 'Auditoría de cambios', 'Auditoría', Capacidades::AUDITORIA, PantallaHistorial::SLUG, array( PantallaHistorial::class, 'pintar' ) );
 
 		self::grupo( 'pagos', 'Pagos', current_user_can( Capacidades::VER_SUELDOS ) ? Capacidades::VER_SUELDOS : Capacidades::RECIBOS );
+		add_submenu_page( $p, 'Sueldos y tarifas', 'Sueldos y tarifas', Capacidades::VER_SUELDOS, PantallaSueldos::SLUG, array( PantallaSueldos::class, 'pintar' ) );
 		add_submenu_page( $p, 'Calculadora de pagos', 'Calculadora de pagos', Capacidades::VER_SUELDOS, PantallaPagos::SLUG, array( PantallaPagos::class, 'pintar' ) );
 		add_submenu_page( $p, 'Recibos por honorarios', 'Recibos por honorarios', Capacidades::RECIBOS, PantallaRecibos::SLUG, array( PantallaRecibos::class, 'pintar' ) );
 

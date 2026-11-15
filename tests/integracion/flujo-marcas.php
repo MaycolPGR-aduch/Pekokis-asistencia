@@ -999,6 +999,52 @@ $comprobar( 'la ficha oculta el DNI', ! str_contains( $dibujar( static fn() => \
 Trabajadores::cesar( $g6, gmdate( 'Y-m-d' ), 'Prueba' );
 wp_delete_user( $uG6->ID );
 
+// ---- 17. Registros y revisión (G4, G4B) y Sueldos y tarifas (G8).
+WP_CLI::line( '17. Registros y sueldos' );
+wp_set_current_user( 1 );
+$PD  = \Pekokis\Asistencia\Nucleo\PasosDelDia::class;
+$reg = Trabajadores::guardar( array( 'dni' => '70000017', 'nombres' => 'Rebeca', 'apellidos' => 'Registro', 'horario_id' => $horario, 'fecha_ingreso' => '2026-01-05' ) );
+$wpdb->update( Tablas::nombre( 'trabajadores' ), array( 'creado_en' => '2026-01-05 12:00:00' ), array( 'id' => $reg ) ); // Ya trabajaba ayer.
+$entrar( $reg, $ayerN, '09:00' );
+$horaPaso = static fn( string $paso ): string => ( $p = $PD::de( \Pekokis\Asistencia\WordPress\Marcas::delDia( $reg, $ayerN ) )[ $paso ] ) ? \Pekokis\Asistencia\WordPress\Marcas::horaLocal( $p->marcadoUtc ) : '';
+
+$sinMotivo = $CO::editarDia( $reg, $ayerN, array( 'salida' => '19:30' ), '' );
+$r         = $CO::editarDia( $reg, $ayerN, array( 'inicio_comida' => '13:00', 'fin_comida' => '14:00', 'salida' => '19:30' ), 'Olvidó marcar; lo confirmó su jefe' );
+$comprobar( 'editar el día: sin motivo no; con motivo completa los 4 pasos de una vez', is_wp_error( $sinMotivo ) && true === $r && '13:00' === $horaPaso( 'inicio_comida' ) && '14:00' === $horaPaso( 'fin_comida' ) && '19:30' === $horaPaso( 'salida' ) && 4 === count( \Pekokis\Asistencia\WordPress\Marcas::delDia( $reg, $ayerN ) ) );
+$audDia = $wpdb->get_row( $wpdb->prepare( 'SELECT antes, despues, motivo FROM ' . Tablas::nombre( 'auditoria' ) . " WHERE accion = 'marca.editar_dia' AND entidad_id = %d ORDER BY id DESC LIMIT 1", $reg ), ARRAY_A ); // phpcs:ignore
+$comprobar( 'queda una sola entrada en la auditoría con antes, después y motivo', $audDia && str_contains( $audDia['antes'], 'sin marca' ) && str_contains( $audDia['despues'], '19:30' ) && str_contains( $audDia['motivo'], 'Olvidó' ), wp_json_encode( $audDia ) );
+$r = $CO::editarDia( $reg, $ayerN, array( 'entrada' => '09:10' ), 'Llegó 09:10 según la cámara' );
+$comprobar( 'cambiar una hora anula la marca vieja y pone la nueva', true === $r && '09:10' === $horaPaso( 'entrada' ) && 4 === count( \Pekokis\Asistencia\WordPress\Marcas::delDia( $reg, $ayerN ) ) && 1 <= (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Tablas::nombre( 'correcciones' ) . " WHERE trabajador_id = %d AND accion = 'anular'", $reg ) ) ); // phpcs:ignore
+$malo = $CO::editarDia( $reg, $ayerN, array( 'fin_comida' => '' ), 'Prueba' );
+$comprobar( 'si el día queda mal, no se toca nada', is_wp_error( $malo ) && 'pka_secuencia' === $malo->get_error_code() && '14:00' === $horaPaso( 'fin_comida' ), is_wp_error( $malo ) ? $malo->get_error_message() : '' );
+$igual = $CO::editarDia( $reg, $ayerN, array( 'entrada' => '09:10' ), 'Nada' );
+$comprobar( 'sin cambios avisa', is_wp_error( $igual ) && 'pka_sin_cambios' === $igual->get_error_code() );
+$r = $CO::editarDia( $reg, $ayerN, array( 'salida' => '01:12' ), 'Se quedó de madrugada' );
+$salidaReg = $PD::de( \Pekokis\Asistencia\WordPress\Marcas::delDia( $reg, $ayerN ) )['salida'];
+$comprobar( 'una hora menor que la entrada es del día siguiente y sigue en su jornada', true === $r && $salidaReg && $salidaReg->marcadoUtc->setTimezone( new DateTimeZone( 'America/Lima' ) )->format( 'Y-m-d H:i' ) === ( new DateTimeImmutable( $ayerN ) )->modify( '+1 day' )->format( 'Y-m-d' ) . ' 01:12' );
+
+$_GET     = array( 'page' => 'pka-registros', 'persona' => $reg, 'desde' => $ayerN, 'hasta' => $ayerN );
+$htmlReg  = $dibujar( array( \Pekokis\Asistencia\WordPress\Admin\PantallaRegistros::class, 'pintar' ) );
+$_GET     = array( 'page' => 'pka-registros', 'persona' => $reg, 'desde' => $ayerN, 'hasta' => $ayerN, 'editar' => $reg, 'dia' => $ayerN );
+$htmlPan  = $dibujar( array( \Pekokis\Asistencia\WordPress\Admin\PantallaRegistros::class, 'pintar' ) );
+$_GET     = array();
+$comprobar( 'Registros: la fila con "Pasó de medianoche" y "Editado", y el panel con el valor anterior', str_contains( $htmlReg, 'Rebeca Registro' ) && str_contains( $htmlReg, 'Pasó de medianoche' ) && str_contains( $htmlReg, 'Editado' ) && str_contains( $htmlPan, 'Editar registro' ) && str_contains( $htmlPan, 'Antes: 09:10' ), wp_json_encode( array( str_contains( $htmlReg, 'Rebeca Registro' ), str_contains( $htmlReg, 'Pasó de medianoche' ), str_contains( $htmlReg, 'Editado' ), str_contains( $htmlPan, 'Editar registro' ), str_contains( $htmlPan, 'Antes: 09:10' ), mb_substr( wp_strip_all_tags( $htmlReg ), 0, 600 ) ) ) );
+
+// G8: varias personas a la vez; solo las que cambian.
+$SU  = \Pekokis\Asistencia\WordPress\Admin\PantallaSueldos::class;
+$hoyL = wp_date( 'Y-m-d', null, new DateTimeZone( 'America/Lima' ) );
+$vac  = array( 'honorario' => '', 'tarifa_extra' => '', 'tarifa_sabado' => '', 'tarifa_domingo' => '', 'tarifa_feriado' => '' );
+$nuevo = array( 'honorario' => '1500', 'tarifa_extra' => '10', 'tarifa_sabado' => '12', 'tarifa_domingo' => '20', 'tarifa_feriado' => '20' );
+$r1 = $SU::aplicar( array( $reg => $nuevo, $g6 ?? 0 => $vac ), array( $reg => $vac, $g6 ?? 0 => $vac ), $hoyL, 'Alta' );
+$comprobar( 'Sueldos en lote: guarda solo las filas que cambian', 1 === $r1['guardados'] && ! $r1['errores'] && 150000 === \Pekokis\Asistencia\WordPress\Sueldos::vigente( $reg )->honorarioCentimos, wp_json_encode( $r1 ) );
+$r2 = $SU::aplicar( array( $reg => array( 'honorario' => '1600' ) + $nuevo ), array( $reg => $nuevo ), $hoyL, 'Aumento' );
+$comprobar( 'el error se dice por persona (un cambio el mismo día del vigente no vale)', 0 === $r2['guardados'] && isset( $r2['errores'][ $reg ] ), wp_json_encode( $r2 ) );
+$r3 = $SU::aplicar( array( $reg => array( 'honorario' => '1,600.00' ) + $nuevo ), array( $reg => $nuevo ), ( new DateTimeImmutable( $hoyL ) )->modify( '+1 day' )->format( 'Y-m-d' ), 'Aumento' );
+$comprobar( 'y con una fecha posterior se guarda (el anterior queda en el historial)', 1 === $r3['guardados'] && 2 === count( \Pekokis\Asistencia\WordPress\Sueldos::historial( $reg ) ), wp_json_encode( $r3 ) );
+$htmlSu = $dibujar( array( $SU, 'pintar' ) );
+$comprobar( 'Sueldos y tarifas se dibuja con el contador de cambios', str_contains( $htmlSu, 'Rebeca Registro' ) && str_contains( $htmlSu, 'pk-sin-guardar' ) && str_contains( $htmlSu, 'data-antes="1500.00"' ) );
+Trabajadores::cesar( $reg, gmdate( 'Y-m-d' ), 'Prueba' );
+
 $comprobar( 'presencia por IP del taller', ( $_SERVER['REMOTE_ADDR'] = '203.0.113.10' ) && Presencia::enRedDelTaller() );
 
 // Deja los ajustes como estaban (la prueba cambia el aviso y el webhook).

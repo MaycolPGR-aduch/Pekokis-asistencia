@@ -1,12 +1,55 @@
 /**
  * Panel de gerencia: tooltip de los gráficos SVG (.pk-viz), que al pasar el
- * mouse o con el teclado muestra el dato de la barra (data-tip), y el botón
- * "Imprimir o guardar como PDF" del informe.
+ * mouse o con el teclado muestra el dato de la barra (data-tip); el botón
+ * "Imprimir o guardar como PDF" del informe; y los cambios sin guardar de
+ * Sueldos y tarifas (G8) y del panel "Editar registro" (G4B).
  */
 ( function () {
 	'use strict';
 
+	/**
+	 * Formularios con valores anteriores (data-antes): resalta lo cambiado
+	 * (.pk-cambiado), cuenta los cambios en #pk-sin-guardar (G8) y avisa si se
+	 * sale de la página sin guardar.
+	 */
+	function seguirCambios( form ) {
+		var campos = form.querySelectorAll( '[data-antes]' );
+		var contador = document.getElementById( 'pk-sin-guardar' );
+		var enviando = false;
+
+		function contar() {
+			var n = 0;
+			campos.forEach( function ( c ) {
+				var cambiado = c.value.trim() !== c.getAttribute( 'data-antes' );
+				c.classList.toggle( 'pk-cambiado', cambiado );
+				n += cambiado ? 1 : 0;
+			} );
+			if ( contador ) {
+				contador.hidden = 0 === n;
+				contador.textContent = n + ( 1 === n ? ' cambio sin guardar' : ' cambios sin guardar' );
+				contador.classList.toggle( 'pk-alerta', n > 0 );
+			}
+			return n;
+		}
+
+		campos.forEach( function ( c ) {
+			c.addEventListener( 'input', contar );
+		} );
+		form.addEventListener( 'submit', function () {
+			enviando = true;
+		} );
+		window.addEventListener( 'beforeunload', function ( e ) {
+			if ( ! enviando && contar() > 0 ) {
+				e.preventDefault();
+				e.returnValue = '';
+			}
+		} );
+		contar();
+	}
+
 	document.addEventListener( 'DOMContentLoaded', function () {
+		document.querySelectorAll( '.pk-sueldos, .pk-panel form' ).forEach( seguirCambios );
+
 		var imprimir = document.getElementById( 'pk-imprimir' );
 		if ( imprimir ) {
 			imprimir.addEventListener( 'click', function () {

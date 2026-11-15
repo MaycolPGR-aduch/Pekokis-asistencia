@@ -333,3 +333,40 @@ body.pk-pagina .wrap .pk-pestanas a.activa { color: #fff !important; }
 body.pk-pagina .wrap .pk-pestanas a { color: var(--pk-fg) !important; }
 body.pk-pagina .subsubsub a.current { color: var(--pk-verde); font-weight: 700; }
 body.pk-pagina .wrap a.pk-txt-error { color: var(--pk-error) !important; }
+
+/* ---------- Registros y revisión (G4, G4B) ---------- */
+
+body.pk-pagina table.widefat tr.pk-fila-alerta > td { background: #FFF5F4; }
+body.pk-pagina table.widefat tr.pk-fila-elegida > td { background: var(--pk-rosa-suave); }
+body.pk-pagina table.widefat td .pk-chip { margin: 1px 2px 1px 0; }
+
+/* Panel lateral para editar (se abre a la derecha, encima de la lista). */
+.pk-panel {
+	position: fixed;
+	top: 32px;
+	right: 0;
+	bottom: 0;
+	z-index: 9990;
+	width: min(380px, 100vw);
+	overflow: auto;
+	background: var(--pk-blanco);
+	border-left: 1px solid var(--pk-line);
+	box-shadow: -10px 0 24px rgba(36, 59, 52, .12);
+	padding: 18px 20px;
+}
+.pk-panel h2 { margin: 0 0 2px; font-size: 18px; }
+.pk-campo { margin: 12px 0 0; }
+.pk-campo label { display: block; font-size: 12px; font-weight: 600; color: var(--pk-muted); margin-bottom: 4px; }
+.pk-campo label em { font-style: normal; color: var(--pk-rosa-oscuro); }
+.pk-campo input, .pk-campo textarea { width: 100%; }
+.pk-antes { display: block; color: var(--pk-muted); font-size: 12px; margin-top: 3px; }
+@media (max-width: 782px) { .pk-panel { top: 46px; } }
+
+/* ---------- Sueldos y tarifas (G8) ---------- */
+
+.pk-soles { display: inline-flex; align-items: center; gap: 4px; color: var(--pk-muted); font-size: 12px; }
+body.pk-pagina input.pk-monto { width: 96px; text-align: right; font-variant-numeric: tabular-nums; }
+body.pk-pagina input.pk-cambiado { border-color: var(--pk-rosa); background: var(--pk-rosa-suave); }
+.pk-chico { font-size: 12px; color: var(--pk-muted); }
+body.pk-pagina .wrap > h1 .pk-h1-der.pk-alerta { background: var(--pk-aviso-suave); color: var(--pk-aviso); }
+.pk-sueldos td:first-child { min-width: 190px; }

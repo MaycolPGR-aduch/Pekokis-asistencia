@@ -7,6 +7,7 @@ use DateTimeZone;
 use Pekokis\Asistencia\Nucleo\Accion;
 use Pekokis\Asistencia\Nucleo\Marca;
 use Pekokis\Asistencia\Nucleo\MaquinaEstados;
+use Pekokis\Asistencia\Nucleo\PasosDelDia;
 use Pekokis\Asistencia\Nucleo\PruebaPresencia;
 use Pekokis\Asistencia\Nucleo\TipoMarca;
 use Pekokis\Asistencia\Nucleo\ValidacionTrabajador;
@@ -117,6 +118,110 @@ final class Correcciones {
 		);
 
 		Auditoria::registrar( 'marca.anular', 'marca', $marcaId, array( 'tipo' => $fila['tipo'], 'marcado_utc' => $fila['marcado_utc'] ), array( 'correccion_id' => $id ), $justificacion );
+
+		return true;
+	}
+
+	/**
+	 * Edita los cuatro pasos de un día de una sola vez (maquetas G4B): entrada,
+	 * salida a comer, vuelta y salida, en "HH:MM" ('' = sin esa marca).
+	 *
+	 * Primero se arma el día como quedaría y se valida entero; recién entonces se
+	 * anulan las marcas que cambian y se agregan las nuevas (las marcas nunca se
+	 * editan ni se borran). Una hora menor que la de entrada se toma del día
+	 * siguiente (jornada que pasó la medianoche). Queda una sola entrada en la
+	 * auditoría con el antes, el después y el motivo.
+	 *
+	 * @param array<string, string> $horas paso => "HH:MM" o ''.
+	 */
+	public static function editarDia( int $trabajadorId, string $dia, array $horas, string $justificacion ): true|WP_Error {
+		$justificacion = trim( $justificacion );
+
+		if ( '' === $justificacion ) {
+			return new WP_Error( 'pka_justificacion', 'Escribe el motivo del cambio: queda en la auditoría.' );
+		}
+
+		if ( ! ValidacionTrabajador::esFecha( $dia ) ) {
+			return new WP_Error( 'pka_fecha', 'El día no es válido.' );
+		}
+
+		$zona   = Ajustes::zona();
+		$marcas = Marcas::delDia( $trabajadorId, $dia );
+		$pasos  = PasosDelDia::de( $marcas );
+		$hora   = static fn( ?Marca $m ): string => $m ? $m->marcadoUtc->setTimezone( $zona )->format( 'H:i' ) : '';
+		$final  = $marcas;
+		$quitar = array();
+		$poner  = array();
+		$antes  = array();
+		$despues = array();
+
+		$entrada = trim( (string) ( $horas[ PasosDelDia::ENTRADA ] ?? $hora( $pasos[ PasosDelDia::ENTRADA ] ) ) );
+
+		foreach ( PasosDelDia::TIPOS as $paso => [ $tipo, $motivo ] ) {
+			$viejo = $hora( $pasos[ $paso ] );
+			$nuevo = trim( (string) ( $horas[ $paso ] ?? $viejo ) );
+
+			if ( '' !== $nuevo && ! preg_match( '/^([01]\d|2[0-3]):[0-5]\d$/', $nuevo ) ) {
+				return new WP_Error( 'pka_hora', 'La hora de "' . PasosDelDia::NOMBRES[ $paso ] . '" no es válida.' );
+			}
+
+			if ( $nuevo === $viejo ) {
+				continue;
+			}
+
+			$antes[ $paso ]   = '' !== $viejo ? $viejo : 'sin marca';
+			$despues[ $paso ] = '' !== $nuevo ? $nuevo : 'sin marca';
+
+			if ( $pasos[ $paso ] ) {
+				$quitar[] = $pasos[ $paso ];
+				$final    = array_values( array_filter( $final, static fn( Marca $m ): bool => $m !== $pasos[ $paso ] ) );
+			}
+
+			if ( '' !== $nuevo ) {
+				// Pasada la medianoche: la hora es del día siguiente.
+				$fecha   = PasosDelDia::ENTRADA !== $paso && '' !== $entrada && $nuevo < $entrada ? ( new DateTimeImmutable( $dia ) )->modify( '+1 day' )->format( 'Y-m-d' ) : $dia;
+				$momento = self::momento( $fecha, $nuevo );
+
+				if ( $momento instanceof WP_Error ) {
+					return $momento;
+				}
+
+				$marca   = new Marca( $tipo, $momento, null === $motivo ? null : Motivos::porClave( $motivo ) );
+				$final[] = $marca;
+				$poner[] = $marca;
+			}
+		}
+
+		if ( ! $antes ) {
+			return new WP_Error( 'pka_sin_cambios', 'No cambiaste ninguna hora.' );
+		}
+
+		$problema = MaquinaEstados::problemaEnSecuencia( $final, $zona );
+
+		if ( null !== $problema ) {
+			return new WP_Error( 'pka_secuencia', 'Así el día queda mal: ' . $problema );
+		}
+
+		$momentos = array_map( static fn( Marca $m ): int => $m->marcadoUtc->getTimestamp(), $final );
+
+		if ( count( $momentos ) !== count( array_unique( $momentos ) ) ) {
+			return new WP_Error( 'pka_secuencia', 'Dos marcas quedarían a la misma hora.' );
+		}
+
+		$usuario = get_current_user_id();
+		$ahora   = Peticion::ahoraUtc();
+
+		foreach ( $quitar as $m ) {
+			self::insertar( array( 'trabajador_id' => $trabajadorId, 'accion' => self::ANULAR, 'marca_id' => $m->id, 'justificacion' => mb_substr( $justificacion, 0, 500 ), 'solicitado_por_user' => $usuario, 'estado' => self::APROBADA, 'resuelto_por' => $usuario, 'resuelto_en' => $ahora ) );
+		}
+
+		foreach ( $poner as $m ) {
+			$c  = array( 'trabajador_id' => $trabajadorId, 'accion' => self::AGREGAR, 'tipo' => $m->tipo->value, 'motivo_clave' => $m->motivo?->clave, 'marcado_utc' => $m->marcadoUtc->setTimezone( new DateTimeZone( 'UTC' ) )->format( 'Y-m-d H:i:s' ), 'justificacion' => mb_substr( $justificacion, 0, 500 ) );
+			$id = self::insertar( $c + array( 'solicitado_por_user' => $usuario, 'estado' => self::APROBADA, 'resuelto_por' => $usuario, 'resuelto_en' => $ahora ) );
+			self::registrarMarca( $c, $id, 'manual', $dia );
+		}
+
+		Auditoria::registrar( 'marca.editar_dia', 'trabajador', $trabajadorId, array( 'dia' => $dia ) + $antes, array( 'dia' => $dia ) + $despues, $justificacion );
 
 		return true;
 	}
@@ -284,10 +389,11 @@ final class Correcciones {
 	}
 
 	/** @param array<string, mixed> $c */
-	private static function registrarMarca( array $c, int $correccionId, string $origen ): int {
+	private static function registrarMarca( array $c, int $correccionId, string $origen, ?string $dia = null ): int {
 		return Marcas::registrar(
 			array(
 				'trabajador_id'     => (int) $c['trabajador_id'],
+				'dia_laboral'       => $dia ?? Ajustes::diaLaboral()->de( new DateTimeImmutable( $c['marcado_utc'], new DateTimeZone( 'UTC' ) ) ),
 				'tipo'              => TipoMarca::from( $c['tipo'] ),
 				'motivo_clave'      => $c['motivo_clave'],
 				'nota'              => (string) $c['justificacion'],

@@ -68,6 +68,7 @@ final class Historial {
 		'ajustes.campana'        => 'Cambio de los avisos de campaña',
 		'ajustes.pin'            => 'Cambio del PIN de ingreso',
 		'permiso.delegar'        => 'Permisos delegados',
+		'marca.editar_dia'       => 'Día editado (Registros y revisión)',
 		'permiso.crear_acceso'   => 'Acceso al panel creado',
 		'ajustes.correo_rrhh'    => 'Cambio del correo del respaldo',
 		'registro.descargar'     => 'Excel del registro descargado',
