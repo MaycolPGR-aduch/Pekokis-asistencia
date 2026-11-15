@@ -52,6 +52,9 @@ final class Ajustes {
 			'aviso_limite_salida'     => 120,
 			// Webhook (Make, n8n o el bot) que recibe los avisos para mandarlos por WhatsApp.
 			'webhook_avisos'          => '',
+			// PIN de ingreso opcional (solo inicia sesión, nunca marca). Maquetas: activado, 6 números.
+			'pin_activo'              => true,
+			'pin_largo'               => 6,
 			// Recordatorio de campaña en la app (maquetas T9A y G15). Empieza apagado.
 			'campana_activa'          => false,
 			'campana_desde'           => '2027-01-04',

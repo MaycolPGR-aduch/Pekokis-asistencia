@@ -242,6 +242,41 @@ final class Notificaciones {
 		);
 	}
 
+	/** Alguien se registró, cambió de celular o pidió liberarlo: gerencia lo aprueba (G13). */
+	public static function celular( int $solicitudId ): void {
+		self::seguro(
+			static function () use ( $solicitudId ): void {
+				$s = Celulares::buscar( $solicitudId );
+				$t = $s ? Trabajadores::buscar( (int) $s['trabajador_id'] ) : null;
+
+				if ( $t ) {
+					$que = array(
+						Celulares::REGISTRO => 'se registró como persona nueva desde el taller',
+						Celulares::CAMBIO   => 'registró un celular nuevo y pide dar de baja el anterior',
+						Celulares::LIBERAR  => 'pide liberar su celular',
+					)[ $s['tipo'] ] ?? 'pidió un cambio de celular';
+					self::encolar( ReglasAvisos::CELULAR, 'celular|' . $solicitudId, $t, sprintf( '%s %s. Apruébalo o recházalo en Asistencia → Celulares.', Trabajadores::nombreCompleto( $t ), $que ), admin_url( 'admin.php?page=pka-celulares' ) );
+				}
+			}
+		);
+	}
+
+	/** Se aprobó o rechazó: se avisa a la persona (al webhook con su teléfono, o a su correo). */
+	public static function celularResuelto( int $solicitudId ): void {
+		self::seguro(
+			static function () use ( $solicitudId ): void {
+				$s = Celulares::buscar( $solicitudId );
+				$t = $s ? Trabajadores::buscar( (int) $s['trabajador_id'] ) : null;
+
+				if ( $t && Celulares::LIBERAR !== $s['tipo'] ) {
+					$que   = Celulares::REGISTRO === $s['tipo'] ? 'Tu registro' : 'Tu cambio de celular';
+					$linea = Celulares::APROBADA === $s['estado'] ? $que . ' fue aprobado. Ya puedes entrar y marcar.' : $que . ' fue rechazado: ' . $s['respuesta'];
+					self::encolar( ReglasAvisos::CELULAR_RESUELTO, 'celular_resuelto|' . $solicitudId, $t, $linea );
+				}
+			}
+		);
+	}
+
 	/** Una jornada pasó el límite de horas (maquetas T3F): se acepta, pero gerencia la revisa. */
 	public static function jornadaLarga( int $marcaId, int $trabajadorId, string $dia, int $minutos ): void {
 		self::seguro(

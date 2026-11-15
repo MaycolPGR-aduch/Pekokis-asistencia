@@ -50,6 +50,15 @@ final class Temporales {
 		return (int) get_transient( 'pka_lim_' . md5( $clave ) ) >= $maximo;
 	}
 
+	/** Intentos fallidos que lleva una clave en su ventana. */
+	public static function intentos( string $clave ): int {
+		return (int) get_transient( 'pka_lim_' . md5( $clave ) );
+	}
+
+	public static function limpiarFallos( string $clave ): void {
+		delete_transient( 'pka_lim_' . md5( $clave ) );
+	}
+
 	public static function sumarFallo( string $clave, int $ventana ): void {
 		$nombre = 'pka_lim_' . md5( $clave );
 		set_transient( $nombre, (int) get_transient( $nombre ) + 1, $ventana );

@@ -17,7 +17,7 @@ final class Historial {
 
 	/** Grupos para el filtro: etiqueta => prefijos de acción. */
 	public const GRUPOS = array(
-		'trabajadores' => array( 'Trabajadores, celulares y ausencias', array( 'trabajador.', 'activacion.', 'passkey.', 'ausencia.', 'aviso.' ) ),
+		'trabajadores' => array( 'Trabajadores, celulares y ausencias', array( 'trabajador.', 'activacion.', 'passkey.', 'celular.', 'ausencia.', 'aviso.' ) ),
 		'marcas'       => array( 'Marcas y correcciones', array( 'marca.', 'correccion.' ) ),
 		'pagos'        => array( 'Pagos, honorarios y recibos', array( 'sobretiempo.', 'sueldo.', 'preplanilla.', 'pago.', 'recibo.' ) ),
 		'ajustes'      => array( 'Ajustes, horarios, calendario, redes y pantallas', array( 'ajustes.', 'horario.', 'calendario.', 'red.', 'pantalla.' ) ),
@@ -30,6 +30,17 @@ final class Historial {
 		'trabajador.cesar'       => 'Cese',
 		'activacion.generar'     => 'Enlace de activación generado',
 		'passkey.registrar'      => 'Celular activado',
+		'trabajador.registrarse' => 'Se registró desde el taller',
+		'trabajador.ver_dni'     => 'Vio su DNI completo',
+		'trabajador.pin_crear'   => 'Creó su PIN',
+		'trabajador.pin_cambiar' => 'Cambió su PIN',
+		'trabajador.pin_quitar'  => 'PIN quitado',
+		'trabajador.pin_bloqueado' => 'PIN bloqueado (5 errores)',
+		'celular.solicitar'      => 'Pidió registro, cambio o liberación de celular',
+		'celular.aprobar'        => 'Celular aprobado',
+		'celular.rechazar'       => 'Celular rechazado',
+		'celular.liberar'        => 'Celular liberado',
+		'celular.identidad_bloqueada' => 'Cambio de celular bloqueado (5 errores)',
 		'correccion.solicitar'   => '"Olvidé marcar" solicitado',
 		'correccion.aprobar'     => 'Solicitud aprobada',
 		'correccion.rechazar'    => 'Solicitud rechazada',

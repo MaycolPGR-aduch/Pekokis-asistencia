@@ -9,6 +9,8 @@ defined( 'ABSPATH' ) || exit;
  * huella y puede ver sus horas, su recibo y su perfil desde cualquier lugar.
  * MARCAR no usa la sesión: cada marca pide otra vez la huella.
  *
+ * También se entra con el PIN opcional, solo en el celular registrado (Pines).
+ *
  * La sesión es una cookie HttpOnly con un token aleatorio; los datos quedan del
  * lado del servidor. Deja de valer si se revoca la llave (cambio de celular) o
  * si la persona cesa.
@@ -40,7 +42,7 @@ final class SesionTrabajador {
 
 		$datos = Temporales::leer( 'sesion', $token );
 		$t     = $datos ? Trabajadores::buscar( (int) $datos['trabajador_id'] ) : null;
-		$viva  = $datos && $wpdb->get_var( $wpdb->prepare( 'SELECT id FROM ' . Tablas::nombre( 'credenciales' ) . ' WHERE id = %d AND revocada_en IS NULL', (int) $datos['credencial_id'] ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		$viva  = $datos && $wpdb->get_var( $wpdb->prepare( 'SELECT id FROM ' . Tablas::nombre( 'credenciales' ) . ' WHERE id = %d AND revocada_en IS NULL AND pendiente = 0', (int) $datos['credencial_id'] ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 
 		if ( ! $t || ! $viva || Trabajadores::ACTIVO !== $t['estado'] ) {
 			self::cerrar();

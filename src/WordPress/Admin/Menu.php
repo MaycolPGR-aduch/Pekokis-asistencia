@@ -25,6 +25,7 @@ final class Menu {
 		PantallaRecibos::registrar();
 		PantallaCalendario::registrar();
 		PantallaTrabajadores::registrar();
+		PantallaCelulares::registrar();
 		PantallaAjustes::registrar();
 	}
 
@@ -37,6 +38,7 @@ final class Menu {
 		add_submenu_page( self::SLUG, 'Calculadora de pagos', 'Pagos', Capacidades::VER_SUELDOS, PantallaPagos::SLUG, array( PantallaPagos::class, 'pintar' ) );
 		add_submenu_page( self::SLUG, 'Recibos por honorarios', 'Recibos', Capacidades::VER_SUELDOS, PantallaRecibos::SLUG, array( PantallaRecibos::class, 'pintar' ) );
 		add_submenu_page( self::SLUG, 'Trabajadores', 'Trabajadores', Capacidades::GESTIONAR_PERSONAL, PantallaTrabajadores::SLUG, array( PantallaTrabajadores::class, 'pintar' ) );
+		add_submenu_page( self::SLUG, 'Celulares y llaves', PantallaCelulares::titulo(), Capacidades::GESTIONAR_PERSONAL, PantallaCelulares::SLUG, array( PantallaCelulares::class, 'pintar' ) );
 		add_submenu_page( self::SLUG, 'Ausencias justificadas', 'Ausencias', Capacidades::GESTIONAR_PERSONAL, PantallaAusencias::SLUG, array( PantallaAusencias::class, 'pintar' ) );
 		add_submenu_page( self::SLUG, 'Exportar registro', 'Exportar', Capacidades::EXPORTAR, PantallaExportar::SLUG, array( PantallaExportar::class, 'pintar' ) );
 		add_submenu_page( self::SLUG, 'Horarios', 'Horarios', Capacidades::AJUSTES, PantallaHorarios::SLUG, array( PantallaHorarios::class, 'pintar' ) );

@@ -95,6 +95,16 @@ final class Dispositivos {
 		return (int) $wpdb->query( $wpdb->prepare( "UPDATE {$c} SET revocada_en = %s WHERE trabajador_id = %d AND id <> %d AND revocada_en IS NULL", $ahora, $trabajadorId, $credencialNueva ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 	}
 
+	/** Da de baja un celular y sus llaves (liberar el móvil). */
+	public static function revocarDispositivo( int $dispositivoId ): void {
+		global $wpdb;
+
+		$ahora = Peticion::ahoraUtc();
+
+		$wpdb->query( $wpdb->prepare( 'UPDATE ' . Tablas::nombre( 'dispositivos' ) . ' SET revocado_en = %s WHERE id = %d AND revocado_en IS NULL', $ahora, $dispositivoId ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		$wpdb->query( $wpdb->prepare( 'UPDATE ' . Tablas::nombre( 'credenciales' ) . ' SET revocada_en = %s WHERE dispositivo_id = %d AND revocada_en IS NULL', $ahora, $dispositivoId ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+	}
+
 	/** Revoca todos los celulares y passkeys de un trabajador (cese o cambio de celular). */
 	public static function revocarTodo( int $trabajadorId ): void {
 		global $wpdb;

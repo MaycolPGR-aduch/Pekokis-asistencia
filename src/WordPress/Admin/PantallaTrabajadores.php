@@ -145,6 +145,26 @@ final class PantallaTrabajadores {
 					</tr>
 				<?php endforeach; ?>
 				<tr>
+					<?php $cumple = (string) ( $valores['cumpleanos'] ?? '' ); ?>
+					<th scope="row"><label for="pka-cumple-dia">Cumpleaños</label></th>
+					<td>
+						<select id="pka-cumple-dia" name="cumple_dia" aria-label="Día">
+							<option value="">Día</option>
+							<?php for ( $dd = 1; $dd <= 31; $dd++ ) : ?>
+								<option value="<?php echo (int) $dd; ?>" <?php selected( (int) ( $valores['cumple_dia'] ?? ( '' !== $cumple ? substr( $cumple, 3, 2 ) : 0 ) ), $dd ); ?>><?php echo (int) $dd; ?></option>
+							<?php endfor; ?>
+						</select>
+						<select name="cumple_mes" aria-label="Mes">
+							<option value="">Mes</option>
+							<?php for ( $mm = 1; $mm <= 12; $mm++ ) : ?>
+								<option value="<?php echo (int) $mm; ?>" <?php selected( (int) ( $valores['cumple_mes'] ?? ( '' !== $cumple ? substr( $cumple, 0, 2 ) : 0 ) ), $mm ); ?>><?php echo esc_html( wp_date( 'F', mktime( 12, 0, 0, $mm, 1, 2024 ) ) ); ?></option>
+							<?php endfor; ?>
+						</select>
+						<?php self::error( $errores, 'cumpleanos' ); ?>
+						<p class="description">Sin el año. Con el DNI sirve para que la persona confirme que es ella si cambia de celular desde el taller.</p>
+					</td>
+				</tr>
+				<tr>
 					<th scope="row"><label for="pka-horario">Horario</label></th>
 					<td>
 						<select id="pka-horario" name="horario_id">

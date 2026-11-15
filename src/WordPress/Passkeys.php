@@ -74,7 +74,7 @@ final class Passkeys {
 	 * @param array<string, mixed> $credencial Respuesta del navegador (base64url).
 	 * @return int|WP_Error Id de la credencial guardada.
 	 */
-	public static function completarRegistro( string $reto, array $credencial, int $trabajadorId, int $dispositivoId ): int|WP_Error {
+	public static function completarRegistro( string $reto, array $credencial, int $trabajadorId, int $dispositivoId, bool $pendiente = false ): int|WP_Error {
 		global $wpdb;
 
 		$datos = Temporales::tomar( 'reto', $reto );
@@ -109,6 +109,8 @@ final class Passkeys {
 				'dispositivo_id'  => $dispositivoId,
 				'nombre'          => mb_substr( Peticion::navegador(), 0, 120 ),
 				'creado_en'       => Peticion::ahoraUtc(),
+				// Cambio de celular: la llave nueva no sirve hasta que gerencia lo apruebe.
+				'pendiente'       => (int) $pendiente,
 			)
 		);
 
@@ -146,7 +148,7 @@ final class Passkeys {
 		global $wpdb;
 
 		$datos = Temporales::tomar( 'reto', $reto );
-		$error = new WP_Error( 'pka_passkey', 'No reconocimos tu llave. Si cambiaste de celular, pide un enlace nuevo a RR.HH.', array( 'status' => 401 ) );
+		$error = new WP_Error( 'pka_passkey', 'No reconocimos tu llave. Si cambiaste de celular, toca "Cambié de celular".', array( 'status' => 401 ) );
 
 		if ( null === $datos || 'identificacion' !== $datos['uso'] ) {
 			return new WP_Error( 'pka_reto', 'La solicitud venció. Vuelve a intentarlo.', array( 'status' => 400 ) );
@@ -165,10 +167,11 @@ final class Passkeys {
 		$t    = Tablas::nombre( 'trabajadores' );
 		$fila = $wpdb->get_row( // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			$wpdb->prepare(
-				"SELECT c.* FROM {$c} c JOIN {$t} t ON t.id = c.trabajador_id
-				WHERE c.credential_hash = %s AND c.revocada_en IS NULL AND t.estado = %s",
+				"SELECT c.*, t.estado AS trabajador_estado FROM {$c} c JOIN {$t} t ON t.id = c.trabajador_id
+				WHERE c.credential_hash = %s AND c.revocada_en IS NULL AND t.estado IN (%s, %s)",
 				hash( 'sha256', $idBinario ),
-				Trabajadores::ACTIVO
+				Trabajadores::ACTIVO,
+				Trabajadores::PENDIENTE
 			),
 			ARRAY_A
 		);

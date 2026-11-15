@@ -28,6 +28,8 @@ final class ReglasAvisos {
 	public const RECIBO_OBSERVADO = 'recibo_observado';
 	public const RECIBO_PENDIENTE = 'recibo_pendiente';
 	public const JORNADA_LARGA    = 'jornada_larga';
+	public const CELULAR          = 'celular';
+	public const CELULAR_RESUELTO = 'celular_resuelto';
 
 	public const PARA_JEFE       = 'jefe';
 	public const PARA_TRABAJADOR = 'trabajador';
@@ -44,6 +46,8 @@ final class ReglasAvisos {
 		self::SIN_SALIDA       => array( 'Sigue sin marcar la salida a la hora límite', self::PARA_TRABAJADOR, 'No marcaste tu salida', 'No marcaste tu salida' ),
 		self::RESUELTA         => array( 'Su solicitud fue aprobada o rechazada', self::PARA_TRABAJADOR, 'Tu solicitud fue revisada', 'Tus solicitudes fueron revisadas' ),
 		self::PANTALLA         => array( 'Pantalla QR sin conexión', self::PARA_ADMIN, 'Pantalla QR sin conexión', 'Pantallas QR sin conexión' ),
+		self::CELULAR          => array( 'Registro, cambio o liberación de celular por aprobar', self::PARA_ADMIN, 'Celular por aprobar', 'Celulares por aprobar' ),
+		self::CELULAR_RESUELTO => array( 'Su registro o cambio de celular fue aprobado o rechazado', self::PARA_TRABAJADOR, 'Tu celular fue revisado', 'Tus celulares fueron revisados' ),
 		self::RED_NUEVA        => array( 'Posible IP nueva del taller', self::PARA_ADMIN, 'Posible IP nueva del taller', 'Posibles IP nuevas del taller' ),
 		self::RECIBO_ENVIADO   => array( 'Llegó un recibo por honorarios', self::PARA_ADMIN, 'Recibo por honorarios nuevo', 'Recibos por honorarios nuevos' ),
 		self::RECIBO_OBSERVADO => array( 'Su recibo por honorarios fue observado', self::PARA_TRABAJADOR, 'Tu recibo tiene una observación', 'Tus recibos tienen observaciones' ),

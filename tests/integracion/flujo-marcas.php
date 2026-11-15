@@ -44,7 +44,7 @@ $api = static function ( string $metodo, string $ruta, array $cuerpo = array() )
 };
 
 // ---- Preparación: tablas vacías, una red autorizada y la IP del "WiFi del taller".
-foreach ( array( 'trabajadores', 'marcas', 'auditoria', 'credenciales', 'dispositivos', 'activaciones', 'redes', 'correcciones', 'pantallas', 'revisiones', 'calendario', 'ausencias', 'sueldos', 'avisos', 'pagos', 'recibos' ) as $tabla ) {
+foreach ( array( 'trabajadores', 'marcas', 'auditoria', 'credenciales', 'dispositivos', 'activaciones', 'redes', 'correcciones', 'pantallas', 'revisiones', 'calendario', 'ausencias', 'sueldos', 'avisos', 'pagos', 'recibos', 'solicitudes_celular' ) as $tabla ) {
 	$wpdb->query( 'TRUNCATE TABLE ' . Tablas::nombre( $tabla ) ); // phpcs:ignore
 }
 $wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE '\\_transient\\_pka\\_%' OR option_name LIKE '\\_transient\\_timeout\\_pka\\_%'" ); // phpcs:ignore
@@ -837,6 +837,111 @@ update_option( \Pekokis\Asistencia\WordPress\Ajustes::OPCION, $ajCamp );
 
 Trabajadores::cesar( $noche, gmdate( 'Y-m-d' ), 'Prueba' );
 Trabajadores::cesar( $olvido, gmdate( 'Y-m-d' ), 'Prueba' );
+
+// ---- 15. Registro propio, PIN, cambio y liberar celular (maquetas T0, T1, T7C, G13).
+WP_CLI::line( '15. Registro propio, PIN y celulares' );
+$CL       = \Pekokis\Asistencia\WordPress\Celulares::class;
+$avisoV   = \Pekokis\Asistencia\WordPress\Aviso::version();
+$wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE '\\_transient\\_pka\\_lim\\_%' OR option_name LIKE '\\_transient\\_timeout\\_pka\\_lim\\_%'" ); // phpcs:ignore
+$entrarCon = static function ( AutenticadorSimulado $cel ) use ( $api ): array {
+	[ , $op ] = $api( 'POST', 'identificar/opciones' );
+
+	return $api( 'POST', 'identificar', array( 'reto' => $op['reto'], 'credencial' => $cel->firmar( $op['publicKey']['challenge'] ) ) );
+};
+$datosRita = array( 'nombres' => 'Rita', 'apellidos' => 'Nueva', 'telefono' => '987 111 222', 'dni' => '71234567', 'cumple_dia' => 7, 'cumple_mes' => 3, 'acepta_aviso' => $avisoV );
+
+$_COOKIE                = array(); // Celular nuevo, sin nada.
+$_SERVER['REMOTE_ADDR'] = '198.51.100.9';
+[ $st, $r ] = $api( 'POST', 'registro/nuevo', $datosRita );
+$comprobar( 'registrarse fuera del taller no se puede', 403 === $st && 'pka_sin_presencia' === $r['code'], wp_json_encode( $r ) );
+$_SERVER['REMOTE_ADDR'] = '203.0.113.10';
+[ $st, $r ] = $api( 'POST', 'registro/nuevo', array( 'dni' => '123', 'nombres' => 'Rita', 'apellidos' => 'Nueva', 'acepta_aviso' => $avisoV ) );
+$comprobar( 'datos con error: se dicen por campo', 422 === $st && isset( $r['data']['errores']['dni'], $r['data']['errores']['cumpleanos'], $r['data']['errores']['telefono'] ), wp_json_encode( $r['data'] ?? $r ) );
+[ $st, $r ] = $api( 'POST', 'registro/nuevo', array( 'dni' => '40404040' ) + $datosRita );
+$comprobar( 'un DNI que ya existe manda a "Cambié de celular"', 422 === $st && str_contains( (string) ( $r['data']['errores']['dni'] ?? '' ), 'Cambié de celular' ) );
+
+[ $st, $op ] = $api( 'POST', 'registro/nuevo', $datosRita );
+$rita        = (int) $wpdb->get_var( "SELECT id FROM " . Tablas::nombre( 'trabajadores' ) . " WHERE dni = '71234567'" ); // phpcs:ignore
+$comprobar( 'persona nueva: queda pendiente, con su cumpleaños y el aviso aceptado', 200 === $st && '' !== $op['flujo'] && 'pendiente' === Trabajadores::buscar( $rita )['estado'] && '03-07' === Trabajadores::buscar( $rita )['cumpleanos'] && $avisoV === (int) Trabajadores::buscar( $rita )['aviso_version'], wp_json_encode( array( $st, $op['code'] ?? '' ) ) );
+$celRita    = new AutenticadorSimulado( Passkeys::rpId(), Passkeys::origen() );
+[ $st, $r ] = $api( 'POST', 'registro/completar', array( 'flujo' => $op['flujo'], 'reto' => $op['reto'], 'credencial' => $celRita->crear( $op['publicKey']['challenge'] ) ) );
+$solRita    = $CL::pendienteDe( $rita );
+$comprobar( 'crea su llave y la solicitud queda para gerencia', 200 === $st && 'registro' === $r['tipo'] && $solRita && 'registro' === $solRita['tipo'], wp_json_encode( $r ) );
+[ $st, $r ] = $entrarCon( $celRita );
+$comprobar( 'hasta que gerencia apruebe, no entra', 403 === $st && 'pka_registro_pendiente' === $r['code'], wp_json_encode( $r ) );
+$comprobar( 'gerencia aprueba y queda activa', true === $CL::aprobar( (int) $solRita['id'] ) && 'activo' === Trabajadores::buscar( $rita )['estado'] );
+[ $st ] = $entrarCon( $celRita );
+$comprobar( 'ya entra con su huella', 200 === $st );
+
+// PIN (solo para entrar, en su celular).
+[ $st, $r ] = $api( 'POST', 'yo/pin', array( 'pin' => '123456' ) );
+$comprobar( 'un PIN en escalera no sirve', 422 === $st, wp_json_encode( $r ) );
+[ $st, $r ] = $api( 'POST', 'yo/pin', array( 'pin' => '482915' ) );
+$comprobar( 'crea su PIN (guardado con hash)', 200 === $st && password_verify( '482915', (string) Trabajadores::buscar( $rita )['pin_hash'] ) );
+$api( 'POST', 'yo/salir' );
+[ , $pe ]   = $api( 'GET', 'pin/estado' );
+$comprobar( 'en su celular se ofrece entrar con PIN', true === $pe['pin'] && true === $pe['registrado'] && 'Rita' === $pe['nombre'], wp_json_encode( $pe ) );
+$_SERVER['REMOTE_ADDR'] = '198.51.100.20'; // El PIN sirve desde cualquier lugar.
+[ $st, $r ] = $api( 'POST', 'pin/entrar', array( 'pin' => '482916' ) );
+$comprobar( 'PIN equivocado: dice cuántos intentos quedan', 401 === $st && 4 === ( $r['data']['intentos'] ?? -1 ), wp_json_encode( $r ) );
+[ $st ]  = $api( 'POST', 'pin/entrar', array( 'pin' => '482915' ) );
+[ $st2 ] = $api( 'GET', 'yo' );
+$comprobar( 'con el PIN correcto entra (desde fuera del taller)', 200 === $st && 200 === $st2 );
+[ $st, $r ] = $api( 'POST', 'marcas', array( 'accion' => 'entrada' ) );
+$comprobar( 'el PIN no sirve para marcar', 401 === $st && 'pka_ticket' === $r['code'] );
+$cookiesRita = $_COOKIE;
+$_COOKIE     = array();
+[ , $pe ]   = $api( 'GET', 'pin/estado' );
+[ $st ]     = $api( 'POST', 'pin/entrar', array( 'pin' => '482915' ) );
+$comprobar( 'en otro celular el PIN no sirve', false === $pe['pin'] && 403 === $st );
+
+// Cambio de celular, desde el celular nuevo y en el taller.
+$_SERVER['REMOTE_ADDR'] = '203.0.113.10';
+[ $st, $r ] = $api( 'POST', 'registro/buscar', array( 'texto' => 'Rit' ) );
+$comprobar( 'buscar mi perfil: solo nombres', 200 === $st && in_array( 'Rita Nueva', array_column( $r['perfiles'], 'nombre' ), true ) && ! str_contains( wp_json_encode( $r ), '71234567' ), wp_json_encode( $r ) );
+[ $st, $r ] = $api( 'POST', 'registro/confirmar', array( 'trabajador_id' => $rita, 'dni' => '71234567', 'cumple_dia' => 8, 'cumple_mes' => 3 ) );
+$comprobar( 'DNI o cumpleaños equivocado: quedan 4 intentos', 401 === $st && 4 === ( $r['data']['intentos'] ?? -1 ), wp_json_encode( $r ) );
+[ $st, $r ] = $api( 'POST', 'registro/confirmar', array( 'trabajador_id' => $id2, 'dni' => '40404040', 'cumple_dia' => 1, 'cumple_mes' => 1 ) );
+$comprobar( 'sin cumpleaños en el perfil no se puede confirmar', 409 === $st && 'pka_sin_cumple' === $r['code'] );
+[ $st, $op ] = $api( 'POST', 'registro/confirmar', array( 'trabajador_id' => $rita, 'dni' => '71.234.567', 'cumple_dia' => 7, 'cumple_mes' => 3 ) );
+$celRita2    = new AutenticadorSimulado( Passkeys::rpId(), Passkeys::origen() );
+[ $st, $r ]  = $api( 'POST', 'registro/completar', array( 'flujo' => $op['flujo'], 'reto' => $op['reto'], 'credencial' => $celRita2->crear( $op['publicKey']['challenge'] ) ) );
+$solCambio   = $CL::pendienteDe( $rita );
+$comprobar( 'confirma y registra el celular nuevo: cambio pedido', 200 === $st && 'cambio' === $r['tipo'] && 'cambio' === ( $solCambio['tipo'] ?? '' ) );
+[ $st, $r ] = $entrarCon( $celRita2 );
+[ $stV ]    = $entrarCon( $celRita );
+$comprobar( 'mientras gerencia decide: el nuevo espera y el anterior sigue', 403 === $st && 'pka_cambio_pendiente' === $r['code'] && 200 === $stV, wp_json_encode( $r ) );
+$CL::aprobar( (int) $solCambio['id'] );
+[ $stV ] = $entrarCon( $celRita );
+[ $st ]  = $entrarCon( $celRita2 );
+$comprobar( 'al aprobar: el nuevo entra y el anterior queda de baja', 200 === $st && 401 === $stV );
+$comprobar( 'sus datos y su PIN se conservan', '' !== (string) Trabajadores::buscar( $rita )['pin_hash'] && 'activo' === Trabajadores::buscar( $rita )['estado'] );
+
+// Liberar este celular (T0D) y aprobación de gerencia.
+[ $st, $r ] = $api( 'POST', 'celular/liberar' );
+$solLib     = $CL::pendienteDe( $rita );
+$comprobar( 'pide liberar este celular', 200 === $st && 'liberar' === ( $solLib['tipo'] ?? '' ), wp_json_encode( $r ) );
+$CL::aprobar( (int) $solLib['id'] );
+[ $st ] = $entrarCon( $celRita2 );
+$comprobar( 'liberado: ese celular ya no entra', 401 === $st );
+
+// Registro rechazado: se puede rehacer.
+$_COOKIE     = array();
+$datosRo     = array( 'nombres' => 'Rocío', 'apellidos' => 'Rechazo', 'dni' => '72345678', 'telefono' => '987222333' ) + $datosRita;
+[ , $op ]    = $api( 'POST', 'registro/nuevo', $datosRo );
+$celRo       = new AutenticadorSimulado( Passkeys::rpId(), Passkeys::origen() );
+$api( 'POST', 'registro/completar', array( 'flujo' => $op['flujo'], 'reto' => $op['reto'], 'credencial' => $celRo->crear( $op['publicKey']['challenge'] ) ) );
+$rocio       = (int) $wpdb->get_var( "SELECT id FROM " . Tablas::nombre( 'trabajadores' ) . " WHERE dni = '72345678'" ); // phpcs:ignore
+$sinMotivo   = $CL::rechazar( (int) $CL::pendienteDe( $rocio )['id'], '' );
+$CL::rechazar( (int) $CL::pendienteDe( $rocio )['id'], 'No trabaja aquí' );
+[ $st ]      = $entrarCon( $celRo );
+$estadoRo   = Trabajadores::buscar( $rocio )['estado'];
+$_COOKIE     = array();
+[ $st2 ]     = $api( 'POST', 'registro/nuevo', $datosRo );
+$comprobar( 'rechazar pide motivo; rechazado no entra y puede volver a registrarse', is_wp_error( $sinMotivo ) && 'rechazado' === $estadoRo && 401 === $st && 200 === $st2 && 'pendiente' === Trabajadores::buscar( $rocio )['estado'] );
+$hist = \Pekokis\Asistencia\WordPress\Historial::buscar( array( 'trabajador' => $rita ) )[0];
+$comprobar( 'todo queda en el historial', 6 <= count( array_filter( $hist, static fn( $f ) => str_starts_with( $f['accion'], 'celular.' ) || str_starts_with( $f['accion'], 'trabajador.pin' ) || 'trabajador.registrarse' === $f['accion'] ) ) );
+Trabajadores::cesar( $rita, gmdate( 'Y-m-d' ), 'Prueba' );
 
 $comprobar( 'presencia por IP del taller', ( $_SERVER['REMOTE_ADDR'] = '203.0.113.10' ) && Presencia::enRedDelTaller() );
 

@@ -2,6 +2,7 @@
 
 namespace Pekokis\Asistencia\WordPress;
 
+use Pekokis\Asistencia\Nucleo\ValidacionIdentidad;
 use Pekokis\Asistencia\Nucleo\ValidacionTrabajador;
 use WP_Error;
 
@@ -11,8 +12,11 @@ defined( 'ABSPATH' ) || exit;
  * Perfiles de los trabajadores. Cada alta, cambio y cese queda en la auditoría.
  */
 final class Trabajadores {
-	public const ACTIVO  = 'activo';
-	public const CESADO  = 'cesado';
+	public const ACTIVO    = 'activo';
+	public const CESADO    = 'cesado';
+	// Registro propio desde el taller, esperando a gerencia; o rechazado.
+	public const PENDIENTE = 'pendiente';
+	public const RECHAZADO = 'rechazado';
 
 	/** @return array<string, mixed>|null */
 	public static function buscar( int $id ): ?array {
@@ -76,6 +80,15 @@ final class Trabajadores {
 			$errores['jefe_user_id'] = 'Nadie puede ser su propio jefe: elige a otra persona para aprobar sus marcas.';
 		}
 
+		// Cumpleaños (día y mes): opcional; si se elige, tiene que existir.
+		$cumpleDia = (string) ( $entrada['cumple_dia'] ?? '' );
+		$cumpleMes = (string) ( $entrada['cumple_mes'] ?? '' );
+		$cumple    = ValidacionIdentidad::cumpleanos( $cumpleDia, $cumpleMes );
+
+		if ( '' === $cumple && ( '' !== $cumpleDia || '' !== $cumpleMes ) ) {
+			$errores['cumpleanos'] = 'Elige un día y un mes que existan.';
+		}
+
 		if ( $errores ) {
 			return new WP_Error( 'pka_datos_invalidos', 'Revisa los datos del trabajador.', array( 'errores' => $errores ) );
 		}
@@ -94,6 +107,11 @@ final class Trabajadores {
 			'fecha_ingreso'  => '' !== $datos['fecha_ingreso'] ? $datos['fecha_ingreso'] : null,
 			'actualizado_en' => Peticion::ahoraUtc(),
 		);
+
+		// Un formulario sin los campos de cumpleaños (versiones anteriores, pruebas) no lo borra.
+		if ( array_key_exists( 'cumple_dia', $entrada ) || array_key_exists( 'cumple_mes', $entrada ) ) {
+			$fila['cumpleanos'] = $cumple;
+		}
 
 		if ( null === $id ) {
 			$fila['estado']    = self::ACTIVO;

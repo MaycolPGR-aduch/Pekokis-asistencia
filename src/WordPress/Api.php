@@ -57,6 +57,16 @@ final class Api {
 		register_rest_route( self::ESPACIO, '/yo/perfil', array( 'methods' => 'GET', 'callback' => array( self::class, 'miPerfil' ), 'permission_callback' => $publica ) );
 		register_rest_route( self::ESPACIO, '/yo/dni', array( 'methods' => 'POST', 'callback' => array( self::class, 'miDni' ), 'permission_callback' => $publica ) );
 		register_rest_route( self::ESPACIO, '/yo/salir', array( 'methods' => 'POST', 'callback' => array( self::class, 'salir' ), 'permission_callback' => $publica ) );
+		register_rest_route( self::ESPACIO, '/yo/pin', array( 'methods' => 'POST', 'callback' => array( self::class, 'crearPin' ), 'permission_callback' => $publica ) );
+		register_rest_route( self::ESPACIO, '/yo/pin/quitar', array( 'methods' => 'POST', 'callback' => array( self::class, 'quitarPin' ), 'permission_callback' => $publica ) );
+		register_rest_route( self::ESPACIO, '/pin/estado', array( 'methods' => 'GET', 'callback' => array( self::class, 'pinEstado' ), 'permission_callback' => $publica ) );
+		register_rest_route( self::ESPACIO, '/pin/entrar', array( 'methods' => 'POST', 'callback' => array( self::class, 'pinEntrar' ), 'permission_callback' => $publica ) );
+		register_rest_route( self::ESPACIO, '/registro/estado', array( 'methods' => 'GET', 'callback' => array( self::class, 'registroEstado' ), 'permission_callback' => $publica ) );
+		register_rest_route( self::ESPACIO, '/registro/nuevo', array( 'methods' => 'POST', 'callback' => array( self::class, 'registroNuevo' ), 'permission_callback' => $publica ) );
+		register_rest_route( self::ESPACIO, '/registro/buscar', array( 'methods' => 'POST', 'callback' => array( self::class, 'registroBuscar' ), 'permission_callback' => $publica ) );
+		register_rest_route( self::ESPACIO, '/registro/confirmar', array( 'methods' => 'POST', 'callback' => array( self::class, 'registroConfirmar' ), 'permission_callback' => $publica ) );
+		register_rest_route( self::ESPACIO, '/registro/completar', array( 'methods' => 'POST', 'callback' => array( self::class, 'registroCompletar' ), 'permission_callback' => $publica ) );
+		register_rest_route( self::ESPACIO, '/celular/liberar', array( 'methods' => 'POST', 'callback' => array( self::class, 'liberarCelular' ), 'permission_callback' => $publica ) );
 		register_rest_route( self::ESPACIO, '/yo/mes', array( 'methods' => 'POST', 'callback' => array( self::class, 'miMes' ), 'permission_callback' => $publica ) );
 		register_rest_route( self::ESPACIO, '/yo/recibos', array( 'methods' => 'POST', 'callback' => array( self::class, 'misRecibos' ), 'permission_callback' => $publica ) );
 		register_rest_route( self::ESPACIO, '/yo/recibos/enviar', array( 'methods' => 'POST', 'callback' => array( self::class, 'enviarRecibo' ), 'permission_callback' => $publica ) );
@@ -210,6 +220,15 @@ final class Api {
 			self::sumarFallo();
 
 			return $credencial;
+		}
+
+		// Registro o cambio de celular esperando a gerencia: todavía no entra.
+		if ( Trabajadores::PENDIENTE === $credencial['trabajador_estado'] ) {
+			return new WP_Error( 'pka_registro_pendiente', 'Tu registro está esperando la aprobación de gerencia. Cuando lo aprueben, podrás entrar y marcar.', array( 'status' => 403 ) );
+		}
+
+		if ( (int) $credencial['pendiente'] ) {
+			return new WP_Error( 'pka_cambio_pendiente', 'Tu cambio de celular está esperando la aprobación de gerencia. Mientras tanto, marca con tu celular anterior.', array( 'status' => 403 ) );
 		}
 
 		$trabajadorId  = (int) $credencial['trabajador_id'];
@@ -652,6 +671,14 @@ final class Api {
 				'dni'        => '•••• ' . substr( $dni, -4 ),
 				'celular'    => '' !== $creada ? 'Registrado el ' . Ajustes::local( $creada, 'j \d\e F' ) : 'Sin registrar',
 				'estado'     => 'Activo',
+				'pin'        => array(
+					'activo' => Pines::activo(),
+					'tiene'  => '' !== (string) $t['pin_hash'],
+					'desde'  => $t['pin_creado_en'] ? Ajustes::local( (string) $t['pin_creado_en'], 'j \d\e F' ) : '',
+					'largo'  => Pines::largo(),
+				),
+				'pendiente'  => Celulares::textoPendiente( (int) $t['id'] ),
+				'liberar'    => ( Pines::celularDeEsteNavegador()['trabajador']['id'] ?? 0 ) == $t['id'], // phpcs:ignore Universal.Operators.StrictComparisons.LooseEqual
 			)
 		);
 	}
@@ -673,6 +700,131 @@ final class Api {
 		SesionTrabajador::cerrar();
 
 		return self::respuesta( array( 'ok' => true ) );
+	}
+
+	// ---- PIN de ingreso (T0B, T0C, T7C) ----
+
+	/** Si en este celular se puede entrar con PIN, y si el celular está registrado (para T0A). */
+	public static function pinEstado(): WP_REST_Response {
+		$celular = Pines::celularDeEsteNavegador();
+
+		return self::respuesta(
+			array(
+				'pin'        => Pines::disponible(),
+				'largo'      => Pines::largo(),
+				'registrado' => null !== $celular,
+				'nombre'     => $celular ? (string) $celular['trabajador']['nombres'] : '',
+			)
+		);
+	}
+
+	public static function pinEntrar( WP_REST_Request $peticion ): WP_REST_Response|WP_Error {
+		if ( $bloqueo = self::bloqueado() ) {
+			return $bloqueo;
+		}
+
+		$t = Pines::entrar( (string) $peticion->get_param( 'pin' ) );
+
+		if ( $t instanceof WP_Error ) {
+			if ( 'pka_pin' === $t->get_error_code() ) {
+				self::sumarFallo();
+			}
+
+			return $t;
+		}
+
+		return self::respuesta( array( 'ok' => true, 'nombre' => $t['nombres'] ) );
+	}
+
+	public static function crearPin( WP_REST_Request $peticion ): WP_REST_Response|WP_Error {
+		$t = self::trabajadorActual( $peticion );
+
+		if ( $t instanceof WP_Error ) {
+			return $t;
+		}
+
+		$r = Pines::crear( (int) $t['id'], (string) $peticion->get_param( 'pin' ) );
+
+		return $r instanceof WP_Error ? $r : self::respuesta( array( 'ok' => true, 'mensaje' => 'Listo: ya puedes entrar con tu PIN en este celular. Para marcar se sigue usando tu huella.' ) );
+	}
+
+	public static function quitarPin( WP_REST_Request $peticion ): WP_REST_Response|WP_Error {
+		$t = self::trabajadorActual( $peticion );
+
+		if ( $t instanceof WP_Error ) {
+			return $t;
+		}
+
+		Pines::quitar( (int) $t['id'] );
+
+		return self::respuesta( array( 'ok' => true, 'mensaje' => 'Quitaste tu PIN. Ahora solo entras con tu huella.' ) );
+	}
+
+	// ---- Registro propio y cambio de celular (T1) ----
+
+	/** ¿Está en el taller? Lo pide la bienvenida (T1A) antes de empezar. */
+	public static function registroEstado(): WP_REST_Response {
+		$p = self::presencia()->get_data();
+
+		return self::respuesta( array( 'en_taller' => (bool) $p['cumple'], 'mensaje' => $p['mensaje'], 'acepta_qr' => $p['acepta_qr'], 'aviso' => Aviso::paraApp() ) );
+	}
+
+	public static function registroNuevo( WP_REST_Request $peticion ): WP_REST_Response|WP_Error {
+		if ( $bloqueo = self::bloqueado() ) {
+			return $bloqueo;
+		}
+
+		$t = Celulares::iniciarRegistro( $peticion->get_params() );
+
+		if ( $t instanceof WP_Error ) {
+			return $t;
+		}
+
+		return self::respuesta( array( 'flujo' => Celulares::abrirFlujo( Celulares::REGISTRO, (int) $t['id'] ), 'nombre' => $t['nombres'] ) + Passkeys::opcionesDeRegistro( $t, 0 ) );
+	}
+
+	/** Buscar mi perfil (T1G): solo nombres, y solo desde el taller. */
+	public static function registroBuscar( WP_REST_Request $peticion ): WP_REST_Response|WP_Error {
+		if ( Temporales::bloqueado( 'buscar|' . Peticion::ip(), 40 ) ) {
+			return new WP_Error( 'pka_bloqueado', 'Demasiadas búsquedas. Espera unos minutos.', array( 'status' => 429 ) );
+		}
+
+		if ( ! Celulares::enElTaller() ) {
+			return new WP_Error( 'pka_sin_presencia', 'Para cambiar tu celular tienes que estar en el taller: conéctate al WiFi o escanea el QR de la pantalla.', array( 'status' => 403 ) );
+		}
+
+		Temporales::sumarFallo( 'buscar|' . Peticion::ip(), 15 * MINUTE_IN_SECONDS );
+
+		return self::respuesta( array( 'perfiles' => Celulares::buscarPerfiles( (string) $peticion->get_param( 'texto' ) ) ) );
+	}
+
+	public static function registroConfirmar( WP_REST_Request $peticion ): WP_REST_Response|WP_Error {
+		$t = Celulares::confirmarIdentidad( (int) $peticion->get_param( 'trabajador_id' ), (string) $peticion->get_param( 'dni' ), $peticion->get_param( 'cumple_dia' ), $peticion->get_param( 'cumple_mes' ) );
+
+		if ( $t instanceof WP_Error ) {
+			return $t;
+		}
+
+		return self::respuesta( array( 'flujo' => Celulares::abrirFlujo( Celulares::CAMBIO, (int) $t['id'] ), 'nombre' => $t['nombres'] ) + Passkeys::opcionesDeRegistro( $t, 0 ) );
+	}
+
+	public static function registroCompletar( WP_REST_Request $peticion ): WP_REST_Response|WP_Error {
+		$r = Celulares::completar( (string) $peticion->get_param( 'flujo' ), (string) $peticion->get_param( 'reto' ), (array) $peticion->get_param( 'credencial' ) );
+
+		return $r instanceof WP_Error ? $r : self::respuesta( $r );
+	}
+
+	/** Solicitar liberar este celular (T0D), desde el celular registrado. */
+	public static function liberarCelular(): WP_REST_Response|WP_Error {
+		$celular = Pines::celularDeEsteNavegador();
+
+		if ( null === $celular ) {
+			return new WP_Error( 'pka_celular', 'Este celular no está registrado. Si cambiaste de celular, toca "Cambié de celular" estando en el taller.', array( 'status' => 404 ) );
+		}
+
+		Celulares::pedirLiberar( (int) $celular['trabajador']['id'], $celular['dispositivo_id'] );
+
+		return self::respuesta( array( 'ok' => true, 'mensaje' => 'Solicitud enviada. Cuando gerencia la apruebe, este celular quedará sin acceso. Tus datos y tus horas se conservan.' ) );
 	}
 
 	/**

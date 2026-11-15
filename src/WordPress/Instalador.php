@@ -13,7 +13,7 @@ defined( 'ABSPATH' ) || exit;
  * lo que RR.HH. haya cambiado.
  */
 final class Instalador {
-	public const VERSION_BD = '6';
+	public const VERSION_BD = '7';
 
 	private const OPCION_VERSION = 'pka_version_bd';
 
@@ -56,7 +56,7 @@ final class Instalador {
 		$c = $wpdb->get_charset_collate();
 		$t = array();
 
-		foreach ( array( 'trabajadores', 'horarios', 'horario_dias', 'motivos', 'marcas', 'revisiones', 'correcciones', 'credenciales', 'dispositivos', 'activaciones', 'redes', 'pantallas', 'auditoria', 'calendario', 'ausencias', 'sueldos', 'sobretiempo', 'avisos', 'pagos', 'recibos' ) as $tabla ) {
+		foreach ( array( 'trabajadores', 'horarios', 'horario_dias', 'motivos', 'marcas', 'revisiones', 'correcciones', 'credenciales', 'dispositivos', 'activaciones', 'redes', 'pantallas', 'auditoria', 'calendario', 'ausencias', 'sueldos', 'sobretiempo', 'avisos', 'pagos', 'recibos', 'solicitudes_celular' ) as $tabla ) {
 			$t[ $tabla ] = Tablas::nombre( $tabla );
 		}
 
@@ -78,6 +78,10 @@ final class Instalador {
 				estado varchar(16) NOT NULL DEFAULT 'activo',
 				aviso_version smallint(5) unsigned NOT NULL DEFAULT 0,
 				aviso_aceptado_en datetime NULL,
+				cumpleanos char(5) NOT NULL DEFAULT '',
+				pin_hash varchar(255) NOT NULL DEFAULT '',
+				pin_creado_en datetime NULL,
+				origen varchar(16) NOT NULL DEFAULT 'panel',
 				creado_en datetime NOT NULL,
 				actualizado_en datetime NOT NULL,
 				PRIMARY KEY  (id),
@@ -190,6 +194,7 @@ final class Instalador {
 				creado_en datetime NOT NULL,
 				ultimo_uso datetime NULL,
 				revocada_en datetime NULL,
+				pendiente tinyint(1) NOT NULL DEFAULT 0,
 				PRIMARY KEY  (id),
 				UNIQUE KEY credential_hash (credential_hash),
 				KEY trabajador (trabajador_id)
@@ -205,6 +210,24 @@ final class Instalador {
 				revocado_en datetime NULL,
 				PRIMARY KEY  (id),
 				UNIQUE KEY token_hash (token_hash),
+				KEY trabajador (trabajador_id)
+			) {$c};",
+
+			"CREATE TABLE {$t['solicitudes_celular']} (
+				id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+				trabajador_id bigint(20) unsigned NOT NULL,
+				tipo varchar(16) NOT NULL,
+				estado varchar(16) NOT NULL DEFAULT 'pendiente',
+				credencial_id bigint(20) unsigned NULL,
+				dispositivo_id bigint(20) unsigned NULL,
+				navegador varchar(255) NOT NULL DEFAULT '',
+				ip varchar(45) NOT NULL DEFAULT '',
+				creado_en datetime NOT NULL,
+				resuelto_por bigint(20) unsigned NULL,
+				resuelto_en datetime NULL,
+				respuesta varchar(255) NOT NULL DEFAULT '',
+				PRIMARY KEY  (id),
+				KEY estado (estado),
 				KEY trabajador (trabajador_id)
 			) {$c};",
 
