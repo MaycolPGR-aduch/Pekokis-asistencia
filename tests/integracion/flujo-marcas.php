@@ -44,7 +44,7 @@ $api = static function ( string $metodo, string $ruta, array $cuerpo = array() )
 };
 
 // ---- Preparación: tablas vacías, una red autorizada y la IP del "WiFi del taller".
-foreach ( array( 'trabajadores', 'marcas', 'auditoria', 'credenciales', 'dispositivos', 'activaciones', 'redes', 'correcciones', 'pantallas', 'revisiones', 'calendario', 'ausencias', 'sueldos', 'avisos' ) as $tabla ) {
+foreach ( array( 'trabajadores', 'marcas', 'auditoria', 'credenciales', 'dispositivos', 'activaciones', 'redes', 'correcciones', 'pantallas', 'revisiones', 'calendario', 'ausencias', 'sueldos', 'avisos', 'pagos', 'recibos' ) as $tabla ) {
 	$wpdb->query( 'TRUNCATE TABLE ' . Tablas::nombre( $tabla ) ); // phpcs:ignore
 }
 $wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE '\\_transient\\_pka\\_%' OR option_name LIKE '\\_transient\\_timeout\\_pka\\_%'" ); // phpcs:ignore
@@ -668,6 +668,91 @@ $comprobar( 'un correo que falla se reintenta y a la tercera queda como fallido'
 $comprobar( 'el cron de avisos está programado cada 5 minutos', false !== wp_next_scheduled( $N::EVENTO ) && 'pka_cinco_minutos' === wp_get_schedule( $N::EVENTO ) );
 $comprobar( 'la base de datos está al día', \Pekokis\Asistencia\WordPress\Instalador::VERSION_BD === get_option( 'pka_version_bd' ) );
 update_option( \Pekokis\Asistencia\WordPress\Ajustes::OPCION, $ajustesAvisos );
+
+// ---- 14. Recibos por honorarios y calculadora de pagos.
+WP_CLI::line( '14. Recibos y pagos' );
+$RC = \Pekokis\Asistencia\WordPress\Recibos::class;
+$PG = \Pekokis\Asistencia\WordPress\Pagos::class;
+$VR = \Pekokis\Asistencia\Nucleo\ValidacionRecibo::class;
+$wpdb->query( 'TRUNCATE TABLE ' . Tablas::nombre( 'recibos' ) ); // phpcs:ignore
+$wpdb->query( 'TRUNCATE TABLE ' . Tablas::nombre( 'pagos' ) ); // phpcs:ignore
+$pdf = static function ( string $contenido ): array {
+	$ruta = wp_tempnam( 'recibo.pdf' );
+	file_put_contents( $ruta, $contenido ); // phpcs:ignore
+	return array( 'name' => 'recibo.pdf', 'type' => 'application/pdf', 'tmp_name' => $ruta, 'error' => 0, 'size' => strlen( $contenido ) );
+};
+$apiArchivo = static function ( string $ruta, array $campos, ?array $archivo ): array {
+	$peticion = new WP_REST_Request( 'POST', '/asistencia/v1/' . $ruta );
+	foreach ( $campos as $k => $v ) {
+		$peticion->set_param( $k, $v );
+	}
+	if ( $archivo ) {
+		$peticion->set_file_params( array( 'archivo' => $archivo ) );
+	}
+	$respuesta = rest_do_request( $peticion );
+	return array( $respuesta->get_status(), json_decode( wp_json_encode( rest_get_server()->response_to_data( $respuesta, false ) ), true ) );
+};
+
+$ticketLuis = \Pekokis\Asistencia\WordPress\Temporales::guardar( 'ticket', array( 'trabajador_id' => $id2 ), 120 );
+[ $st, $mios ] = $api( 'POST', 'yo/recibos', array( 'ticket' => $ticketLuis ) );
+$mesR = $mios['meses'][0]['mes'] ?? '';
+$comprobar( 'mi recibo: con la huella da un permiso de 15 min y la lista de meses', 200 === $st && 32 <= strlen( (string) ( $mios['token'] ?? '' ) ) && 900 === $mios['segundos'] && 'falta' === ( $mios['meses'][0]['estado'] ?? '' ) && true === $mios['meses'][0]['puede_enviar'], wp_json_encode( $mios ) );
+$tok  = $mios['token'];
+$base = array( 'token' => $tok, 'mes' => $mesR, 'numero' => 'e001-482', 'monto' => '1820.00' );
+
+[ $st, $r ] = $apiArchivo( 'yo/recibos/enviar', $base, $pdf( '' ) );
+$comprobar( 'un PDF vacío se rechaza', 400 === $st && isset( $r['data']['errores']['archivo'] ), wp_json_encode( $r ) );
+[ $st, $r ] = $apiArchivo( 'yo/recibos/enviar', $base, $pdf( "\x89PNG imagen" ) );
+$comprobar( 'un archivo que no es PDF se rechaza', 400 === $st && str_contains( (string) ( $r['data']['errores']['archivo'] ?? '' ), 'no es un PDF' ) );
+[ $st, $r ] = $apiArchivo( 'yo/recibos/enviar', array( 'numero' => '482' ) + $base, $pdf( "%PDF-1.4\nrecibo de prueba" ) );
+$comprobar( 'el número tiene que ser serie-número', 400 === $st && isset( $r['data']['errores']['numero'] ) );
+[ $st, $r ] = $apiArchivo( 'yo/recibos/enviar', array( 'token' => 'falso' ) + $base, $pdf( "%PDF-1.4\nrecibo de prueba" ) );
+$comprobar( 'sin el permiso de la huella no se envía', 401 === $st );
+
+[ $st, $r ] = $apiArchivo( 'yo/recibos/enviar', $base, $pdf( "%PDF-1.4\nrecibo de prueba" ) );
+$m0 = $r['meses'][0] ?? array();
+$comprobar( 'se envía el recibo y queda "esperando revisión"', 200 === $st && 'enviado' === ( $m0['estado'] ?? '' ) && 'E001-482' === $m0['numero'] && true === $m0['puede_anular'] && false === $m0['puede_enviar'], wp_json_encode( $r ) );
+$recibo = $RC::actual( $id2, $mesR );
+$comprobar( 'el PDF queda en una carpeta privada (con .htaccess que niega el acceso)', $recibo && is_file( $RC::ruta( $recibo ) ) && str_contains( (string) file_get_contents( $RC::carpeta() . '/.htaccess' ), 'Require all denied' ) && 64 === strlen( $recibo['archivo_sha256'] ) );
+[ $st ] = $apiArchivo( 'yo/recibos/enviar', $base, $pdf( "%PDF-1.4\notro" ) );
+$comprobar( 'no se envían dos recibos del mismo mes', 409 === $st );
+
+[ $st, $r ] = $api( 'POST', 'yo/recibos/anular', array( 'token' => $tok, 'id' => (int) $recibo['id'] ) );
+$comprobar( 'se puede anular el envío mientras no se revise', 200 === $st && 'anulado' === ( $r['meses'][0]['estado'] ?? '' ) && true === $r['meses'][0]['puede_enviar'] && null === $RC::actual( $id2, $mesR ) );
+
+[ $st, $r ] = $apiArchivo( 'yo/recibos/enviar', array( 'monto' => '1800' ) + $base, $pdf( "%PDF-1.4\nrecibo corregido" ) );
+$recibo = $RC::actual( $id2, $mesR );
+$comprobar( 'observar exige un comentario', is_wp_error( $RC::observar( (int) $recibo['id'], '' ) ) );
+$comprobar( 'gerencia lo observa y el trabajador ve el comentario', true === $RC::observar( (int) $recibo['id'], 'El monto no coincide con el cálculo' ) && 'observado' === $RC::paraApp( Trabajadores::buscar( $id2 ) )[0]['estado'] && 'El monto no coincide con el cálculo' === $RC::paraApp( Trabajadores::buscar( $id2 ) )[0]['comentario'] );
+$comprobar( '"Recordar" sale aunque los avisos estén apagados', 1 <= \Pekokis\Asistencia\WordPress\Notificaciones::recordarRecibo( $id2, $mesR ) );
+
+[ $st, $r ] = $apiArchivo( 'yo/recibos/enviar', $base, $pdf( "%PDF-1.4\nrecibo bien" ) );
+$recibo = $RC::actual( $id2, $mesR );
+$comprobar( 'tras la observación se corrige enviando otro', 200 === $st && 'enviado' === $recibo['estado'] && 3 === count( $RC::historial( $id2 ) ) );
+$comprobar( 'gerencia lo da por recibido y ya no se puede anular', true === $RC::recibir( (int) $recibo['id'] ) && is_wp_error( $RC::anular( (int) $recibo['id'], $id2 ) ) );
+
+$luisAhora = Trabajadores::buscar( $id2 );
+$fLuis     = $J::prePlanilla( array( $luisAhora ), $mesR )[ $id2 ] ?? null;
+$total     = $fLuis ? $fLuis->montos['total'] : 0;
+$comprobar( 'se compara el recibo con el cálculo del mes', $fLuis && ( $VR::comparar( 182000, $total )['coincide'] === ( abs( 182000 - $total ) <= 5 ) ) && $RC::delMes( $mesR )[ $id2 ]['enviados'] === 2 );
+
+$comprobar( 'marcar pagado guarda el total del momento', true === $PG::marcar( $id2, $mesR, $total ) && $total === (int) $PG::delTrabajador( $id2, $mesR )['total_centimos'] );
+$comprobar( 'no se marca dos veces', is_wp_error( $PG::marcar( $id2, $mesR, $total ) ) );
+$comprobar( 'en la app sale como pagado', true === $RC::paraApp( Trabajadores::buscar( $id2 ) )[0]['pagado'] );
+$comprobar( 'desmarcar no borra: anula', true === $PG::desmarcar( $id2, $mesR, 'Prueba' ) && null === $PG::delTrabajador( $id2, $mesR ) && 2 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Tablas::nombre( 'pagos' ) ) + 1 );
+$xlsListos = \Pekokis\Asistencia\WordPress\PrePlanillas::excel( $mesR, 'Prueba', true );
+$comprobar( 'la planilla "de las listas" tiene su propio nombre', 'pagos-' . $mesR . '-listos.xlsx' === $xlsListos['nombre'] );
+
+$gerente3 = wp_insert_user( array( 'user_login' => 'gerente3_prueba_' . wp_rand(), 'user_pass' => wp_generate_password( 20 ), 'role' => 'pka_gerencia' ) );
+wp_set_current_user( $gerente3 );
+[ $histG ] = \Pekokis\Asistencia\WordPress\Historial::buscar( array( 'trabajador' => $id2 ) );
+wp_set_current_user( 1 );
+[ $histA ] = \Pekokis\Asistencia\WordPress\Historial::buscar( array( 'trabajador' => $id2 ) );
+$conMontos = static fn( array $filas ): int => count( array_filter( $filas, static fn( $f ) => str_starts_with( $f['accion'], 'recibo.' ) || str_starts_with( $f['accion'], 'pago.' ) ) );
+$comprobar( 'los recibos y pagos quedan en el historial, ocultos para el rol de solo lectura', $conMontos( $histA ) >= 8 && 0 === $conMontos( $histG ) );
+$envio = array_values( array_filter( $histA, static fn( $f ) => 'recibo.enviar' === $f['accion'] ) );
+$comprobar( 'el envío del recibo figura como hecho por el trabajador', $envio && $id2 === (int) $envio[0]['actor_trabajador_id'] && null === $envio[0]['actor_user_id'], wp_json_encode( $envio[0] ?? array() ) );
+wp_delete_user( $gerente3 );
 
 $comprobar( 'presencia por IP del taller', ( $_SERVER['REMOTE_ADDR'] = '203.0.113.10' ) && Presencia::enRedDelTaller() );
 

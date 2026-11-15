@@ -21,6 +21,8 @@ final class Menu {
 		PantallaHorarios::registrar();
 		PantallaAusencias::registrar();
 		PantallaInforme::registrar();
+		PantallaPagos::registrar();
+		PantallaRecibos::registrar();
 		PantallaCalendario::registrar();
 		PantallaTrabajadores::registrar();
 		PantallaAjustes::registrar();
@@ -32,6 +34,8 @@ final class Menu {
 		add_submenu_page( self::SLUG, 'Asistencia de hoy', 'Hoy', Capacidades::VER_EQUIPO, self::SLUG, array( PantallaHoy::class, 'pintar' ) );
 		add_submenu_page( self::SLUG, 'Resumen del mes', 'Resumen del mes', Capacidades::VER_EQUIPO, PantallaResumen::SLUG, array( PantallaResumen::class, 'pintar' ) );
 		add_submenu_page( self::SLUG, 'Informe por trabajador', 'Informe', Capacidades::VER_EQUIPO, PantallaInforme::SLUG, array( PantallaInforme::class, 'pintar' ) );
+		add_submenu_page( self::SLUG, 'Calculadora de pagos', 'Pagos', Capacidades::VER_SUELDOS, PantallaPagos::SLUG, array( PantallaPagos::class, 'pintar' ) );
+		add_submenu_page( self::SLUG, 'Recibos por honorarios', 'Recibos', Capacidades::VER_SUELDOS, PantallaRecibos::SLUG, array( PantallaRecibos::class, 'pintar' ) );
 		add_submenu_page( self::SLUG, 'Trabajadores', 'Trabajadores', Capacidades::GESTIONAR_PERSONAL, PantallaTrabajadores::SLUG, array( PantallaTrabajadores::class, 'pintar' ) );
 		add_submenu_page( self::SLUG, 'Ausencias justificadas', 'Ausencias', Capacidades::GESTIONAR_PERSONAL, PantallaAusencias::SLUG, array( PantallaAusencias::class, 'pintar' ) );
 		add_submenu_page( self::SLUG, 'Exportar registro', 'Exportar', Capacidades::EXPORTAR, PantallaExportar::SLUG, array( PantallaExportar::class, 'pintar' ) );

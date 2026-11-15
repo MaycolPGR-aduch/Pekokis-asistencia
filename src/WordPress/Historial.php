@@ -19,7 +19,7 @@ final class Historial {
 	public const GRUPOS = array(
 		'trabajadores' => array( 'Trabajadores, celulares y ausencias', array( 'trabajador.', 'activacion.', 'passkey.', 'ausencia.', 'aviso.' ) ),
 		'marcas'       => array( 'Marcas y correcciones', array( 'marca.', 'correccion.' ) ),
-		'pagos'        => array( 'Horas extra y sueldos', array( 'sobretiempo.', 'sueldo.', 'preplanilla.' ) ),
+		'pagos'        => array( 'Pagos, honorarios y recibos', array( 'sobretiempo.', 'sueldo.', 'preplanilla.', 'pago.', 'recibo.' ) ),
 		'ajustes'      => array( 'Ajustes, horarios, calendario, redes y pantallas', array( 'ajustes.', 'horario.', 'calendario.', 'red.', 'pantalla.' ) ),
 		'exportes'     => array( 'Descargas y respaldos', array( 'registro.', 'respaldo.', 'historial.', 'informe.' ) ),
 	);
@@ -66,6 +66,14 @@ final class Historial {
 		'preplanilla.descargar'  => 'Planilla de pagos descargada',
 		'informe.descargar'      => 'Informe por trabajador descargado',
 		'ajustes.avisos'         => 'Cambio de los avisos',
+		'pago.marcar'            => 'Pago marcado como hecho',
+		'pago.desmarcar'         => 'Pago desmarcado',
+		'recibo.enviar'          => 'Recibo por honorarios enviado',
+		'recibo.anular'          => 'Envío de recibo anulado',
+		'recibo.recibir'         => 'Recibo marcado como recibido',
+		'recibo.observar'        => 'Recibo observado',
+		'recibo.recordar'        => 'Recordatorio de recibo',
+		'recibo.ver'             => 'PDF de recibo abierto',
 	);
 
 	private const CAMPOS = array(
@@ -128,6 +136,9 @@ final class Historial {
 		'tardanza_desde'              => 'Tardanza desde',
 		'aviso_permanencia_min'       => 'Aviso de permanencia (min)',
 		'formato'                     => 'Formato',
+		'numero'                      => 'Número',
+		'monto'                       => 'Monto',
+		'total'                       => 'Total',
 		'avisos'                      => 'Avisos encendidos',
 		'horario'                     => 'Horas y márgenes',
 	);
@@ -207,7 +218,7 @@ final class Historial {
 
 		// Los sueldos solo los ve quien puede ver sueldos (Gerencia y jefes, no).
 		if ( ! current_user_can( Capacidades::VER_SUELDOS ) ) {
-			$c[] = $wpdb->prepare( 'accion NOT LIKE %s', 'sueldo.%' );
+			$c[] = $wpdb->prepare( 'accion NOT LIKE %s AND accion NOT LIKE %s AND accion NOT LIKE %s', 'sueldo.%', 'pago.%', 'recibo.%' );
 		}
 		$utc  = new DateTimeZone( 'UTC' );
 

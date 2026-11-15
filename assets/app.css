@@ -321,6 +321,30 @@ input[type="text"][inputmode="numeric"] {
 .etiqueta.tarde { background: #fff1db; color: #8a4b00; }
 .etiqueta.falta { background: var(--error-suave); color: var(--error); }
 
+/* Mi recibo */
+.lista-recibos li { padding: 0; }
+.lista-recibos .enlace-fila {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 4px 10px;
+	width: 100%;
+	padding: 10px 14px;
+	border: 0;
+	background: transparent;
+	color: inherit;
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+.lista-recibos .dia { text-transform: capitalize; min-width: 8em; }
+.lista-recibos li.recibo-siguiente { border-color: var(--rosa); }
+.etiqueta.bien { background: var(--ok-suave); color: var(--ok); }
+.formulario input[type="file"] { font-size: .9rem; width: 100%; }
+.formulario label { margin-bottom: -6px; }
+.error-campo { margin: 0; color: var(--error); font-size: .85rem; }
+.error-campo:empty { display: none; }
+
 /* Calendario del mes (mismos estados que el informe del panel) */
 .calendario { padding: 12px; }
 

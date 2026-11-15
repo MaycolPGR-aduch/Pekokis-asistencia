@@ -237,6 +237,53 @@ final class Notificaciones {
 		);
 	}
 
+	/** Un trabajador envió su recibo por honorarios: se avisa a gerencia. */
+	public static function reciboEnviado( int $reciboId ): void {
+		self::seguro(
+			static function () use ( $reciboId ): void {
+				$r = Recibos::buscar( $reciboId );
+
+				if ( $r ) {
+					$t = Trabajadores::buscar( (int) $r['trabajador_id'] );
+					self::encolar( ReglasAvisos::RECIBO_ENVIADO, 'recibo_enviado|' . $reciboId, $t, sprintf( '%s envió su recibo %s de %s por %s.', Trabajadores::nombreCompleto( $t ), $r['numero'], wp_date( 'F Y', strtotime( $r['mes'] . '-15 12:00:00' ) ), \Pekokis\Asistencia\Nucleo\Sueldo::soles( (int) $r['monto_centimos'] ) ), admin_url( 'admin.php?page=pka-recibos&mes=' . $r['mes'] ) );
+				}
+			}
+		);
+	}
+
+	/** Gerencia observó un recibo: se avisa al trabajador con el comentario. */
+	public static function reciboObservado( int $reciboId ): void {
+		self::seguro(
+			static function () use ( $reciboId ): void {
+				$r = Recibos::buscar( $reciboId );
+
+				if ( $r ) {
+					self::encolar( ReglasAvisos::RECIBO_OBSERVADO, 'recibo_observado|' . $reciboId, Trabajadores::buscar( (int) $r['trabajador_id'] ), sprintf( 'Tu recibo %s de %s tiene una observación: "%s". Entra a la app, en "Mi recibo", para corregirlo.', $r['numero'], wp_date( 'F Y', strtotime( $r['mes'] . '-15 12:00:00' ) ), $r['comentario'] ), home_url( '/' ) );
+				}
+			}
+		);
+	}
+
+	/**
+	 * Botón "Recordar" de gerencia: sale aunque el aviso esté apagado, porque lo
+	 * pidió una persona. Devuelve cuántos destinos se encolaron.
+	 */
+	public static function recordarRecibo( int $trabajadorId, string $mes ): int {
+		$t = Trabajadores::buscar( $trabajadorId );
+
+		if ( ! $t ) {
+			return 0;
+		}
+
+		$n = self::encolar( ReglasAvisos::RECIBO_PENDIENTE, 'recibo_pendiente|' . $trabajadorId . '|' . $mes . '|' . gmdate( 'YmdHi' ), $t, sprintf( 'Hola, %s: falta tu recibo por honorarios de %s. Entra a la app, en "Mi recibo", y súbelo con su número, su monto y el PDF.', $t['nombres'], wp_date( 'F Y', strtotime( $mes . '-15 12:00:00' ) ) ), home_url( '/' ), true );
+
+		if ( $n ) {
+			Auditoria::registrar( 'recibo.recordar', 'trabajador', $trabajadorId, null, array( 'mes' => $mes ) );
+		}
+
+		return $n;
+	}
+
 	// ------------------------------------------------------------------
 	// La cola.
 	// ------------------------------------------------------------------
@@ -247,10 +294,10 @@ final class Notificaciones {
 	 *
 	 * @param array<string, mixed>|null $t Trabajador del que trata el aviso.
 	 */
-	public static function encolar( string $tipo, string $clave, ?array $t, string $linea, string $enlace = '' ): int {
+	public static function encolar( string $tipo, string $clave, ?array $t, string $linea, string $enlace = '', bool $forzar = false ): int {
 		global $wpdb;
 
-		if ( ! self::activo( $tipo ) ) {
+		if ( ! $forzar && ! self::activo( $tipo ) ) {
 			return 0;
 		}
 

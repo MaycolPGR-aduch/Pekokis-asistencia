@@ -24,6 +24,9 @@ final class ReglasAvisos {
 	public const RESUELTA         = 'resuelta';
 	public const PANTALLA         = 'pantalla';
 	public const RED_NUEVA        = 'red_nueva';
+	public const RECIBO_ENVIADO   = 'recibo_enviado';
+	public const RECIBO_OBSERVADO = 'recibo_observado';
+	public const RECIBO_PENDIENTE = 'recibo_pendiente';
 
 	public const PARA_JEFE       = 'jefe';
 	public const PARA_TRABAJADOR = 'trabajador';
@@ -40,6 +43,9 @@ final class ReglasAvisos {
 		self::RESUELTA         => array( 'Su solicitud fue aprobada o rechazada', self::PARA_TRABAJADOR, 'Tu solicitud fue revisada', 'Tus solicitudes fueron revisadas' ),
 		self::PANTALLA         => array( 'Pantalla QR sin conexión', self::PARA_ADMIN, 'Pantalla QR sin conexión', 'Pantallas QR sin conexión' ),
 		self::RED_NUEVA        => array( 'Posible IP nueva del taller', self::PARA_ADMIN, 'Posible IP nueva del taller', 'Posibles IP nuevas del taller' ),
+		self::RECIBO_ENVIADO   => array( 'Llegó un recibo por honorarios', self::PARA_ADMIN, 'Recibo por honorarios nuevo', 'Recibos por honorarios nuevos' ),
+		self::RECIBO_OBSERVADO => array( 'Su recibo por honorarios fue observado', self::PARA_TRABAJADOR, 'Tu recibo tiene una observación', 'Tus recibos tienen observaciones' ),
+		self::RECIBO_PENDIENTE => array( 'Recordatorio de recibo pendiente (botón "Recordar")', self::PARA_TRABAJADOR, 'Falta tu recibo por honorarios', 'Faltan tus recibos por honorarios' ),
 	);
 
 	public function __construct(

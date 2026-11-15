@@ -370,6 +370,9 @@
 			el( 'button', { class: 'secundario', type: 'button', texto: 'Mis marcas del mes', alHacerClic: function () {
 				vistaMes( datos, '' );
 			} } ),
+			el( 'button', { class: 'secundario', type: 'button', texto: 'Mi recibo', alHacerClic: function () {
+				vistaRecibos( datos );
+			} } ),
 			el( 'button', { class: 'secundario', type: 'button', texto: 'Olvidé marcar', alHacerClic: function () {
 				vistaOlvido( datos );
 			} } ),
@@ -460,6 +463,187 @@
 				return el( 'span', { class: 'cal-' + l.estado, texto: l.texto } );
 			} ) ) : null,
 		] );
+	}
+
+	/** Envío con archivo (el recibo en PDF). */
+	function apiArchivo( ruta, formulario ) {
+		var cabeceras = {};
+		if ( config.nonce ) {
+			cabeceras[ 'X-WP-Nonce' ] = config.nonce;
+		}
+		return fetch( config.api + ruta, { method: 'POST', credentials: 'same-origin', headers: cabeceras, body: formulario } ).then( function ( r ) {
+			return r.json().catch( function () {
+				return {};
+			} ).then( function ( datos ) {
+				if ( ! r.ok ) {
+					var error = new Error( datos.message || 'No se pudo enviar. Revisa tu internet.' );
+					error.datos = datos.data || {};
+					error.codigo = datos.code || '';
+					throw error;
+				}
+				return datos;
+			} );
+		}, function () {
+			throw new Error( 'No se pudo enviar. Revisa tu internet.' );
+		} );
+	}
+
+	/** "Mi recibo": un recibo por honorarios por mes. Nunca muestra cálculos de pago. */
+	function vistaRecibos( datos, mensaje ) {
+		pintar( el( 'p', { class: 'cargando', texto: 'Cargando tus recibos…' } ) );
+
+		api( 'yo/recibos', { ticket: sesion.ticket } ).then( function ( r ) {
+			clearTimeout( temporizador );
+			temporizador = setTimeout( function () {
+				vistaInicio( aviso( 'error', 'Pasaron 15 minutos. Vuelve a poner tu huella.' ) );
+			}, r.segundos * 1000 );
+			listaRecibos( { token: r.token, meses: r.meses }, mensaje );
+		} ).catch( function ( error ) {
+			if ( 'pka_ticket' === error.codigo ) {
+				vistaInicio( aviso( 'error', error.message ) );
+				return;
+			}
+			vistaEstado( datos, aviso( 'error', error.message ) );
+		} );
+	}
+
+	function listaRecibos( estado, mensaje ) {
+		var pendiente = estado.meses.filter( function ( m ) {
+			return m.puede_enviar;
+		} )[ 0 ];
+
+		var lista = el( 'ul', { class: 'lista-mes lista-recibos' }, estado.meses.map( function ( m ) {
+			var clase = 'recibo-' + m.estado + ( pendiente && pendiente.mes === m.mes ? ' recibo-siguiente' : '' );
+			return el( 'li', { class: clase }, [
+				el( 'button', { class: 'enlace-fila', type: 'button', alHacerClic: function () {
+					vistaUnRecibo( estado, m );
+				} }, [
+					el( 'span', { class: 'dia', texto: m.etiqueta } ),
+					el( 'span', { class: 'horas', texto: m.numero ? m.numero + ' · S/ ' + m.monto : '' } ),
+					el( 'span', { class: 'etiqueta ' + ( 'recibido' === m.estado ? 'bien' : ( 'observado' === m.estado ? 'falta' : 'tarde' ) ), texto: m.pagado && 'recibido' === m.estado ? 'Pagado' : m.texto } ),
+				] ),
+			] );
+		} ) );
+
+		pintar(
+			el( 'h1', {}, [ 'Mi ', el( 'em', { texto: 'recibo' } ) ] ),
+			el( 'p', { class: 'ayuda', texto: 'Cada mes envía tu recibo por honorarios: el número, el monto y el PDF. Gerencia lo revisa.' } ),
+			mensaje || null,
+			estado.meses.length ? lista : el( 'p', { class: 'ayuda', texto: 'Todavía no hay meses para enviar recibos.' } ),
+			el( 'button', { class: 'secundario', type: 'button', texto: 'Salir', alHacerClic: function () {
+				vistaInicio();
+			} } )
+		);
+	}
+
+	function vistaUnRecibo( estado, m, mensaje ) {
+		var volver = el( 'button', { class: 'secundario', type: 'button', texto: 'Volver a mis recibos', alHacerClic: function () {
+			listaRecibos( estado );
+		} } );
+		var titulo = el( 'h1', {}, [ 'Recibo de ', el( 'em', { texto: m.etiqueta } ) ] );
+
+		if ( ! m.puede_enviar ) {
+			var datosRecibo = el( 'div', { class: 'tarjeta' }, [
+				el( 'p', {}, [ el( 'strong', { texto: m.texto } ) ] ),
+				el( 'p', { texto: 'Número ' + m.numero + ' · S/ ' + m.monto } ),
+				m.fecha ? el( 'p', { class: 'ayuda', texto: ( 'recibido' === m.estado ? 'Recibido el ' : 'Enviado el ' ) + m.fecha } ) : null,
+				m.pagado ? el( 'p', { class: 'ayuda', texto: 'Este mes ya está pagado.' } ) : null,
+			] );
+			var anular = m.puede_anular ? el( 'button', { class: 'secundario', type: 'button', texto: 'Anular envío', alHacerClic: function () {
+				confirmarAnulacion( estado, m );
+			} } ) : null;
+
+			pintar( titulo, mensaje || null, datosRecibo, m.puede_anular ? el( 'p', { class: 'ayuda', texto: 'Mientras gerencia no lo revise, puedes anular el envío si te equivocaste.' } ) : null, anular, volver );
+			return;
+		}
+
+		var numero = el( 'input', { type: 'text', id: 'recibo-numero', autocomplete: 'off', placeholder: 'E001-482', value: m.numero || '', required: 'required' } );
+		var monto = el( 'input', { type: 'text', id: 'recibo-monto', inputmode: 'decimal', placeholder: '1934.00', value: '', required: 'required' } );
+		var archivo = el( 'input', { type: 'file', id: 'recibo-archivo', accept: 'application/pdf,.pdf', required: 'required' } );
+		var errores = { numero: el( 'p', { class: 'error-campo' } ), monto: el( 'p', { class: 'error-campo' } ), archivo: el( 'p', { class: 'error-campo' } ) };
+		var enviar = el( 'button', { class: 'principal', type: 'button', texto: 'Enviar recibo', disabled: 'disabled' } );
+
+		function revisar() {
+			var pdf = archivo.files && archivo.files[ 0 ];
+			var problemaPdf = pdf && ( 0 === pdf.size ? 'El archivo está vacío.' : ( 'application/pdf' !== pdf.type && ! /\.pdf$/i.test( pdf.name ) ? 'Elige un PDF.' : '' ) );
+			errores.archivo.textContent = problemaPdf || '';
+			var listo = numero.value.trim() && monto.value.trim() && pdf && ! problemaPdf;
+			if ( listo ) {
+				enviar.removeAttribute( 'disabled' );
+			} else {
+				enviar.setAttribute( 'disabled', 'disabled' );
+			}
+		}
+
+		[ numero, monto ].forEach( function ( campo ) {
+			campo.addEventListener( 'input', revisar );
+		} );
+		archivo.addEventListener( 'change', revisar );
+
+		enviar.addEventListener( 'click', function () {
+			var formulario = new FormData();
+			formulario.append( 'token', estado.token );
+			formulario.append( 'mes', m.mes );
+			formulario.append( 'numero', numero.value );
+			formulario.append( 'monto', monto.value );
+			formulario.append( 'archivo', archivo.files[ 0 ] );
+			enviar.setAttribute( 'disabled', 'disabled' );
+			enviar.textContent = 'Enviando…';
+
+			apiArchivo( 'yo/recibos/enviar', formulario ).then( function ( r ) {
+				estado.meses = r.meses;
+				listaRecibos( estado, aviso( 'ok', r.mensaje ) );
+			} ).catch( function ( error ) {
+				if ( 'pka_ticket' === error.codigo ) {
+					vistaInicio( aviso( 'error', error.message ) );
+					return;
+				}
+				var porCampo = error.datos.errores || {};
+				Object.keys( errores ).forEach( function ( clave ) {
+					errores[ clave ].textContent = porCampo[ clave ] || '';
+				} );
+				enviar.textContent = 'Enviar recibo';
+				revisar();
+				if ( ! Object.keys( porCampo ).length ) {
+					vistaUnRecibo( estado, m, aviso( 'error', error.message ) );
+				}
+			} );
+		} );
+
+		pintar(
+			titulo,
+			mensaje || null,
+			'observado' === m.estado ? aviso( 'error', 'Gerencia observó tu recibo: ' + m.comentario ) : null,
+			el( 'div', { class: 'formulario' }, [
+				el( 'label', { for: 'recibo-numero', texto: 'Número del recibo (serie y número)' } ), numero, errores.numero,
+				el( 'label', { for: 'recibo-monto', texto: 'Monto (S/)' } ), monto, errores.monto,
+				el( 'label', { for: 'recibo-archivo', texto: 'PDF del recibo' } ), archivo, errores.archivo,
+			] ),
+			enviar,
+			volver
+		);
+	}
+
+	function confirmarAnulacion( estado, m ) {
+		pintar(
+			el( 'h1', {}, [ '¿Anular el ', el( 'em', { texto: 'envío' } ), '?' ] ),
+			el( 'p', { texto: 'Se retira el recibo ' + m.numero + ' de ' + m.etiqueta + '. Después puedes enviar uno nuevo.' } ),
+			el( 'button', { class: 'principal', type: 'button', texto: 'Sí, anular el envío', alHacerClic: function () {
+				api( 'yo/recibos/anular', { token: estado.token, id: m.id } ).then( function ( r ) {
+					estado.meses = r.meses;
+					listaRecibos( estado, aviso( 'ok', r.mensaje ) );
+				} ).catch( function ( error ) {
+					if ( 'pka_ticket' === error.codigo ) {
+						vistaInicio( aviso( 'error', error.message ) );
+						return;
+					}
+					vistaUnRecibo( estado, m, aviso( 'error', error.message ) );
+				} );
+			} } ),
+			el( 'button', { class: 'secundario', type: 'button', texto: 'No, volver', alHacerClic: function () {
+				vistaUnRecibo( estado, m );
+			} } )
+		);
 	}
 
 	function dato( valor, etiqueta, nota ) {

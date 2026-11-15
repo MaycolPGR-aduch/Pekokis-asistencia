@@ -11,7 +11,7 @@ Lo que tienes que hacer tú está marcado con ☐. Los nombres de los menús de 
 ## 0. Antes de empezar
 
 - ☐ **Recursos del plan.** En hPanel, revisa qué mide el 77 % de "Uso de recursos". Este sitio consume poco, pero suma archivos (unos 3.000 de WordPress y 200 del plugin) y un cron cada 5 minutos.
-- ☐ **El zip del plugin.** Ya está en `dist/pekokis-asistencia-0.10.0.zip`. Si cambia el código, se vuelve a generar con:
+- ☐ **El zip del plugin.** Ya está en `dist/pekokis-asistencia-0.11.0.zip`. Si cambia el código, se vuelve a generar con:
   ```bash
   php scripts/empaquetar.php
   ```
@@ -74,7 +74,7 @@ No lo compartas ni lo subas a git. Si algún día cambia, solo se invalidan los 
 
 ## 6. Instalar el plugin y el tema
 
-1. ☐ **Plugins → Añadir nuevo → Subir plugin:** sube `pekokis-asistencia-0.10.0.zip` y actívalo. Al activarse crea sus tablas, roles, motivos y el horario base.
+1. ☐ **Plugins → Añadir nuevo → Subir plugin:** sube `pekokis-asistencia-0.11.0.zip` y actívalo. Al activarse crea sus tablas, roles, motivos y el horario base.
 2. ☐ **Apariencia → Temas:** activa **"Pekokis Asistencia (vacío)"** y borra los demás temas, salvo uno por defecto como respaldo.
 3. ☐ Revisa **Asistencia → Ajustes → Estado del sistema.**
 
@@ -143,6 +143,9 @@ Es igual que en producción: **nunca** se llama a `wp-cron.php` por URL.
 | 16 | Descargar la planilla de pagos del mes y comprobar el total de una persona a mano (honorario + horas × tarifa) | ☐ | — |
 | 17 | Asistencia → Resumen del mes: los totales cuadran con lo que se vio en Hoy durante la semana; un jefe solo ve a su equipo | ☐ | — |
 | 18 | Asistencia → Informe: el calendario de un trabajador, "Descargar Excel" e "Imprimir o guardar PDF" | ☐ | — |
+| 20 | Mi recibo (app): enviar un recibo con número, monto y PDF; anular el envío; en wp-admin → Recibos, abrir el PDF y marcarlo como recibido | ☐ | ☐ |
+| 21 | Comprobar que el PDF **no** se abre con su dirección directa: `https://asistencia.pekokis.com/wp-content/uploads/pka-recibos/` debe dar 403 | ☐ | — |
+| 22 | Asistencia → Pagos: "Ver cálculo", marcar un pago y bajar la "Planilla de las listas" | ☐ | — |
 | 19 | Ajustes → Avisos: "Enviarme un correo de prueba"; encender "No llegó", pedir un "olvidé marcar" y ver que el correo llega al jefe (revisa también spam) | ☐ | — |
 
 Anota en [TAREAS.md](../TAREAS.md) lo que falle, con el celular y el navegador.

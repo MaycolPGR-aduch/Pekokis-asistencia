@@ -28,6 +28,7 @@ final class Api {
 	public const ESPACIO = 'asistencia/v1';
 
 	private const SEGUNDOS_TICKET   = 120;
+	private const SEGUNDOS_RECIBO   = 15 * MINUTE_IN_SECONDS;
 	private const MAX_FALLOS        = 10;
 	private const VENTANA_FALLOS    = 15 * MINUTE_IN_SECONDS;
 	private const MAX_FALLOS_QR     = 5;
@@ -48,6 +49,9 @@ final class Api {
 		register_rest_route( self::ESPACIO, '/aviso', array( 'methods' => 'GET', 'callback' => array( self::class, 'aviso' ), 'permission_callback' => $publica ) );
 		register_rest_route( self::ESPACIO, '/aviso/aceptar', array( 'methods' => 'POST', 'callback' => array( self::class, 'aceptarAviso' ), 'permission_callback' => $publica ) );
 		register_rest_route( self::ESPACIO, '/yo/mes', array( 'methods' => 'POST', 'callback' => array( self::class, 'miMes' ), 'permission_callback' => $publica ) );
+		register_rest_route( self::ESPACIO, '/yo/recibos', array( 'methods' => 'POST', 'callback' => array( self::class, 'misRecibos' ), 'permission_callback' => $publica ) );
+		register_rest_route( self::ESPACIO, '/yo/recibos/enviar', array( 'methods' => 'POST', 'callback' => array( self::class, 'enviarRecibo' ), 'permission_callback' => $publica ) );
+		register_rest_route( self::ESPACIO, '/yo/recibos/anular', array( 'methods' => 'POST', 'callback' => array( self::class, 'anularRecibo' ), 'permission_callback' => $publica ) );
 		register_rest_route( self::ESPACIO, '/correcciones', array( 'methods' => 'POST', 'callback' => array( self::class, 'solicitarCorreccion' ), 'permission_callback' => $publica ) );
 		register_rest_route( self::ESPACIO, '/presencia/codigo', array( 'methods' => 'POST', 'callback' => array( self::class, 'presenciaCodigo' ), 'permission_callback' => $publica ) );
 		register_rest_route( self::ESPACIO, '/pantalla/codigo', array( 'methods' => 'GET', 'callback' => array( self::class, 'pantallaCodigo' ), 'permission_callback' => $publica ) );
@@ -536,6 +540,81 @@ final class Api {
 		}
 
 		return array( 'vacios' => (int) $primero->format( 'N' ) - 1, 'dias' => $dias, 'leyenda' => $leyenda );
+	}
+
+	/**
+	 * "Mi recibo": con el ticket de la huella da un permiso de 15 minutos para
+	 * ver y enviar sus recibos (elegir el PDF puede tomar más de 2 minutos).
+	 */
+	public static function misRecibos( WP_REST_Request $peticion ): WP_REST_Response|WP_Error {
+		$ticket = Temporales::leer( 'ticket', (string) $peticion->get_param( 'ticket' ) );
+
+		if ( null === $ticket ) {
+			return new WP_Error( 'pka_ticket', 'Pasaron más de 2 minutos. Vuelve a poner tu huella.', array( 'status' => 401 ) );
+		}
+
+		$t = Trabajadores::buscar( (int) $ticket['trabajador_id'] );
+
+		if ( ! $t ) {
+			return new WP_Error( 'pka_ticket', 'Tu perfil no existe.', array( 'status' => 401 ) );
+		}
+
+		$token = Temporales::guardar( 'recibo', array( 'trabajador_id' => (int) $t['id'] ), self::SEGUNDOS_RECIBO );
+
+		return self::respuesta( array( 'token' => $token, 'segundos' => self::SEGUNDOS_RECIBO, 'meses' => Recibos::paraApp( $t ) ) );
+	}
+
+	public static function enviarRecibo( WP_REST_Request $peticion ): WP_REST_Response|WP_Error {
+		$t = self::trabajadorDelRecibo( $peticion );
+
+		if ( $t instanceof WP_Error ) {
+			return $t;
+		}
+
+		$archivo = $peticion->get_file_params()['archivo'] ?? null;
+
+		if ( ! is_array( $archivo ) || UPLOAD_ERR_OK !== (int) ( $archivo['error'] ?? UPLOAD_ERR_NO_FILE ) ) {
+			$errorSubida = is_array( $archivo ) ? (int) ( $archivo['error'] ?? 0 ) : UPLOAD_ERR_NO_FILE;
+			$mensaje     = in_array( $errorSubida, array( UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE ), true ) ? 'El archivo pesa demasiado.' : 'Elige el PDF del recibo.';
+
+			return new WP_Error( 'pka_recibo', 'Revisa el recibo.', array( 'status' => 400, 'errores' => array( 'archivo' => $mensaje ) ) );
+		}
+
+		$id = Recibos::enviar( (int) $t['id'], (string) $peticion->get_param( 'mes' ), array( 'numero' => $peticion->get_param( 'numero' ), 'monto' => $peticion->get_param( 'monto' ) ), $archivo );
+
+		if ( $id instanceof WP_Error ) {
+			return $id;
+		}
+
+		return self::respuesta( array( 'mensaje' => 'Recibo enviado. Gerencia lo revisará.', 'meses' => Recibos::paraApp( $t ) ) );
+	}
+
+	public static function anularRecibo( WP_REST_Request $peticion ): WP_REST_Response|WP_Error {
+		$t = self::trabajadorDelRecibo( $peticion );
+
+		if ( $t instanceof WP_Error ) {
+			return $t;
+		}
+
+		$r = Recibos::anular( (int) $peticion->get_param( 'id' ), (int) $t['id'] );
+
+		if ( $r instanceof WP_Error ) {
+			return $r;
+		}
+
+		return self::respuesta( array( 'mensaje' => 'Envío anulado. Puedes enviar uno nuevo.', 'meses' => Recibos::paraApp( $t ) ) );
+	}
+
+	/** @return array<string, mixed>|WP_Error */
+	private static function trabajadorDelRecibo( WP_REST_Request $peticion ): array|WP_Error {
+		$permiso = Temporales::leer( 'recibo', (string) $peticion->get_param( 'token' ) );
+		$t       = $permiso ? Trabajadores::buscar( (int) $permiso['trabajador_id'] ) : null;
+
+		if ( ! $t ) {
+			return new WP_Error( 'pka_ticket', 'Pasaron más de 15 minutos. Vuelve a poner tu huella.', array( 'status' => 401 ) );
+		}
+
+		return $t;
 	}
 
 	public static function aviso(): WP_REST_Response {

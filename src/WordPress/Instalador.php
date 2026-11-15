@@ -13,7 +13,7 @@ defined( 'ABSPATH' ) || exit;
  * lo que RR.HH. haya cambiado.
  */
 final class Instalador {
-	public const VERSION_BD = '5';
+	public const VERSION_BD = '6';
 
 	private const OPCION_VERSION = 'pka_version_bd';
 
@@ -56,7 +56,7 @@ final class Instalador {
 		$c = $wpdb->get_charset_collate();
 		$t = array();
 
-		foreach ( array( 'trabajadores', 'horarios', 'horario_dias', 'motivos', 'marcas', 'revisiones', 'correcciones', 'credenciales', 'dispositivos', 'activaciones', 'redes', 'pantallas', 'auditoria', 'calendario', 'ausencias', 'sueldos', 'sobretiempo', 'avisos' ) as $tabla ) {
+		foreach ( array( 'trabajadores', 'horarios', 'horario_dias', 'motivos', 'marcas', 'revisiones', 'correcciones', 'credenciales', 'dispositivos', 'activaciones', 'redes', 'pantallas', 'auditoria', 'calendario', 'ausencias', 'sueldos', 'sobretiempo', 'avisos', 'pagos', 'recibos' ) as $tabla ) {
 			$t[ $tabla ] = Tablas::nombre( $tabla );
 		}
 
@@ -316,6 +316,42 @@ final class Instalador {
 				PRIMARY KEY  (id),
 				KEY trabajador_fecha (trabajador_id,estado,fecha),
 				KEY fecha (fecha)
+			) {$c};",
+
+			// Pago del mes marcado como hecho (versión 6). Desmarcar no borra: anula.
+			"CREATE TABLE {$t['pagos']} (
+				id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+				trabajador_id bigint(20) unsigned NOT NULL,
+				mes char(7) NOT NULL,
+				total_centimos int(10) unsigned NOT NULL,
+				estado varchar(12) NOT NULL DEFAULT 'pagado',
+				marcado_por bigint(20) unsigned NOT NULL,
+				marcado_en datetime NOT NULL,
+				anulado_por bigint(20) unsigned NULL,
+				anulado_en datetime NULL,
+				PRIMARY KEY  (id),
+				KEY mes (mes,estado,trabajador_id)
+			) {$c};",
+
+			// Recibos por honorarios que envía cada trabajador (versión 6). El PDF va a una carpeta privada.
+			"CREATE TABLE {$t['recibos']} (
+				id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+				trabajador_id bigint(20) unsigned NOT NULL,
+				mes char(7) NOT NULL,
+				numero varchar(20) NOT NULL,
+				monto_centimos int(10) unsigned NOT NULL,
+				archivo varchar(80) NOT NULL,
+				archivo_bytes int(10) unsigned NOT NULL DEFAULT 0,
+				archivo_sha256 char(64) NOT NULL DEFAULT '',
+				estado varchar(12) NOT NULL DEFAULT 'enviado',
+				comentario varchar(500) NOT NULL DEFAULT '',
+				enviado_en datetime NOT NULL,
+				revisado_por bigint(20) unsigned NULL,
+				revisado_en datetime NULL,
+				anulado_en datetime NULL,
+				PRIMARY KEY  (id),
+				KEY trabajador_mes (trabajador_id,mes),
+				KEY mes_estado (mes,estado)
 			) {$c};",
 
 			// Cola de avisos por correo y webhook (versión 4). La clave evita repetir un aviso.

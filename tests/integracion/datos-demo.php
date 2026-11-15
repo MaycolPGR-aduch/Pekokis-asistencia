@@ -20,7 +20,7 @@ if ( 'local' !== wp_get_environment_type() ) {
 
 global $wpdb;
 
-foreach ( array( 'trabajadores', 'marcas', 'auditoria', 'credenciales', 'dispositivos', 'activaciones', 'redes', 'correcciones', 'pantallas', 'revisiones', 'calendario', 'ausencias', 'sueldos', 'avisos' ) as $tabla ) {
+foreach ( array( 'trabajadores', 'marcas', 'auditoria', 'credenciales', 'dispositivos', 'activaciones', 'redes', 'correcciones', 'pantallas', 'revisiones', 'calendario', 'ausencias', 'sueldos', 'avisos', 'pagos', 'recibos' ) as $tabla ) {
 	$wpdb->query( 'TRUNCATE TABLE ' . Tablas::nombre( $tabla ) ); // phpcs:ignore
 }
 
@@ -122,6 +122,19 @@ foreach ( $ids as $i => $tid ) {
 			'nota'           => 'Demo',
 		)
 	);
+}
+
+// Recibos de ejemplo: Carlos envió el suyo y a Lucía se lo observaron.
+$mesDemo = substr( $hoy, 0, 7 );
+foreach ( array( 1 => array( 'E001-120', '1619.62' ), 2 => array( 'E001-077', '1650' ) ) as $i => [ $numero, $monto ] ) {
+	$tmp = wp_tempnam( 'recibo-demo.pdf' );
+	file_put_contents( $tmp, "%PDF-1.4\n% Recibo de demostración\n" ); // phpcs:ignore
+	$idRecibo = \Pekokis\Asistencia\WordPress\Recibos::enviar( (int) $ids[ $i ], $mesDemo, array( 'numero' => $numero, 'monto' => $monto ), array( 'tmp_name' => $tmp ) );
+	wp_delete_file( $tmp );
+
+	if ( 2 === $i && is_int( $idRecibo ) ) {
+		\Pekokis\Asistencia\WordPress\Recibos::observar( $idRecibo, 'El monto no coincide con el cálculo del mes' );
+	}
 }
 
 WP_CLI::success( 'Datos de demostración cargados para ' . $hoy . '.' );

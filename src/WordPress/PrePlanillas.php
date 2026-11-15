@@ -47,13 +47,20 @@ final class PrePlanillas {
 	}
 
 	/** @return array{nombre: string, contenido: string, hash: string, trabajadores: int} */
-	public static function excel( string $mes, string $generadoPor ): array {
+	public static function excel( string $mes, string $generadoPor, bool $soloListos = false ): array {
 		$ajustes  = Ajustes::todos();
 		$reglas   = Ajustes::reglasPago();
 		$personas = self::trabajadoresDelMes( $mes );
 		$desde    = $mes . '-01';
 		$hasta    = min( ( new DateTimeImmutable( $desde ) )->format( 'Y-m-t' ), Jornadas::ayer() );
 		$filas    = Jornadas::prePlanilla( $personas, $mes );
+		$pagados  = Pagos::delMes( $mes );
+
+		if ( $soloListos ) {
+			// "Planilla de las listas": quienes ya se pueden pagar y todavía no se marcaron como pagados.
+			$personas = array_values( array_filter( $personas, static fn( array $t ): bool => isset( $filas[ (int) $t['id'] ] ) && PrePlanilla::LISTO === $filas[ (int) $t['id'] ]->estado() && ! isset( $pagados[ (int) $t['id'] ] ) ) );
+			$filas    = array_intersect_key( $filas, array_flip( array_map( static fn( array $t ): int => (int) $t['id'], $personas ) ) );
+		}
 		$jornadas = $hasta >= $desde ? Jornadas::delRango( $personas, $desde, $hasta ) : array();
 		$horas    = static fn( int $min ): float => round( $min / 60, 2 );
 		$soles    = static fn( int $cts ): float => round( $cts / 100, 2 );
@@ -69,7 +76,7 @@ final class PrePlanillas {
 				'<b>Horas sábado</b>', '<b>Tarifa sábado</b>', '<b>Sábado (S/)</b>',
 				'<b>Horas domingo</b>', '<b>Tarifa domingo</b>', '<b>Domingo (S/)</b>',
 				'<b>Horas feriado</b>', '<b>Tarifa feriado</b>', '<b>Feriado (S/)</b>',
-				'<b>Total (S/)</b>', '<b>Estado</b>',
+				'<b>Total (S/)</b>', '<b>Estado</b>', '<b>Pagado</b>',
 				'<b>Días trabajados</b>', '<b>Faltas</b>', '<b>Justificados</b>', '<b>Tardanzas</b>', '<b>Incompletos</b>', '<b>Por revisar</b>', '<b>Observaciones</b>',
 			),
 		);
@@ -109,7 +116,7 @@ final class PrePlanillas {
 				$horas( $f->minutos['sabado'] ), $tarifa( 'sabado' ), $soles( $f->montos['sabado'] ),
 				$horas( $f->minutos['domingo'] ), $tarifa( 'domingo' ), $soles( $f->montos['domingo'] ),
 				$horas( $f->minutos['feriado'] ), $tarifa( 'feriado' ), $soles( $f->montos['feriado'] ),
-				$soles( $f->montos['total'] ), PrePlanilla::ESTADOS[ $f->estado() ],
+				$soles( $f->montos['total'] ), PrePlanilla::ESTADOS[ $f->estado() ], isset( $pagados[ $id ] ) ? 'Sí, ' . Ajustes::local( $pagados[ $id ]['marcado_en'], 'd/m/Y' ) : 'No',
 				$f->dias['trabajados'], $f->dias['faltas'], $f->dias['justificados'], $f->dias['con_tardanza'], $f->dias['incompletos'], $f->dias['por_revisar'],
 				implode( '; ', $obs ),
 			);
@@ -159,7 +166,7 @@ final class PrePlanillas {
 			->setCompany( (string) $ajustes['razon_social'] );
 
 		return array(
-			'nombre'       => 'pagos-' . $mes . '.xlsx',
+			'nombre'       => 'pagos-' . $mes . ( $soloListos ? '-listos' : '' ) . '.xlsx',
 			'contenido'    => $contenido,
 			'hash'         => hash( 'sha256', $contenido ),
 			'trabajadores' => count( $personas ),

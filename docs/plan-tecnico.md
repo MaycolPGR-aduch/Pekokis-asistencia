@@ -278,7 +278,15 @@ Decidido el 14-11-2026, siguiendo las maquetas entregadas por Pekokis (`CONTEXTO
 - **Comida no marcada:** en días laborables se descuentan 60 min (configurable; por confirmar).
 - **No hay descuentos:** las faltas, tardanzas y salidas anticipadas se señalan, pero no se descuentan (por confirmar).
 - **Estado del pago:** "Listo para pagar", "Resolver incidencia" (días incompletos o marcas por revisar) o "Falta su honorario". El recibo por honorarios no frena el pago.
-- **Planilla de pagos** en Excel (Exportar), con una fila por persona, el detalle por día y las reglas.
+- **Planilla de pagos** en Excel (Exportar y Pagos), con una fila por persona, el detalle por día y las reglas.
+- **Calculadora** (Asistencia → Pagos, versión 0.11.0): total del mes; "Antes de pagar" (incidencias, personas sin honorario, estado de los recibos); una fila por persona con "Ver cálculo" y la casilla "Pagado" (guarda el total de ese momento; desmarcar no borra, anula); planilla de las listas o de todas.
+
+### 6.7 Recibos por honorarios (versión 0.11.0)
+
+- Un recibo por persona y mes, con número (serie-número, por ejemplo E001-482), monto y PDF (no vacío, hasta 5 MB). El trabajador lo envía desde la app ("Mi recibo"), con un permiso de 15 minutos que da su huella.
+- Estados: falta enviar → enviado (se puede anular mientras no se revise) → recibido u observado (con comentario; se corrige enviando otro). En la app, "Pagado" cuando el mes ya se marcó como pagado.
+- Gerencia (Asistencia → Recibos): pestañas por mes, filtros, comparación con el cálculo ("Coincide" / "Difiere S/ x"), recibido u observar, "Recordar" a quien falta (sale aunque los avisos estén apagados) y el historial de cada persona.
+- Los PDF van a `uploads/pka-recibos/`, con nombre aleatorio y un `.htaccess` que niega el acceso directo. Solo se abren desde wp-admin con permiso para ver sueldos, y cada apertura queda en el historial.
 
 ---
 

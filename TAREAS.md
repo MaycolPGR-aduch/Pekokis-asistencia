@@ -3,7 +3,7 @@
 Este archivo lleva lo hecho, lo pendiente y la bitácora del proyecto. Se actualiza cada vez que avanzamos.
 El detalle técnico de cada punto está en [docs/plan-tecnico.md](docs/plan-tecnico.md).
 
-**Estado actual:** en producción está la **0.8.1**, con el respaldo en Google Drive y los feriados de 2026 y 2027 cargados. En local está lista la **0.10.0**: avisos por correo (fase 4) y, siguiendo las maquetas, **el pago por recibos por honorarios**, que tiene honorario y 4 tarifas por persona, horas extra automáticas y la planilla de pagos. La cubren 125 pruebas del núcleo y 166 de punta a punta. **Siguiente:** seguir con lo factible de las maquetas (calculadora con "pagado", recibos por honorarios, app del trabajador con su diseño) y subir la versión. También falta terminar el correo de RR.HH. y la red o pantalla del taller, cambiar `PKA_SECRETO` y hacer el piloto.
+**Estado actual:** en producción está la **0.8.1**. En local está lista la **0.11.0**, que agrega: avisos por correo (fase 4); el pago por recibos por honorarios de las maquetas (honorario y tarifas, horas extra automáticas); la **calculadora de pagos** con "Ver cálculo" y "Pagado"; y los **recibos por honorarios** (el trabajador los sube desde la app y gerencia los revisa). La cubren 129 pruebas del núcleo y 188 de punta a punta. **Siguiente:** subir la versión, y seguir con lo factible de las maquetas: la app del trabajador con su diseño, el PIN, el registro propio y el cambio de celular, el QR de 30 min y los 4 marcajes. También falta el correo de RR.HH., la red o pantalla del taller, cambiar `PKA_SECRETO` y hacer el piloto.
 
 **Estrategia:** primero un MVP con las fases 0 y 1 del plan (registro de asistencia funcionando y conforme a la norma). Después, mejoras por etapas según lo que opine gerencia.
 
@@ -137,8 +137,8 @@ Leyenda: `[x]` hecho · `[ ]` pendiente · `[~]` en curso
 
 ### 7. Calidad y puesta en marcha
 - [x] Pruebas automáticas:
-  - 125 del núcleo (`composer test`);
-  - 166 de todo el flujo contra el WordPress local, con un autenticador simulado (`tests/integracion/flujo-marcas.php`);
+  - 129 del núcleo (`composer test`);
+  - 188 de todo el flujo contra el WordPress local, con un autenticador simulado (`tests/integracion/flujo-marcas.php`);
   - `tests/integracion/datos-demo.php` carga 5 trabajadores de ejemplo, con casos de hoy y de ayer, para ver el panel.
 - [ ] Pruebas en celulares reales: Android (Chrome) e iPhone (Safari)
 - [~] Aviso de datos personales (Ley 29733):
@@ -162,7 +162,14 @@ Leyenda: `[x]` hecho · `[ ]` pendiente · `[~]` en curso
   - [x] **Pago del mes** (`PrePlanilla`): honorario + horas × tarifa, sin descuentos, con estado "Listo para pagar", "Resolver incidencia" o "Falta su honorario", y la explicación en palabras para "Ver cálculo".
   - [x] **Planilla de pagos** en Excel (Exportar): una fila por persona con horas, tarifa y monto de cada tipo, total y estado; el detalle por día; las reglas.
   - [x] **Se quitó** la autorización de horas extra de la 0.7.0 (pantalla Horas extra, aviso "sin autorizar", sobretasas 25/35 %, valor hora). La tabla `sobretiempo` queda sin uso.
-  - [ ] **Calculadora de pagos (G10)**: casilla "pagado", "Ver cálculo" en pantalla y descarga de las personas listas.
+  - [x] **Calculadora de pagos** (Asistencia → Pagos, versión 0.11.0, G10 y G10B de las maquetas):
+    - el total y lo que falta antes de pagar;
+    - una fila por persona con honorario, horas adicionales, total, recibo ("Coincide" / "Difiere"), estado y "Ver cálculo" en palabras;
+    - casilla "Pagado" y planilla de las listas o de todas.
+  - [x] **Recibos por honorarios** (versión 0.11.0, T8 y G11 de las maquetas):
+    - el trabajador envía, ve y anula su recibo desde la app ("Mi recibo");
+    - gerencia lo revisa por mes, lo marca recibido u observado, recuerda a quien falta y ve el historial de cada persona;
+    - los PDF van a una carpeta privada.
   - [ ] Por confirmar con el responsable: los 60 min de comida no marcada, si las faltas o tardanzas descuentan algo, y cómo se pagan las horas de madrugada que caen en sábado, domingo o feriado.
   - [ ] Guardar los días calculados (`pka_dias`) si el cálculo al vuelo se vuelve lento.
 - [x] **Fase 3 — Dashboard e informes** (versión 0.8.0):
@@ -220,6 +227,22 @@ Vienen de la sección 16 del plan; se resuelven con gerencia y el contador.
 ---
 
 ## Bitácora
+
+### 14-11-2026 (noche, 7) — versión 0.11.0: calculadora de pagos y recibos por honorarios
+- **Núcleo:** `ValidacionRecibo` (número serie-número, monto, PDF no vacío de hasta 5 MB, comparación con el cálculo con 5 céntimos de tolerancia, cuándo se puede enviar o anular). 4 pruebas nuevas, 129 en total.
+- **Base de datos versión 6:** tablas `pagos` (la casilla "Pagado"; desmarcar anula) y `recibos`.
+- **WordPress:**
+  - `Recibos`: enviar, anular, recibir, observar, el último del mes, el historial y lo que ve la app. Los PDF van a `uploads/pka-recibos/` con nombre aleatorio y `.htaccess`.
+  - `Pagos`.
+  - `Admin/PantallaPagos`: la calculadora, con "Ver cálculo", "Pagado" y las planillas.
+  - `Admin/PantallaRecibos`: pestañas por mes, filtros, revisión, "Recordar", el historial y el PDF solo desde wp-admin.
+  - API `yo/recibos`, `yo/recibos/enviar` (multipart) y `yo/recibos/anular`, con un permiso de 15 min.
+  - Avisos nuevos: recibo enviado (a gerencia), observado (al trabajador) y "Recordar".
+  - El historial oculta `pago.*` y `recibo.*` a quien no ve sueldos.
+- **App:** "Mi recibo", con la lista de meses, el formulario (el botón se activa con número, monto y un PDF no vacío), los errores por campo y anular con confirmación.
+- **Prueba de punta a punta:** 188 comprobaciones (22 nuevas). Prueba, por REST con archivos, el PDF vacío o que no es PDF, el número mal escrito, sin permiso, el doble envío (409), anular, observar, recordar, corregir, recibir, la comparación, el pago, desmarcar, la planilla de las listas y el historial.
+- **En el navegador:** revisé la calculadora (Ver cálculo, marcar pagado, "Ya puedes pagar a 3 personas") y Recibos (Coincide o Difiere, Recibido, PDF por wp-admin). **No vi en pantalla** la vista "Mi recibo" de la app: necesita la passkey; su API está probada.
+- **Pendiente de verificar en Hostinger:** que la carpeta `pka-recibos` dé 403 (en local el servidor de PHP no aplica `.htaccess`).
 
 ### 14-11-2026 (noche, 6) — versión 0.10.0: pago por recibos por honorarios
 - **Por qué:** las maquetas que entregó Pekokis (`asistencia_pekokis_para_programador.zip`) deciden que se paga por recibos por honorarios, con honorario más tarifas por hora de cada persona y horas extra automáticas. Maycol: "es una recomendación… hay que seguir sus recomendaciones si las vemos factibles"; empezamos por esta.
