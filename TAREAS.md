@@ -248,6 +248,7 @@ Vienen de la sección 16 del plan; se resuelven con gerencia y el contador.
   - si al cerrarla pasa de **16 h** (Ajustes → Reglas, "Revisar jornadas de más de"), se acepta igual, queda por revisar y se avisa al jefe con el aviso nuevo "Jornada muy larga" (T3F);
   - Hoy muestra "Sigue en la jornada de ayer" en vez de "no llegó", y el cron no avisa "no llegó" a quien sigue trabajando desde ayer.
   - Prueba de punta a punta: 6 comprobaciones nuevas. Se ajustó la prueba de avisos, que usaba "el próximo lunes": hoy es domingo, y la jornada de hoy de Luis seguía abierta.
+- **Recordatorio de campaña** (T9A y G15; `RecordatorioCampana` en el núcleo, 4 pruebas): "Aún no marcas tu entrada…" arriba de Marcar, solo si gerencia lo activó, dentro de las fechas (por defecto del 4-1 al 31-3-2027), en un día laborable de la persona, pasada la hora (09:15) y si todavía no marcó; desaparece al marcar. Se configura en Ajustes → "Avisos de campaña", con la vista previa del texto. **Empieza apagado.** No manda correos. El E2E solo comprobó el lado "no sale" (hoy es domingo); el día laborable lo cubren las pruebas del núcleo.
 
 ### 14-11-2026 (noche, 8) — versión 0.12.0: app del trabajador con el diseño de las maquetas (etapa A)
 - **Núcleo:** `VistaDia` arma la pantalla de marcar: los 4 pasos de "Tu día", el botón principal y las otras salidas, lo trabajado (con el tramo abierto), lo que falta, la comida y la salida en curso. 6 pruebas nuevas, 135 en total.

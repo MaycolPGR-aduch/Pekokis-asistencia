@@ -553,6 +553,7 @@
 			el( 'p', { class: 'fecha', texto: ( j.otro_dia ? 'Jornada del ' : '' ) + yo.dia.texto + ( yo.dia.horario ? ' · ' + yo.dia.horario : '' ) } ),
 			el( 'h1', {}, [ 'Hola, ', el( 'em', { texto: yo.nombre } ) ] ),
 			mensaje || null,
+			yo.recordatorio ? aviso( 'espera', yo.recordatorio ) : null,
 			j.de_ayer ? aviso( 'espera', 'Tu jornada del ' + j.texto + ' sigue abierta: no marcaste la salida.', boton( 'simple', 'Salí ayer y olvidé marcar', function () {
 				vistaHoras( '', j.dia );
 			} ) ) : null,

@@ -7,6 +7,7 @@ use DateTimeZone;
 use Pekokis\Asistencia\Nucleo\Accion;
 use Pekokis\Asistencia\Nucleo\Estado;
 use Pekokis\Asistencia\Nucleo\JornadaAbierta;
+use Pekokis\Asistencia\Nucleo\RecordatorioCampana;
 use Pekokis\Asistencia\Nucleo\MaquinaEstados;
 use Pekokis\Asistencia\Nucleo\Motivo;
 use Pekokis\Asistencia\Nucleo\ResumenDia;
@@ -400,6 +401,10 @@ final class Api {
 			$vista['extra'] = $calculo->minutosAdicionales();
 		}
 
+		// "Aún no marcas tu entrada" (T9A), solo en campaña.
+		$campana      = RecordatorioCampana::desdeAjustes( Ajustes::todos() );
+		$recordatorio = $campana->toca( $dia, $ahoraUtc->setTimezone( $zona )->format( 'H:i' ), $horario->laborable && '' === Calendario::descripcion( $dia ), (bool) $marcas ) ? $campana->texto : '';
+
 		return array(
 			'nombre'   => $trabajador ? $trabajador['nombres'] : '',
 			'iniciales' => $trabajador ? self::iniciales( $trabajador ) : '',
@@ -409,6 +414,7 @@ final class Api {
 				'descanso' => $horario->descanso,
 			),
 			'vista'    => $vista,
+			'recordatorio' => $recordatorio,
 			'jornada'  => self::jornadaDe( $dia, $ahoraUtc ),
 			'estado'   => array(
 				'clave'    => $estado->value,

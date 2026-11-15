@@ -8,6 +8,7 @@ use Pekokis\Asistencia\Nucleo\ModoPresencia;
 use Pekokis\Asistencia\Nucleo\RedAutorizada;
 use Pekokis\Asistencia\Nucleo\ReglasAvisos;
 use Pekokis\Asistencia\Nucleo\ReglasPago;
+use Pekokis\Asistencia\Nucleo\RecordatorioCampana;
 use Pekokis\Asistencia\WordPress\Notificaciones;
 use Pekokis\Asistencia\WordPress\Ajustes;
 use Pekokis\Asistencia\WordPress\Auditoria;
@@ -37,6 +38,7 @@ final class PantallaAjustes {
 		add_action( 'admin_post_pka_guardar_reglas', array( self::class, 'guardarReglas' ) );
 		add_action( 'admin_post_pka_guardar_avisos', array( self::class, 'guardarAvisos' ) );
 		add_action( 'admin_post_pka_probar_avisos', array( self::class, 'probarAvisos' ) );
+		add_action( 'admin_post_pka_guardar_campana', array( self::class, 'guardarCampana' ) );
 	}
 
 	/** Campos numéricos de las reglas de horas: clave => [etiqueta, mínimo, máximo, ayuda]. */
@@ -236,6 +238,84 @@ final class PantallaAjustes {
 
 		Avisos::agregar( $ok ? 'success' : 'error', $ok ? 'Correo de prueba enviado a ' . esc_html( $correo ) . '. Revisa tu bandeja (y la de spam).' : 'No se pudo enviar el correo de prueba: revisa la configuración del SMTP.' );
 		Menu::volverA( admin_url( 'admin.php?page=' . self::SLUG ) . '#avisos' );
+	}
+
+	/** Recordatorio de campaña (maquetas G15), con la vista previa de lo que ve el trabajador. */
+	private static function campana(): void {
+		$c   = RecordatorioCampana::desdeAjustes( Ajustes::todos() );
+		$hoy = wp_date( 'Y-m-d', null, Ajustes::zona() );
+		?>
+		<h2 style="margin-top:32px" id="campana">Avisos de campaña</h2>
+		<p>Un recordatorio dentro de la app, al abrirla, para quien a esa hora todavía no marcó su entrada. Solo en días laborables y dentro de las fechas de la campaña. Desaparece al marcar. No manda correos ni WhatsApp.</p>
+		<p><strong><?php echo $c->enCampana( $hoy ) ? '✔ Hoy se está mostrando.' : ( $c->activo ? 'Activo, pero hoy está fuera de las fechas de la campaña.' : 'Apagado.' ); ?></strong></p>
+		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+			<input type="hidden" name="action" value="pka_guardar_campana">
+			<?php wp_nonce_field( 'pka_guardar_campana' ); ?>
+			<table class="form-table" role="presentation">
+				<tr>
+					<th scope="row">Recordatorio</th>
+					<td><label><input type="checkbox" name="campana_activa" value="1" <?php checked( $c->activo ); ?>> Mostrar el recordatorio en la app</label></td>
+				</tr>
+				<tr>
+					<th scope="row">Campaña</th>
+					<td>
+						<label>Del <input type="date" name="campana_desde" value="<?php echo esc_attr( $c->desde ); ?>" required></label>
+						<label>al <input type="date" name="campana_hasta" value="<?php echo esc_attr( $c->hasta ); ?>" required></label>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="pka-campana-hora">Avisar si no hay entrada a las</label></th>
+					<td><input type="time" id="pka-campana-hora" name="campana_hora" value="<?php echo esc_attr( $c->hora ); ?>" required></td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="pka-campana-texto">Texto del aviso</label></th>
+					<td>
+						<textarea id="pka-campana-texto" name="campana_texto" rows="2" class="large-text" maxlength="200"><?php echo esc_textarea( $c->texto ); ?></textarea>
+						<p class="description">Así lo verá el trabajador, arriba de "Marcar entrada":</p>
+						<div style="max-width:360px;background:#FFF1D6;color:#9A5B00;border-radius:16px;padding:12px 14px;font-weight:600;margin-top:6px"><?php echo esc_html( $c->texto ); ?></div>
+					</td>
+				</tr>
+			</table>
+			<?php submit_button( 'Guardar avisos de campaña', 'secondary' ); ?>
+		</form>
+		<?php
+	}
+
+	public static function guardarCampana(): void {
+		self::exigir( 'pka_guardar_campana' );
+
+		$antes   = Ajustes::todos();
+		$ajustes = $antes;
+		$entrada = array(
+			'campana_activa' => ! empty( $_POST['campana_activa'] ),
+			'campana_desde'  => isset( $_POST['campana_desde'] ) ? sanitize_text_field( wp_unslash( $_POST['campana_desde'] ) ) : '',
+			'campana_hasta'  => isset( $_POST['campana_hasta'] ) ? sanitize_text_field( wp_unslash( $_POST['campana_hasta'] ) ) : '',
+			'campana_hora'   => isset( $_POST['campana_hora'] ) ? sanitize_text_field( wp_unslash( $_POST['campana_hora'] ) ) : '',
+			'campana_texto'  => isset( $_POST['campana_texto'] ) ? sanitize_textarea_field( wp_unslash( $_POST['campana_texto'] ) ) : '',
+		);
+		$c       = RecordatorioCampana::desdeAjustes( $entrada );
+
+		if ( $c->errores() ) {
+			Avisos::agregar( 'error', esc_html( implode( ' ', $c->errores() ) ) );
+			Menu::volverA( admin_url( 'admin.php?page=' . self::SLUG ) . '#campana' );
+		}
+
+		$ajustes['campana_activa'] = $c->activo;
+		$ajustes['campana_desde']  = $c->desde;
+		$ajustes['campana_hasta']  = $c->hasta;
+		$ajustes['campana_hora']   = $c->hora;
+		$ajustes['campana_texto']  = RecordatorioCampana::TEXTO === $c->texto ? '' : $c->texto;
+		update_option( Ajustes::OPCION, $ajustes );
+
+		$claves    = array_flip( array_keys( $entrada ) );
+		[ $a, $d ] = Auditoria::diferencias( array_intersect_key( $antes, $claves ), array_intersect_key( $ajustes, $claves ) );
+
+		if ( $d ) {
+			Auditoria::registrar( 'ajustes.campana', 'ajustes', null, $a, $d );
+		}
+
+		Avisos::agregar( 'success', 'Avisos de campaña guardados.' );
+		Menu::volverA( admin_url( 'admin.php?page=' . self::SLUG ) . '#campana' );
 	}
 
 	private static function empleadorYAviso(): void {
@@ -514,6 +594,7 @@ final class PantallaAjustes {
 			<?php self::pantallas(); ?>
 			<?php self::reglas(); ?>
 			<?php self::avisos(); ?>
+			<?php self::campana(); ?>
 			<?php self::empleadorYAviso(); ?>
 		</div>
 		<?php

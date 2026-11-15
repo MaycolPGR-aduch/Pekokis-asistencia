@@ -825,6 +825,16 @@ $comprobar( '"Salí ayer y olvidé marcar" deja empezar el día de hoy', $hoyN =
 [ $st, $r ] = $api( 'POST', 'marcas', array( 'ticket' => $tkOlv, 'accion' => 'entrada' ) );
 $filaOlv    = $wpdb->get_row( $wpdb->prepare( 'SELECT dia_laboral FROM ' . Tablas::nombre( 'marcas' ) . ' WHERE id = %d', (int) ( $r['marca_id'] ?? 0 ) ), ARRAY_A ); // phpcs:ignore
 $comprobar( 'y su entrada de hoy cuenta para hoy', 200 === $st && $hoyN === ( $filaOlv['dia_laboral'] ?? '' ), wp_json_encode( array( $st, $filaOlv ) ) );
+// Recordatorio de campaña (T9A): a quien no marcó hoy, en día laborable, pasada la hora.
+$ajCamp = get_option( \Pekokis\Asistencia\WordPress\Ajustes::OPCION, array() );
+update_option( \Pekokis\Asistencia\WordPress\Ajustes::OPCION, array( 'campana_activa' => true, 'campana_desde' => $ayerN, 'campana_hasta' => $hoyN, 'campana_hora' => '00:00', 'campana_texto' => '' ) + $ajCamp );
+$estadoDe  = new ReflectionMethod( \Pekokis\Asistencia\WordPress\Api::class, 'estadoDe' );
+$laborable = \Pekokis\Asistencia\WordPress\Horarios::delDia( $horario, $hoyN )->laborable && '' === \Pekokis\Asistencia\WordPress\Calendario::descripcion( $hoyN );
+$recNoche  = $estadoDe->invoke( null, $noche )['recordatorio'];
+$comprobar( 'en campaña, sin marcar hoy: "Aún no marcas tu entrada" (si hoy es laborable)', $laborable ? str_starts_with( $recNoche, 'Aún no marcas' ) : '' === $recNoche, $recNoche );
+$comprobar( 'quien ya marcó no lo ve', '' === $estadoDe->invoke( null, $olvido )['recordatorio'] );
+update_option( \Pekokis\Asistencia\WordPress\Ajustes::OPCION, $ajCamp );
+
 Trabajadores::cesar( $noche, gmdate( 'Y-m-d' ), 'Prueba' );
 Trabajadores::cesar( $olvido, gmdate( 'Y-m-d' ), 'Prueba' );
 

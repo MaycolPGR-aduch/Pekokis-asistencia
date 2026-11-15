@@ -52,6 +52,12 @@ final class Ajustes {
 			'aviso_limite_salida'     => 120,
 			// Webhook (Make, n8n o el bot) que recibe los avisos para mandarlos por WhatsApp.
 			'webhook_avisos'          => '',
+			// Recordatorio de campaña en la app (maquetas T9A y G15). Empieza apagado.
+			'campana_activa'          => false,
+			'campana_desde'           => '2027-01-04',
+			'campana_hasta'           => '2027-03-31',
+			'campana_hora'            => '09:15',
+			'campana_texto'           => '',
 		);
 	}
 
