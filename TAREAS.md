@@ -239,6 +239,9 @@ Vienen de la sección 16 del plan; se resuelven con gerencia y el contador.
 
 ## Bitácora
 
+### 15-11-2026 — etapa B de la app (maquetas), en curso
+- **QR con vigencia configurable** (Ajustes → "El QR de la pantalla cambia cada": 30 s, 5, 15 o 30 min; las maquetas piden 30 min). Al escanear, el enlace dura lo mismo que el QR ("Enlace vigente · 24 min"). La pantalla muestra una barra que pasa a ámbar en los últimos minutos, y con el enlace vencido el botón principal de la app es "Escanear el QR". Durante el primer minuto del QR nuevo se sigue aceptando el anterior. El periodo va en la firma: un token de 30 s no sirve como si fuera de 30 min. **Queda en 30 s por defecto**, para no cambiar lo que está en producción; con 15 o 30 min conviene "WiFi del taller y QR", porque un QR largo se puede reenviar por WhatsApp.
+
 ### 14-11-2026 (noche, 8) — versión 0.12.0: app del trabajador con el diseño de las maquetas (etapa A)
 - **Núcleo:** `VistaDia` arma la pantalla de marcar: los 4 pasos de "Tu día", el botón principal y las otras salidas, lo trabajado (con el tramo abierto), lo que falta, la comida y la salida en curso. 6 pruebas nuevas, 135 en total.
 - **WordPress:**

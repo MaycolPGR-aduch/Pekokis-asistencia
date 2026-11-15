@@ -56,7 +56,7 @@ final class Rutas {
 			'inicio' => esc_url_raw( home_url( '/' ) ),
 			'sw'     => esc_url_raw( home_url( '/sw.js' ) ),
 			'privacidad' => esc_url_raw( home_url( '/privacidad/' ) ),
-			'pase_minutos' => (int) Ajustes::todos()['pase_minutos'],
+			'pase_segundos' => Presencia::segundosPase(),
 		);
 
 		if ( 'pantalla' === $vista && current_user_can( Capacidades::AJUSTES ) ) {

@@ -3,6 +3,7 @@
 namespace Pekokis\Asistencia\WordPress\Admin;
 
 use InvalidArgumentException;
+use Pekokis\Asistencia\Nucleo\CodigoPantalla;
 use Pekokis\Asistencia\Nucleo\ModoPresencia;
 use Pekokis\Asistencia\Nucleo\RedAutorizada;
 use Pekokis\Asistencia\Nucleo\ReglasAvisos;
@@ -451,6 +452,15 @@ final class PantallaAjustes {
 					<?php endforeach; ?>
 				</fieldset>
 				<p class="description">Empieza con "WiFi del taller o QR". Si detectas trampas, cambia a "WiFi del taller y QR". Si la IP del taller cambia mucho o es compartida, usa "Solo QR".</p>
+				<p>
+					<label for="pka-qr-segundos"><strong>El QR de la pantalla cambia cada</strong></label>
+					<select id="pka-qr-segundos" name="qr_segundos">
+						<?php foreach ( CodigoPantalla::PERIODOS as $segundos => $texto ) : ?>
+							<option value="<?php echo (int) $segundos; ?>" <?php selected( Ajustes::qrSegundos(), $segundos ); ?>><?php echo esc_html( $texto ); ?></option>
+						<?php endforeach; ?>
+					</select>
+				</p>
+				<p class="description">Al escanearlo, el celular queda habilitado para marcar ese mismo tiempo ("Enlace vigente · 24 min"), o al menos <?php echo (int) Ajustes::todos()['pase_minutos']; ?> min. Las maquetas piden <strong>30 minutos</strong>. Ojo: un QR que dura mucho se puede fotografiar y reenviar por WhatsApp; con 15 o 30 minutos conviene "WiFi del taller y QR".</p>
 				<?php submit_button( 'Guardar modo' ); ?>
 			</form>
 
@@ -521,9 +531,16 @@ final class PantallaAjustes {
 		$antes                    = Ajustes::todos();
 		$ajustes                  = $antes;
 		$ajustes['modo_presencia'] = $modo->value;
+		$qr                       = isset( $_POST['qr_segundos'] ) ? absint( $_POST['qr_segundos'] ) : Ajustes::qrSegundos();
+		$ajustes['qr_segundos']    = isset( CodigoPantalla::PERIODOS[ $qr ] ) ? $qr : CodigoPantalla::SEGUNDOS_VENTANA;
 		update_option( Ajustes::OPCION, $ajustes );
 
-		Auditoria::registrar( 'ajustes.modo_presencia', 'ajustes', null, array( 'modo_presencia' => $antes['modo_presencia'] ), array( 'modo_presencia' => $modo->value ) );
+		$claves    = array( 'modo_presencia' => true, 'qr_segundos' => true );
+		[ $a, $d ] = Auditoria::diferencias( array_intersect_key( $antes, $claves ), array_intersect_key( $ajustes, $claves ) );
+
+		if ( $d ) {
+			Auditoria::registrar( 'ajustes.modo_presencia', 'ajustes', null, $a, $d );
+		}
 		Avisos::agregar( 'success', 'Modo guardado: ' . esc_html( $modo->etiqueta() ) . '.' );
 		Menu::volver( self::SLUG );
 	}

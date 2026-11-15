@@ -4,6 +4,7 @@ namespace Pekokis\Asistencia\WordPress;
 
 use DateTimeZone;
 use Exception;
+use Pekokis\Asistencia\Nucleo\CodigoPantalla;
 use Pekokis\Asistencia\Nucleo\DiaLaboral;
 use Pekokis\Asistencia\Nucleo\ModoPresencia;
 use Pekokis\Asistencia\Nucleo\ReglasPago;
@@ -24,6 +25,8 @@ final class Ajustes {
 			'hora_corte'      => 4,
 			'antirrebote_seg' => 120,
 			'pase_minutos'    => 3,
+			// Cada cuánto cambia el QR de la pantalla (segundos). Las maquetas piden 30 min (1800).
+			'qr_segundos'     => 30,
 			// Datos del empleador que exige el registro de asistencia (D.S. 004-2006-TR).
 			// Tomados del Libro de Reclamaciones; RR.HH. puede corregirlos.
 			'razon_social'    => 'FUSION ART SAC',
@@ -55,6 +58,13 @@ final class Ajustes {
 		$guardados = get_option( self::OPCION, array() );
 
 		return wp_parse_args( is_array( $guardados ) ? $guardados : array(), self::porDefecto() );
+	}
+
+	/** Periodo del QR, siempre uno de los permitidos. */
+	public static function qrSegundos(): int {
+		$s = (int) self::todos()['qr_segundos'];
+
+		return isset( CodigoPantalla::PERIODOS[ $s ] ) ? $s : CodigoPantalla::SEGUNDOS_VENTANA;
 	}
 
 	public static function modoPresencia(): ModoPresencia {

@@ -5,29 +5,60 @@ namespace Pekokis\Asistencia\Nucleo;
 use InvalidArgumentException;
 
 /**
- * Código de la pantalla del taller: cambia cada 30 segundos.
+ * Código de la pantalla del taller: cambia cada cierto tiempo (30 segundos por
+ * defecto; las maquetas piden 30 minutos, y se elige en Ajustes).
  *
  * - El QR lleva un token "pantalla.ventana.firma".
  * - Debajo se muestra un código de 6 dígitos por si la cámara no lee el QR.
  *
- * Se aceptan la ventana actual y la anterior (máximo 60 s), para que nadie
- * falle por escanear o escribir justo cuando cambia.
+ * También se acepta la ventana anterior durante el primer minuto de la nueva
+ * (con ventanas de 30 s, siempre), para que nadie falle por escanear o escribir
+ * justo cuando cambia.
  */
 final class CodigoPantalla {
 	public const SEGUNDOS_VENTANA = 30;
 
-	public function __construct( private readonly string $secreto ) {
+	/** Periodos que se pueden elegir en Ajustes: segundos => texto. */
+	public const PERIODOS = array(
+		30   => '30 segundos',
+		300  => '5 minutos',
+		900  => '15 minutos',
+		1800 => '30 minutos',
+	);
+
+	private const GRACIA = 60;
+
+	public function __construct(
+		private readonly string $secreto,
+		private readonly int $segundos = self::SEGUNDOS_VENTANA,
+	) {
 		if ( strlen( $secreto ) < 32 ) {
 			throw new InvalidArgumentException( 'El secreto del QR debe tener al menos 32 caracteres.' );
 		}
+
+		if ( $segundos < 10 ) {
+			throw new InvalidArgumentException( 'El QR debe durar al menos 10 segundos.' );
+		}
 	}
 
-	public static function ventana( int $timestamp ): int {
-		return intdiv( $timestamp, self::SEGUNDOS_VENTANA );
+	public static function ventana( int $timestamp, int $segundos = self::SEGUNDOS_VENTANA ): int {
+		return intdiv( $timestamp, $segundos );
 	}
 
-	public static function segundosRestantes( int $timestamp ): int {
-		return self::SEGUNDOS_VENTANA - ( $timestamp % self::SEGUNDOS_VENTANA );
+	public static function segundosRestantes( int $timestamp, int $segundos = self::SEGUNDOS_VENTANA ): int {
+		return $segundos - ( $timestamp % $segundos );
+	}
+
+	public function duracion(): int {
+		return $this->segundos;
+	}
+
+	public function ventanaActual( int $ahora ): int {
+		return self::ventana( $ahora, $this->segundos );
+	}
+
+	public function restantes( int $ahora ): int {
+		return self::segundosRestantes( $ahora, $this->segundos );
 	}
 
 	public function token( int $pantalla, int $ventana ): string {
@@ -35,7 +66,8 @@ final class CodigoPantalla {
 	}
 
 	public function codigo( int $pantalla, int $ventana ): string {
-		$hmac   = hash_hmac( 'sha256', 'num|' . $pantalla . '|' . $ventana, $this->secreto, true );
+		$base   = self::SEGUNDOS_VENTANA === $this->segundos ? 'num|' . $pantalla . '|' . $ventana : 'num|' . $this->segundos . '|' . $pantalla . '|' . $ventana;
+		$hmac   = hash_hmac( 'sha256', $base, $this->secreto, true );
 		$inicio = ord( $hmac[31] ) & 0x0F;
 		$numero = ( unpack( 'N', substr( $hmac, $inicio, 4 ) )[1] & 0x7FFFFFFF ) % 1000000;
 
@@ -51,7 +83,7 @@ final class CodigoPantalla {
 		$pantalla = (int) $partes[1];
 		$ventana  = (int) $partes[2];
 
-		if ( ! $this->ventanaVigente( $ventana, $ahora ) ) {
+		if ( ! in_array( $ventana, $this->ventanasVigentes( $ahora ), true ) ) {
 			return null;
 		}
 
@@ -67,10 +99,8 @@ final class CodigoPantalla {
 			return null;
 		}
 
-		$actual = self::ventana( $ahora );
-
 		foreach ( $pantallas as $pantalla ) {
-			foreach ( array( $actual, $actual - 1 ) as $ventana ) {
+			foreach ( $this->ventanasVigentes( $ahora ) as $ventana ) {
 				if ( hash_equals( $this->codigo( (int) $pantalla, $ventana ), $codigo ) ) {
 					return (int) $pantalla;
 				}
@@ -80,14 +110,18 @@ final class CodigoPantalla {
 		return null;
 	}
 
-	private function ventanaVigente( int $ventana, int $ahora ): bool {
-		$actual = self::ventana( $ahora );
+	/** @return int[] La ventana actual y, en su primer minuto, la anterior. */
+	private function ventanasVigentes( int $ahora ): array {
+		$actual       = $this->ventanaActual( $ahora );
+		$transcurrido = $ahora - $actual * $this->segundos;
 
-		return $ventana === $actual || $ventana === $actual - 1;
+		return $transcurrido < min( $this->segundos, self::GRACIA ) ? array( $actual, $actual - 1 ) : array( $actual );
 	}
 
 	private function firma( int $pantalla, int $ventana ): string {
-		$hmac = hash_hmac( 'sha256', 'qr|' . $pantalla . '|' . $ventana, $this->secreto, true );
+		// El periodo va en la firma: un token de 30 s no sirve como si fuera de 30 min.
+		$base = self::SEGUNDOS_VENTANA === $this->segundos ? 'qr|' . $pantalla . '|' . $ventana : 'qr|' . $this->segundos . '|' . $pantalla . '|' . $ventana;
+		$hmac = hash_hmac( 'sha256', $base, $this->secreto, true );
 
 		return Base64Url::codificar( substr( $hmac, 0, 16 ) );
 	}

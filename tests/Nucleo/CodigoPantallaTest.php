@@ -85,6 +85,26 @@ final class CodigoPantallaTest extends TestCase {
 		$this->assertSame( 1, CodigoPantalla::segundosRestantes( self::AHORA + 29 ) );
 	}
 
+	public function test_qr_de_30_minutos(): void {
+		$codigos = new CodigoPantalla( Fabrica::SECRETO, 1800 ); // AHORA también es múltiplo de 1800.
+		$token   = $codigos->token( 3, $codigos->ventanaActual( self::AHORA ) );
+		$codigo  = $codigos->codigo( 3, $codigos->ventanaActual( self::AHORA ) );
+
+		$this->assertSame( 3, $codigos->validarToken( $token, self::AHORA + 1799 ), 'Vale los 30 minutos' );
+		$this->assertSame( 3, $codigos->validarToken( $token, self::AHORA + 1800 + 59 ), 'y un minuto de gracia después del cambio' );
+		$this->assertNull( $codigos->validarToken( $token, self::AHORA + 1800 + 60 ), 'pero no la media hora siguiente' );
+		$this->assertSame( 3, $codigos->validarCodigo( $codigo, array( 3 ), self::AHORA + 1200 ) );
+		$this->assertSame( 600, $codigos->restantes( self::AHORA + 1200 ) );
+	}
+
+	public function test_un_token_de_30_segundos_no_vale_como_de_30_minutos(): void {
+		$corto = $this->codigos();
+		$largo = new CodigoPantalla( Fabrica::SECRETO, 1800 );
+		$token = $corto->token( 3, $largo->ventanaActual( self::AHORA ) );
+
+		$this->assertNull( $largo->validarToken( $token, self::AHORA ) );
+	}
+
 	public function test_secreto_corto_no_se_acepta(): void {
 		$this->expectException( InvalidArgumentException::class );
 		new CodigoPantalla( 'corto' );

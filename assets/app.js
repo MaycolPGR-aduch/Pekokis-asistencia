@@ -526,14 +526,17 @@
 		var p = yo.presencia || { cumple: true };
 
 		var principal = null;
-		if ( v.siguiente ) {
+		var escanear = null;
+		if ( v.siguiente && ! p.cumple && p.acepta_qr ) {
+			// Enlace vencido o fuera del WiFi: lo primero es escanear (T2E).
+			principal = boton( 'principal', 'Escanear el QR', vistaEscanear, 'qr' );
+		} else if ( v.siguiente ) {
 			principal = boton( 'principal', v.siguiente.etiqueta, function () {
 				elegirAccion( v.siguiente.accion, v.siguiente.etiqueta );
 			}, 'huella' );
 			principal.disabled = ! p.cumple;
+			escanear = p.acepta_qr && ! p.en_red ? el( 'button', { class: 'cuad', type: 'button', 'aria-label': 'Escanear el QR de la entrada', alHacerClic: vistaEscanear }, [ icono( 'qr' ), 'Escanear' ] ) : null;
 		}
-
-		var escanear = p.acepta_qr && ! p.en_red ? el( 'button', { class: 'cuad', type: 'button', 'aria-label': 'Escanear el QR de la entrada', alHacerClic: vistaEscanear }, [ icono( 'qr' ), 'Escanear' ] ) : null;
 
 		var otras = ( v.otras || [] ).map( function ( o ) {
 			var b = boton( 'secundario', o.etiqueta, function () {
@@ -573,13 +576,20 @@
 		}
 
 		if ( p.cumple && p.pase > 0 ) {
-			var total = Math.max( p.pase, ( config.pase_minutos || 3 ) * 60 );
+			var total = Math.max( p.pase, config.pase_segundos || 180 );
 			var fin = Date.now() + p.pase * 1000;
 			var texto = el( 'small', {} );
+			var titulo = el( 'b', {} );
 			var barra = el( 'i', {} );
 			var tic = function () {
 				var resta = Math.max( 0, Math.round( ( fin - Date.now() ) / 1000 ) );
-				texto.textContent = resta ? 'Puedes marcar. Vence en ' + Math.floor( resta / 60 ) + ':' + ( '0' + ( resta % 60 ) ).slice( -2 ) : 'Venció. Escanea el QR otra vez.';
+				if ( resta > 120 ) {
+					titulo.textContent = 'Enlace vigente · ' + Math.ceil( resta / 60 ) + ' min';
+					texto.textContent = 'Puedes marcar.';
+				} else {
+					titulo.textContent = 'Enlace vigente';
+					texto.textContent = resta ? 'Vence en ' + Math.floor( resta / 60 ) + ':' + ( '0' + ( resta % 60 ) ).slice( -2 ) : 'Venció. Escanea el QR otra vez.';
+				}
 				barra.style.width = Math.round( 100 * resta / total ) + '%';
 				if ( ! resta ) {
 					cargarYo();
@@ -589,7 +599,7 @@
 			cadaRato( tic, 1000 );
 			return el( 'div', { class: 'enlace' }, [
 				el( 'span', { class: 'e-ic' }, [ icono( 'qr' ) ] ),
-				el( 'div', { class: 'e-tx' }, [ el( 'b', { texto: 'QR leído' } ), el( 'div', { class: 'e-bar' }, [ barra ] ), texto ] ),
+				el( 'div', { class: 'e-tx' }, [ titulo, el( 'div', { class: 'e-bar' }, [ barra ] ), texto ] ),
 			] );
 		}
 
@@ -1482,6 +1492,9 @@
 		var img = el( 'img', { class: 'qr', alt: 'Código QR para marcar asistencia' } );
 		var codigo = el( 'p', { class: 'codigo-pantalla', 'aria-label': 'Código' } );
 		var cuenta = el( 'p', { class: 'cuenta' } );
+		var barra = el( 'i', {} );
+		var marcoBarra = el( 'div', { class: 'barra-qr', 'aria-hidden': 'true' }, [ barra ] );
+		var total = 30;
 		var hora = el( 'p', { class: 'hora-pantalla' } );
 		var estado = el( 'p', { class: 'aviso error', hidden: 'hidden', texto: 'Sin conexión. Los trabajadores pueden marcar con el WiFi del taller.' } );
 		var restantes = 30;
@@ -1498,6 +1511,7 @@
 					pintar(
 						el( 'h1', {}, [ 'Escanea para ', el( 'em', { texto: 'marcar' } ) ] ),
 						el( 'div', { class: 'marco-qr' }, [ img ] ),
+						marcoBarra,
 						el( 'p', { class: 'ayuda', texto: 'Si tu cámara no lo lee, escribe este código:' } ),
 						codigo,
 						cuenta,
@@ -1506,8 +1520,10 @@
 					);
 				}
 				if ( r.qr ) {
+					// Mientras llega el QR nuevo no se muestra el anterior.
 					img.src = r.qr;
 				}
+				total = r.total || 30;
 				tokenActual = r.token;
 				codigo.textContent = r.codigo.slice( 0, 3 ) + ' ' + r.codigo.slice( 3 );
 				hora.textContent = r.hora;
@@ -1526,7 +1542,11 @@
 		// Fuera de "relojes": pintar() no debe apagar la cuenta regresiva de la pantalla.
 		setInterval( function () {
 			restantes = Math.max( 0, restantes - 1 );
-			cuenta.textContent = 'Cambia en ' + restantes + ' s';
+			// QR largo (maquetas: 30 min): minutos y barra, en ámbar en los últimos minutos.
+			cuenta.textContent = total >= 300 ? 'Vigente · ' + Math.ceil( restantes / 60 ) + ' min' : 'Cambia en ' + restantes + ' s';
+			barra.style.width = Math.round( 100 * restantes / total ) + '%';
+			marcoBarra.classList.toggle( 'por-vencer', total >= 300 && restantes <= Math.min( 300, total / 5 ) );
+			marcoBarra.hidden = total < 300;
 		}, 1000 );
 
 		// Que la tablet no se apague.

@@ -182,6 +182,21 @@ $comprobar( 'si se desactiva la pantalla, su pase deja de valer', 422 === $st &&
 \Pekokis\Asistencia\WordPress\Pantallas::cambiarEstado( $pantalla, true );
 [ $st, $r ] = $api( 'POST', 'marcas', array( 'ticket' => $id6['ticket'], 'accion' => 'salida_temporal', 'motivo' => 'personal' ) );
 $comprobar( 'salida personal por QR, queda para aprobación', 200 === $st && true === $r['revision'] );
+
+// QR de 30 minutos (maquetas): el código dura media hora y el pase también.
+$ajQr                = get_option( \Pekokis\Asistencia\WordPress\Ajustes::OPCION, array() );
+$ajQr['qr_segundos'] = 1800;
+update_option( \Pekokis\Asistencia\WordPress\Ajustes::OPCION, $ajQr );
+$filaPantalla = array_values( array_filter( \Pekokis\Asistencia\WordPress\Pantallas::listar(), static fn( $p ) => (int) $p['id'] === $pantalla ) )[0];
+$largo        = \Pekokis\Asistencia\WordPress\Pantallas::codigoVigente( $filaPantalla, '' );
+unset( $_COOKIE[ Presencia::COOKIE_PASE ] );
+[ $st ] = $api( 'POST', 'presencia/codigo', array( 'token' => $largo['token'] ) );
+$comprobar( 'QR de 30 min: dura media hora y deja un pase igual de largo', 1800 === $largo['total'] && $largo['segundos'] <= 1800 && 200 === $st && Presencia::segundosDelPase() > 1790, wp_json_encode( array( $largo['total'], $largo['segundos'], Presencia::segundosDelPase() ) ) );
+[ $st ] = $api( 'POST', 'presencia/codigo', array( 'token' => $cod['token'] ) );
+$comprobar( 'un token del QR de 30 s no sirve con el de 30 min', 422 === $st );
+$ajQr['qr_segundos'] = 30;
+update_option( \Pekokis\Asistencia\WordPress\Ajustes::OPCION, $ajQr );
+unset( $_COOKIE[ Presencia::COOKIE_PASE ] );
 $_SERVER['REMOTE_ADDR'] = '203.0.113.10';
 
 // ---- 3c. Revisión del jefe.

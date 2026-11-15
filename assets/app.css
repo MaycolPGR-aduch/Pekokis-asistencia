@@ -401,6 +401,9 @@ body.con-pestanas .pie-legal { display: none; }
 .qr { display: block; width: 100%; height: auto; aspect-ratio: 1; image-rendering: pixelated; }
 .codigo-pantalla { font-size: clamp(2.4rem, 9vw, 4.5rem); font-weight: 700; letter-spacing: .12em; font-variant-numeric: tabular-nums; color: var(--rosa-oscuro); margin: 0; }
 .cuenta { color: var(--verde); font-variant-numeric: tabular-nums; font-weight: 600; }
+.barra-qr { width: min(80vw, 58vh, 480px); height: 12px; margin: 0 auto 12px; border-radius: 99px; background: rgba(255, 255, 255, .6); overflow: hidden; }
+.barra-qr i { display: block; height: 100%; background: var(--rosa-oscuro); border-radius: 99px; transition: width 1s linear; }
+.barra-qr.por-vencer i { background: #E3A008; }
 .hora-pantalla { font-size: 1.6rem; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--verde); }
 
 /* Detalles sin estilos en línea (la CSP no los permite). */

@@ -71,7 +71,15 @@ final class Presencia {
 	}
 
 	public static function pases(): PasePresencia {
-		return new PasePresencia( Secretos::clave(), max( 60, (int) Ajustes::todos()['pase_minutos'] * MINUTE_IN_SECONDS ) );
+		return new PasePresencia( Secretos::clave(), self::segundosPase() );
+	}
+
+	/**
+	 * Cuánto dura el pase al escanear: los minutos de Ajustes o, si el QR dura
+	 * más (las maquetas piden 30 min), lo mismo que el QR ("Enlace vigente · 30 min").
+	 */
+	public static function segundosPase(): int {
+		return max( 60, (int) Ajustes::todos()['pase_minutos'] * MINUTE_IN_SECONDS, Ajustes::qrSegundos() );
 	}
 
 	/** Segundos que le quedan al pase del QR de este navegador ("Enlace vigente · 24 min"). */

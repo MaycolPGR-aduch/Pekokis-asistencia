@@ -11,7 +11,7 @@ use Pekokis\Asistencia\Nucleo\CodigoPantalla;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Tablets de la entrada que muestran el QR que cambia cada 30 segundos.
+ * Tablets de la entrada que muestran el QR (cambia cada 30 s o lo que diga Ajustes).
  *
  * Cada pantalla se activa una vez desde el propio equipo, con un administrador
  * con sesión iniciada. Queda una cookie HttpOnly con un token largo; en la base
@@ -73,8 +73,8 @@ final class Pantallas {
 		global $wpdb;
 
 		$ahora   = time();
-		$ventana = CodigoPantalla::ventana( $ahora );
 		$codigos = self::codigos();
+		$ventana = $codigos->ventanaActual( $ahora );
 		$token   = $codigos->token( (int) $pantalla['id'], $ventana );
 		$url     = home_url( '/m?q=' . $token );
 
@@ -87,7 +87,8 @@ final class Pantallas {
 		return array(
 			'token'    => $token,
 			'codigo'   => $codigos->codigo( (int) $pantalla['id'], $ventana ),
-			'segundos' => CodigoPantalla::segundosRestantes( $ahora ),
+			'segundos' => $codigos->restantes( $ahora ),
+			'total'    => $codigos->duracion(),
 			'hora'     => wp_date( 'H:i', $ahora, Ajustes::zona() ),
 			'qr'       => hash_equals( $token, $tokenQueYaTiene ) ? null : self::qr( $url ),
 		);
@@ -135,7 +136,7 @@ final class Pantallas {
 	}
 
 	public static function codigos(): CodigoPantalla {
-		return new CodigoPantalla( Secretos::clave() );
+		return new CodigoPantalla( Secretos::clave(), Ajustes::qrSegundos() );
 	}
 
 	private static function qr( string $url ): string {

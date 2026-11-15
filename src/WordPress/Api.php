@@ -95,7 +95,7 @@ final class Api {
 		}
 
 		$pases = Presencia::pases();
-		Peticion::ponerCookie( Presencia::COOKIE_PASE, $pases->emitir( $pantalla, time() ), max( 60, (int) Ajustes::todos()['pase_minutos'] * MINUTE_IN_SECONDS ) );
+		Peticion::ponerCookie( Presencia::COOKIE_PASE, $pases->emitir( $pantalla, time() ), Presencia::segundosPase() );
 
 		return self::respuesta( array( 'ok' => true, 'mensaje' => 'QR leído. Ya puedes marcar.' ) );
 	}
