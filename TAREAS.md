@@ -256,6 +256,15 @@ Vienen de la sección 16 del plan; se resuelven con gerencia y el contador.
 
 ## Bitácora
 
+### 15-11-2026 (noche, 3) — 0.15.0 en producción; revisión antes de configurar el piloto
+- Producción ya tiene la **0.15.0** (sw.js `pka-0.15.0`) y el Dashboard se ve bien.
+- Estado del sistema dice 3 puntos:
+  - **Cron:** el respaldo diario (`pka_diario`) lleva más de 2 h atrasado, y Salud del sitio dice "Un evento programado ha fallado" (`wp_version_check`). `DISABLE_WP_CRON` sí está, así que lo que falta es la tarea de hPanel (`php wp-cron.php` cada 5 minutos) o está mal puesta. Si no se arregla, no salen el respaldo ni los recordatorios.
+  - **Correo del respaldo:** falta el correo de RR.HH. en Exportar.
+  - **Presencia:** no hay red WiFi ni pantalla.
+- **WP Mail SMTP está incompleto:** dice "Otro SMTP" sin terminar de configurar y sus tablas no existen, así que los correos (respaldo, avisos, usuarios delegados) probablemente no salen. Lo configura Maycol, porque lleva la contraseña SMTP, y luego manda el correo de prueba.
+- Todavía no hay trabajadores activos. Falta la lista para el piloto.
+
 ### 15-11-2026 (noche, 2) — versión 0.15.0: Registros y revisión (G4, G4B) y Sueldos y tarifas (G8)
 - **Registros y revisión** (Asistencia → Control): una fila por persona y día con entrada, comida, salida, horas y estado. Los días con problemas van primero ("Incompleto", "Falta", "Por revisar", "Fuera de reglas" = comida no marcada), y también se marcan "Pasó de medianoche", "Editado" (corregido por gerencia) y "En curso". Filtros por persona, fechas (hasta 31 días) y estado. El "Informe por persona" sigue igual.
 - **Editar en panel lateral (G4B):** los cuatro pasos del día (entrada, salida a comer, vuelta, salida) con el valor anterior debajo, lo cambiado resaltado y el motivo obligatorio. `Correcciones::editarDia` arma el día como quedaría y lo valida entero antes de tocar nada; después anula las marcas que cambian y agrega las nuevas (nunca edita ni borra). Una hora menor que la entrada se toma del día siguiente. Queda una sola entrada en la auditoría ("Día editado") con antes, después y motivo. Nadie edita sus propias marcas; un jefe, solo las de su equipo. Las salidas temporales se siguen corrigiendo en el día completo.
