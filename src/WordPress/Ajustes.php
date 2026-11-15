@@ -79,7 +79,8 @@ final class Ajustes {
 			return '';
 		}
 
-		return ( new \DateTimeImmutable( $utc, new DateTimeZone( 'UTC' ) ) )->setTimezone( self::zona() )->format( $formato );
+		// wp_date() traduce los meses y días ("14 de noviembre", no "November").
+		return (string) wp_date( $formato, ( new \DateTimeImmutable( $utc, new DateTimeZone( 'UTC' ) ) )->getTimestamp(), self::zona() );
 	}
 
 	public static function reglasPago(): ReglasPago {

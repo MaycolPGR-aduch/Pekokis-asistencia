@@ -277,6 +277,33 @@ $cal    = $viejo['calendario'] ?? array();
 $diaHoy = array_values( array_filter( $cal['dias'] ?? array(), static fn( $d ) => $hoy === $d['fecha'] ) )[0] ?? array();
 $comprobar( 'mis marcas trae el calendario del mes, con hoy marcado', (int) ( new DateTimeImmutable( $hoy ) )->format( 't' ) === count( $cal['dias'] ?? array() ) && 'hoy' === ( $diaHoy['estado'] ?? '' ) && (int) ( new DateTimeImmutable( substr( $hoy, 0, 7 ) . '-01' ) )->format( 'N' ) - 1 === ( $cal['vacios'] ?? -1 ), wp_json_encode( $diaHoy ) );
 
+// ---- 3d-ter. Sesión de la app (T0): entra una vez con la huella; para marcar se pide otra vez.
+WP_CLI::line( '3d-ter. Sesión de la app' );
+unset( $_COOKIE[ \Pekokis\Asistencia\WordPress\SesionTrabajador::COOKIE ] );
+[ $st, $r ] = $api( 'GET', 'yo' );
+$comprobar( 'sin sesión, "yo" pide entrar', 401 === $st && 'pka_sesion' === $r['code'], wp_json_encode( $r ) );
+
+$identificar();
+[ $st, $yo ] = $api( 'GET', 'yo' );
+$comprobar( 'con la sesión: estado, día, presencia y los 4 pasos de "Tu día"', 200 === $st && isset( $yo['presencia']['cumple'], $yo['dia']['texto'] ) && 4 === count( $yo['vista']['pasos'] ?? array() ) && '' !== $yo['iniciales'], wp_json_encode( $yo ) );
+
+[ $st, $mesS ] = $api( 'POST', 'yo/mes', array( 'mes' => substr( $ayer, 0, 7 ) ) );
+$detAyer       = $mesS['detalle'][ $ayer ] ?? array();
+$comprobar( 'mis horas sin ticket: resumen y detalle de ayer (entrada 09:00, salida 19:35)', 200 === $st && isset( $mesS['resumen']['horas'] ) && '09:00' === ( $detAyer['pasos'][0]['hora'] ?? '' ) && '19:35' === ( $detAyer['pasos'][3]['hora'] ?? '' ), wp_json_encode( $detAyer ) );
+
+$dniReal = (string) Trabajadores::buscar( $id )['dni'];
+[ $st, $perfil ] = $api( 'GET', 'yo/perfil' );
+$comprobar( 'el perfil muestra el DNI oculto', 200 === $st && '•••• ' . substr( $dniReal, -4 ) === $perfil['dni'] && ! str_contains( wp_json_encode( $perfil ), $dniReal ), wp_json_encode( $perfil ) );
+[ $st, $dni ] = $api( 'POST', 'yo/dni' );
+$comprobar( 'ver el DNI completo queda en el historial', 200 === $st && $dniReal === $dni['dni'] && 1 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Tablas::nombre( 'auditoria' ) . " WHERE accion = 'trabajador.ver_dni' AND entidad_id = %d", $id ) ) ); // phpcs:ignore
+
+[ $st, $r ] = $api( 'POST', 'marcas', array( 'accion' => 'entrada' ) );
+$comprobar( 'la sesión no sirve para marcar: pide la huella', 401 === $st && 'pka_ticket' === $r['code'] );
+
+[ $st ] = $api( 'POST', 'yo/salir' );
+[ $st2, $r ] = $api( 'GET', 'yo' );
+$comprobar( 'cerrar sesión', 200 === $st && 401 === $st2 );
+
 // ---- 3e. Export y respaldo.
 WP_CLI::line( '3e. Export y respaldo' );
 $mesAyer = substr( $ayer, 0, 7 );

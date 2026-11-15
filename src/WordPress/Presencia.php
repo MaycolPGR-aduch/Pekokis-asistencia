@@ -74,6 +74,13 @@ final class Presencia {
 		return new PasePresencia( Secretos::clave(), max( 60, (int) Ajustes::todos()['pase_minutos'] * MINUTE_IN_SECONDS ) );
 	}
 
+	/** Segundos que le quedan al pase del QR de este navegador ("Enlace vigente · 24 min"). */
+	public static function segundosDelPase(): int {
+		$pase = Peticion::cookie( self::COOKIE_PASE );
+
+		return '' === $pase || null === self::pantallaDelPase() ? 0 : self::pases()->segundosRestantes( $pase, time() );
+	}
+
 	/** Pantalla activa del pase de presencia vigente en este navegador, o null. */
 	private static function pantallaDelPase(): ?int {
 		global $wpdb;

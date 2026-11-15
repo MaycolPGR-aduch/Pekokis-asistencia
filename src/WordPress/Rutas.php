@@ -55,6 +55,8 @@ final class Rutas {
 			'api'   => esc_url_raw( rest_url( Api::ESPACIO . '/' ) ),
 			'inicio' => esc_url_raw( home_url( '/' ) ),
 			'sw'     => esc_url_raw( home_url( '/sw.js' ) ),
+			'privacidad' => esc_url_raw( home_url( '/privacidad/' ) ),
+			'pase_minutos' => (int) Ajustes::todos()['pase_minutos'],
 		);
 
 		if ( 'pantalla' === $vista && current_user_can( Capacidades::AJUSTES ) ) {
@@ -84,8 +86,8 @@ final class Rutas {
 				'scope'            => $inicio,
 				'display'          => 'standalone',
 				'orientation'      => 'portrait',
-				'background_color' => '#fff8fc',
-				'theme_color'      => '#e6007e',
+				'background_color' => '#FFF8FB',
+				'theme_color'      => '#F048A5',
 				'icons'            => array(
 					array( 'src' => self::asset( 'iconos/icono-192.png' ), 'sizes' => '192x192', 'type' => 'image/png', 'purpose' => 'any' ),
 					array( 'src' => self::asset( 'iconos/icono-512.png' ), 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any' ),

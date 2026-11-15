@@ -41,6 +41,15 @@ final class PasePresencia {
 		return hash_equals( $this->firma( $pantalla, $vence ), $partes[3] ) ? $pantalla : null;
 	}
 
+	/** Segundos que le quedan a un pase válido (0 si no vale). */
+	public function segundosRestantes( string $pase, int $ahora ): int {
+		if ( null === $this->validar( $pase, $ahora ) ) {
+			return 0;
+		}
+
+		return max( 0, (int) explode( '.', $pase )[1] - $ahora );
+	}
+
 	private function firma( int $pantalla, int $vence ): string {
 		return Base64Url::codificar( hash_hmac( 'sha256', 'pase|' . $pantalla . '|' . $vence, $this->secreto, true ) );
 	}

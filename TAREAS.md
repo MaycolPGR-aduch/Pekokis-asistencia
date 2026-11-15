@@ -3,7 +3,7 @@
 Este archivo lleva lo hecho, lo pendiente y la bitácora del proyecto. Se actualiza cada vez que avanzamos.
 El detalle técnico de cada punto está en [docs/plan-tecnico.md](docs/plan-tecnico.md).
 
-**Estado actual:** en producción está la **0.8.1**. En local está lista la **0.11.0**, que agrega: avisos por correo (fase 4); el pago por recibos por honorarios de las maquetas (honorario y tarifas, horas extra automáticas); la **calculadora de pagos** con "Ver cálculo" y "Pagado"; y los **recibos por honorarios** (el trabajador los sube desde la app y gerencia los revisa). La cubren 129 pruebas del núcleo y 188 de punta a punta. **Siguiente:** subir la versión, y seguir con lo factible de las maquetas: la app del trabajador con su diseño, el PIN, el registro propio y el cambio de celular, el QR de 30 min y los 4 marcajes. También falta el correo de RR.HH., la red o pantalla del taller, cambiar `PKA_SECRETO` y hacer el piloto.
+**Estado actual:** en producción está la **0.8.1**. En local está lista la **0.12.0**, que agrega: avisos por correo (fase 4); el pago por recibos por honorarios de las maquetas (honorario y tarifas, horas extra automáticas); la **calculadora de pagos** con "Ver cálculo" y "Pagado"; los **recibos por honorarios** (el trabajador los sube desde la app y gerencia los revisa); y la **app del trabajador con el diseño de las maquetas** (entra una vez con su huella y ve las pestañas Marcar, Mis horas, Mi recibo y Perfil, con "Tu día" en 4 pasos, el detalle de cada día y "Pedir corrección"). La cubren 135 pruebas del núcleo y 195 de punta a punta. **Siguiente:** subir la versión, y seguir con lo factible de las maquetas: el PIN, el registro propio y el cambio de celular, el QR de 30 min, las jornadas que pasan la medianoche y la pantalla de gerencia con su diseño. También falta el correo de RR.HH., la red o pantalla del taller, cambiar `PKA_SECRETO` y hacer el piloto.
 
 **Estrategia:** primero un MVP con las fases 0 y 1 del plan (registro de asistencia funcionando y conforme a la norma). Después, mejoras por etapas según lo que opine gerencia.
 
@@ -210,6 +210,17 @@ Leyenda: `[x]` hecho · `[ ]` pendiente · `[~]` en curso
 
 ---
 
+- [~] **App del trabajador con el diseño de las maquetas** (T0 a T9):
+  - [x] **Etapa A** (versión 0.12.0):
+    - diseño de la marca: letra Poligon, rosa #F048A5, logo, aros de las esquinas y pestañas abajo (Marcar, Mis horas, Mi recibo, Perfil);
+    - **sesión**: entra una vez con su huella y queda 30 días en ese celular; **cada marca pide otra vez la huella** (la huella de entrar sirve para la primera marca durante 2 min). La sesión se corta si se revoca la llave o la persona cesa;
+    - **Marcar**: botón único que sigue el camino de la maqueta (Marcar entrada → Salir a comer → Volver de comer → Marcar salida), la tarjeta grande con lo que lleva y lo que falta, "Tu día" con los 4 pasos, "Otra salida (encargo, salud…)" aparte, y el bloque "Para marcar tienes que estar en el taller" con el botón Escanear (cámara en Android; en iPhone, el código de 6 números);
+    - **confirmación** con la hora grande y, al terminar el día, lo trabajado y las horas extra;
+    - **Mis horas**: horas, extra y días completos del mes; "Te falta marcar" (los 3 más recientes); calendario donde cada día se toca para ver sus marcas, otras salidas y correcciones pedidas con su respuesta; **Pedir corrección** con la hora, "¿Qué pasó?" (Olvidé marcar, Falló el WiFi, Se cerró la página, Otro) y un comentario;
+    - **Perfil**: DNI oculto (•••• 4040) con "Ver", que queda en el historial; teléfono, celular registrado y "Cerrar sesión";
+    - **Mi recibo** ya no pide la huella (usa la sesión).
+  - [ ] **Etapa B:** PIN de respaldo (T0B/T0C), registro propio y cambio de celular con DNI y cumpleaños aprobado por gerencia (T1), "liberar mi celular", QR de 30 min, jornadas que pasan la medianoche con alerta de más de 16 h y el recordatorio de campaña (T9).
+
 ## Decisiones pendientes
 
 Vienen de la sección 16 del plan; se resuelven con gerencia y el contador.
@@ -227,6 +238,18 @@ Vienen de la sección 16 del plan; se resuelven con gerencia y el contador.
 ---
 
 ## Bitácora
+
+### 14-11-2026 (noche, 8) — versión 0.12.0: app del trabajador con el diseño de las maquetas (etapa A)
+- **Núcleo:** `VistaDia` arma la pantalla de marcar: los 4 pasos de "Tu día", el botón principal y las otras salidas, lo trabajado (con el tramo abierto), lo que falta, la comida y la salida en curso. 6 pruebas nuevas, 135 en total.
+- **WordPress:**
+  - `SesionTrabajador` (cookie `pka_sesion` HttpOnly, 30 días, del lado del servidor);
+  - API nueva: `GET yo`, `GET yo/perfil`, `POST yo/dni` (queda en el historial como `trabajador.ver_dni`) y `POST yo/salir`;
+  - `yo/mes`, `yo/recibos` y `correcciones` aceptan la sesión; `yo/mes` trae además el detalle de cada día y el resumen sin dinero;
+  - marcar sigue exigiendo el ticket de la huella;
+  - `Ajustes::local()` ahora traduce los meses ("14 de noviembre").
+- **App:** `app.js`, `app.css` y la plantilla rehechos con la letra Poligon y el logo. Siguen igual la activación, el aviso de datos, la pantalla del QR y la página de privacidad. Sin estilos en línea, por la CSP.
+- **Prueba de punta a punta:** 195 comprobaciones (7 nuevas): sin sesión pide entrar; con sesión trae estado, día, presencia y los 4 pasos; mis horas sin ticket con el detalle; DNI oculto y "Ver" en el historial; la sesión no sirve para marcar; cerrar sesión.
+- **En el navegador (tamaño celular, con una sesión de prueba creada por WP-CLI):** revisé Marcar (en comida, trabajando, fuera del taller), Mis horas (calendario, detalle del día, pedir corrección y verla "Esperando respuesta"), Mi recibo y Perfil (ver y ocultar el DNI). **No vi en pantalla** la confirmación después de marcar ni el escáner: necesitan la huella y la cámara de un celular de verdad.
 
 ### 14-11-2026 (noche, 7) — versión 0.11.0: calculadora de pagos y recibos por honorarios
 - **Núcleo:** `ValidacionRecibo` (número serie-número, monto, PDF no vacío de hasta 5 MB, comparación con el cálculo con 5 céntimos de tolerancia, cuándo se puede enviar o anular). 4 pruebas nuevas, 129 en total.

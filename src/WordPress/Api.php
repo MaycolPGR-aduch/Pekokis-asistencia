@@ -10,8 +10,11 @@ use Pekokis\Asistencia\Nucleo\MaquinaEstados;
 use Pekokis\Asistencia\Nucleo\Motivo;
 use Pekokis\Asistencia\Nucleo\ResumenDia;
 use Pekokis\Asistencia\Nucleo\SolicitudMarca;
+use Pekokis\Asistencia\Nucleo\TipoMarca;
 use Pekokis\Asistencia\Nucleo\TotalesDia;
 use Pekokis\Asistencia\Nucleo\ValidadorMarca;
+use Pekokis\Asistencia\Nucleo\VistaDia;
+use Pekokis\Asistencia\Nucleo\CalculoJornada;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -48,6 +51,10 @@ final class Api {
 		register_rest_route( self::ESPACIO, '/presencia', array( 'methods' => 'GET', 'callback' => array( self::class, 'presencia' ), 'permission_callback' => $publica ) );
 		register_rest_route( self::ESPACIO, '/aviso', array( 'methods' => 'GET', 'callback' => array( self::class, 'aviso' ), 'permission_callback' => $publica ) );
 		register_rest_route( self::ESPACIO, '/aviso/aceptar', array( 'methods' => 'POST', 'callback' => array( self::class, 'aceptarAviso' ), 'permission_callback' => $publica ) );
+		register_rest_route( self::ESPACIO, '/yo', array( 'methods' => 'GET', 'callback' => array( self::class, 'miEstado' ), 'permission_callback' => $publica ) );
+		register_rest_route( self::ESPACIO, '/yo/perfil', array( 'methods' => 'GET', 'callback' => array( self::class, 'miPerfil' ), 'permission_callback' => $publica ) );
+		register_rest_route( self::ESPACIO, '/yo/dni', array( 'methods' => 'POST', 'callback' => array( self::class, 'miDni' ), 'permission_callback' => $publica ) );
+		register_rest_route( self::ESPACIO, '/yo/salir', array( 'methods' => 'POST', 'callback' => array( self::class, 'salir' ), 'permission_callback' => $publica ) );
 		register_rest_route( self::ESPACIO, '/yo/mes', array( 'methods' => 'POST', 'callback' => array( self::class, 'miMes' ), 'permission_callback' => $publica ) );
 		register_rest_route( self::ESPACIO, '/yo/recibos', array( 'methods' => 'POST', 'callback' => array( self::class, 'misRecibos' ), 'permission_callback' => $publica ) );
 		register_rest_route( self::ESPACIO, '/yo/recibos/enviar', array( 'methods' => 'POST', 'callback' => array( self::class, 'enviarRecibo' ), 'permission_callback' => $publica ) );
@@ -224,6 +231,9 @@ final class Api {
 		$trabajador = Trabajadores::buscar( $trabajadorId );
 		$aviso      = $trabajador && Aviso::pendiente( $trabajador ) ? Aviso::paraApp() : null;
 
+		// También deja la sesión iniciada para ver horas, recibo y perfil sin volver a poner la huella.
+		SesionTrabajador::crear( $trabajadorId, (int) $credencial['id'], $dispositivoId );
+
 		return self::respuesta( array( 'ticket' => $ticket, 'segundos' => self::SEGUNDOS_TICKET, 'aviso' => $aviso ) + self::estadoDe( $trabajadorId ) );
 	}
 
@@ -334,6 +344,8 @@ final class Api {
 				'cumple'    => null !== $prueba,
 				'modo'      => $modo->value,
 				'acepta_qr' => $modo->aceptaQr(),
+				'modo_qr'   => $modo->value,
+				'pase'      => Presencia::segundosDelPase(),
 				'mensaje'   => null === $prueba ? $modo->mensajeSinPresencia( $contexto ) : 'Estás en el taller.',
 			)
 		);
@@ -365,8 +377,24 @@ final class Api {
 			);
 		}
 
+		$zona    = Ajustes::zona();
+		$horario = $trabajador ? Horarios::delDia( (int) $trabajador['horario_id'], $dia ) : \Pekokis\Asistencia\Nucleo\HorarioDelDia::libre();
+		$vista   = VistaDia::de( $marcas, $horario, $dia, $zona, new DateTimeImmutable( 'now', new DateTimeZone( 'UTC' ) ) );
+
+		if ( $vista['terminado'] ) {
+			$calculo        = CalculoJornada::calcular( $marcas, $horario, $dia, $zona, Ajustes::reglasPago() );
+			$vista['extra'] = $calculo->minutosAdicionales();
+		}
+
 		return array(
 			'nombre'   => $trabajador ? $trabajador['nombres'] : '',
+			'iniciales' => $trabajador ? self::iniciales( $trabajador ) : '',
+			'dia'      => array(
+				'texto'   => wp_date( 'l j \d\e F', ( new DateTimeImmutable( $dia . ' 12:00', $zona ) )->getTimestamp(), $zona ),
+				'horario' => $horario->laborable && $horario->entrada ? self::horaCorta( $horario->entrada ) . ' a ' . self::horaCorta( (string) $horario->salida ) : '',
+				'descanso' => $horario->descanso,
+			),
+			'vista'    => $vista,
 			'estado'   => array(
 				'clave'    => $estado->value,
 				'etiqueta' => $estado->etiqueta(),
@@ -393,14 +421,13 @@ final class Api {
 	public static function miMes( WP_REST_Request $peticion ): WP_REST_Response|WP_Error {
 		global $wpdb;
 
-		$ticket = Temporales::leer( 'ticket', (string) $peticion->get_param( 'ticket' ) );
+		$trabajador = self::trabajadorActual( $peticion );
 
-		if ( null === $ticket ) {
-			return new WP_Error( 'pka_ticket', 'Pasaron más de 2 minutos. Vuelve a poner tu huella.', array( 'status' => 401 ) );
+		if ( $trabajador instanceof WP_Error ) {
+			return $trabajador;
 		}
 
-		$trabajadorId = (int) $ticket['trabajador_id'];
-		$trabajador   = Trabajadores::buscar( $trabajadorId );
+		$trabajadorId = (int) $trabajador['id'];
 		$zona         = Ajustes::zona();
 		$actual       = new DateTimeImmutable( 'first day of this month', $zona );
 		$anterior     = $actual->modify( '-1 month' );
@@ -470,6 +497,8 @@ final class Api {
 				'otro'       => $pedido == $actual ? array( 'mes' => $anterior->format( 'Y-m' ), 'etiqueta' => 'Mes anterior' ) : array( 'mes' => $actual->format( 'Y-m' ), 'etiqueta' => 'Este mes' ), // phpcs:ignore Universal.Operators.StrictComparisons.LooseEqual
 				'dias'       => $dias,
 				'calendario' => self::calendarioDelMes( $trabajador, $pedido->format( 'Y-m' ) ),
+				'detalle'    => self::detalleDelMes( $trabajador, $desde, $hasta ),
+				'resumen'    => self::resumenDelMes( $trabajador, $pedido->format( 'Y-m' ) ),
 				'totales'    => array( 'tiempo' => $hm( $totales['minutos'] ) ) + $totales,
 				'pendientes' => $pendientes,
 			)
@@ -543,20 +572,216 @@ final class Api {
 	}
 
 	/**
+	 * Quién es: con el ticket de la huella (recién puesta) o con la sesión de
+	 * este navegador. Sirve para ver; para marcar se exige siempre el ticket.
+	 *
+	 * @return array<string, mixed>|WP_Error
+	 */
+	private static function trabajadorActual( WP_REST_Request $peticion ): array|WP_Error {
+		$ticket = Temporales::leer( 'ticket', (string) $peticion->get_param( 'ticket' ) );
+		$t      = $ticket ? Trabajadores::buscar( (int) $ticket['trabajador_id'] ) : null;
+
+		if ( $t && Trabajadores::ACTIVO === $t['estado'] ) {
+			return $t;
+		}
+
+		$sesion = SesionTrabajador::actual();
+
+		if ( $sesion ) {
+			return $sesion['trabajador'];
+		}
+
+		return new WP_Error( 'pka_sesion', 'Tu sesión terminó. Entra otra vez con tu huella.', array( 'status' => 401 ) );
+	}
+
+	/** Pantalla de marcar con la sesión iniciada: el día, la presencia y el perfil corto. */
+	public static function miEstado( WP_REST_Request $peticion ): WP_REST_Response|WP_Error {
+		$t = self::trabajadorActual( $peticion );
+
+		if ( $t instanceof WP_Error ) {
+			return $t;
+		}
+
+		$presencia = self::presencia()->get_data();
+
+		return self::respuesta( self::estadoDe( (int) $t['id'] ) + array( 'presencia' => $presencia, 'aviso_pendiente' => Aviso::pendiente( $t ) ) );
+	}
+
+	/** Mi perfil (T7): el DNI va oculto. */
+	public static function miPerfil( WP_REST_Request $peticion ): WP_REST_Response|WP_Error {
+		global $wpdb;
+
+		$t = self::trabajadorActual( $peticion );
+
+		if ( $t instanceof WP_Error ) {
+			return $t;
+		}
+
+		$sesion  = SesionTrabajador::actual();
+		$llave   = $sesion ? (int) $sesion['credencial_id'] : 0;
+		$creada  = (string) $wpdb->get_var( $wpdb->prepare( 'SELECT creado_en FROM ' . Tablas::nombre( 'credenciales' ) . ' WHERE trabajador_id = %d AND revocada_en IS NULL ORDER BY ( id = %d ) DESC, id DESC LIMIT 1', (int) $t['id'], $llave ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		$dni     = (string) $t['dni'];
+
+		return self::respuesta(
+			array(
+				'nombre'     => Trabajadores::nombreCompleto( $t ),
+				'iniciales'  => self::iniciales( $t ),
+				'cargo'      => trim( ( '' !== (string) $t['cargo'] ? $t['cargo'] : 'Trabajador' ) . ' · Taller Pekokis' ),
+				'telefono'   => (string) $t['telefono'],
+				'dni'        => '•••• ' . substr( $dni, -4 ),
+				'celular'    => '' !== $creada ? 'Registrado el ' . Ajustes::local( $creada, 'j \d\e F' ) : 'Sin registrar',
+				'estado'     => 'Activo',
+			)
+		);
+	}
+
+	/** Mostrar el DNI completo queda en el historial. */
+	public static function miDni( WP_REST_Request $peticion ): WP_REST_Response|WP_Error {
+		$t = self::trabajadorActual( $peticion );
+
+		if ( $t instanceof WP_Error ) {
+			return $t;
+		}
+
+		Auditoria::registrar( 'trabajador.ver_dni', 'trabajador', (int) $t['id'], null, null, 'Lo pidió desde su perfil', (int) $t['id'] );
+
+		return self::respuesta( array( 'dni' => (string) $t['dni'] ) );
+	}
+
+	public static function salir(): WP_REST_Response {
+		SesionTrabajador::cerrar();
+
+		return self::respuesta( array( 'ok' => true ) );
+	}
+
+	/**
+	 * Detalle de cada día del mes para "Mis horas" (T6): los cuatro pasos, las
+	 * otras salidas, las solicitudes de corrección y qué marca falta pedir.
+	 *
+	 * @return array<string, array<string, mixed>>
+	 */
+	private static function detalleDelMes( array $t, string $desde, string $hasta ): array {
+		global $wpdb;
+
+		$id      = (int) $t['id'];
+		$zona    = Ajustes::zona();
+		$hoy     = Ajustes::diaLaboral()->de( new DateTimeImmutable( 'now', new DateTimeZone( 'UTC' ) ) );
+		$marcas  = Marcas::delRango( array( $id ), $desde, $hasta )[ $id ] ?? array();
+		$calculo = Informes::diasDe( $t, substr( $desde, 0, 7 ) );
+		$c       = Tablas::nombre( 'correcciones' );
+		$filas   = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$c} WHERE trabajador_id = %d AND marcado_utc BETWEEN %s AND %s ORDER BY id", $id, $desde . ' 00:00:00', ( new DateTimeImmutable( $hasta ) )->modify( '+2 days' )->format( 'Y-m-d' ) . ' 00:00:00' ), ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$porDia  = array();
+
+		foreach ( $filas as $f ) {
+			$dia = Ajustes::diaLaboral()->de( new DateTimeImmutable( (string) $f['marcado_utc'], new DateTimeZone( 'UTC' ) ) );
+
+			if ( 'reemplazar' === $f['accion'] || 'anular' === $f['accion'] ) {
+				continue;
+			}
+
+			$porDia[ $dia ][] = array(
+				'paso'      => 'entrada' === $f['tipo'] ? 'Entrada' : self::nombreDeSalida( (string) $f['motivo_clave'] ),
+				'hora'      => Ajustes::local( (string) $f['marcado_utc'], 'H:i' ),
+				'estado'    => $f['estado'],
+				'respuesta' => (string) $f['nota_resolucion'],
+			);
+		}
+
+		$detalle = array();
+		$dias    = array_unique( array_merge( array_keys( $marcas ), array_keys( $porDia ), array_keys( array_filter( $calculo, static fn( $j ) => $j->esFalta() || CalculoJornada::INCOMPLETO === $j->estado ) ) ) );
+
+		foreach ( $dias as $dia ) {
+			if ( $dia > $hasta || $dia < $desde ) {
+				continue;
+			}
+
+			$delDia  = $marcas[ $dia ] ?? array();
+			$horario = Horarios::delDia( (int) $t['horario_id'], $dia );
+			$vista   = VistaDia::de( $delDia, $horario, $dia, $zona, new DateTimeImmutable( 'now', new DateTimeZone( 'UTC' ) ) );
+			$abierto = $delDia && TotalesDia::calcular( $delDia )->incompleto && $dia < $hoy;
+			$extras  = array();
+
+			foreach ( MaquinaEstados::ordenar( $delDia ) as $m ) {
+				if ( TipoMarca::SALIDA === $m->tipo && \Pekokis\Asistencia\Nucleo\CategoriaMotivo::TEMPORAL === $m->motivo?->categoria ) {
+					$extras[] = array( 'hora' => Marcas::horaLocal( $m->marcadoUtc ), 'texto' => 'Salida · ' . $m->motivo->nombre );
+				}
+			}
+
+			$pendientes = array_filter( $porDia[ $dia ] ?? array(), static fn( $s ) => 'pendiente' === $s['estado'] );
+			$pedir      = array();
+
+			if ( $abierto && ! $pendientes ) {
+				$ultima  = MaquinaEstados::ordenar( $delDia );
+				$pedir[] = array( 'accion' => 'fin_jornada', 'paso' => 'Salida', 'despues_de' => Marcas::horaLocal( $ultima[ count( $ultima ) - 1 ]->marcadoUtc ) );
+			} elseif ( ! $delDia && ( $calculo[ $dia ] ?? null )?->esFalta() && ! $pendientes ) {
+				$pedir[] = array( 'accion' => 'entrada', 'paso' => 'Entrada', 'despues_de' => '' );
+			}
+
+			$detalle[ $dia ] = array(
+				'titulo'      => wp_date( 'l j \d\e F', ( new DateTimeImmutable( $dia . ' 12:00', $zona ) )->getTimestamp(), $zona ),
+				'pasos'       => $vista['pasos'],
+				'extras'      => $extras,
+				'incompleto'  => $abierto,
+				'falta'       => ! $delDia && ( $calculo[ $dia ] ?? null )?->esFalta(),
+				'solicitudes' => $porDia[ $dia ] ?? array(),
+				'pedir'       => $pedir,
+				'horas'       => isset( $calculo[ $dia ] ) && $calculo[ $dia ]->minutosTrabajados ? VistaDia::duracion( $calculo[ $dia ]->minutosTrabajados ) : '',
+				'extra'       => isset( $calculo[ $dia ] ) && $calculo[ $dia ]->minutosAdicionales() ? VistaDia::duracion( $calculo[ $dia ]->minutosAdicionales() ) : '',
+			);
+		}
+
+		return $detalle;
+	}
+
+	/**
+	 * Cifras de arriba de "Mis horas" (T5): horas trabajadas, horas extra y días
+	 * completos. Sin ningún dato de dinero.
+	 *
+	 * @return array{horas: string, extra: string, completos: int, hay: bool}
+	 */
+	private static function resumenDelMes( array $t, string $mes ): array {
+		$dias      = Informes::diasDe( $t, $mes );
+		$trabajado = 0;
+		$extra     = 0;
+		$completos = 0;
+
+		foreach ( $dias as $j ) {
+			$trabajado += $j->minutosTrabajados;
+			$extra     += $j->minutosAdicionales();
+			$completos += CalculoJornada::COMPLETO === $j->estado && $j->trabajoAlgo() ? 1 : 0;
+		}
+
+		$h = static fn( int $min ): string => rtrim( rtrim( number_format( $min / 60, 1, ',', '' ), '0' ), ',' ) . ' h';
+
+		return array( 'horas' => $h( $trabajado ), 'extra' => $h( $extra ), 'completos' => $completos, 'hay' => $trabajado > 0 );
+	}
+
+	private static function nombreDeSalida( string $motivo ): string {
+		return match ( $motivo ) {
+			'refrigerio'  => 'Inicio de comida',
+			'fin_jornada' => 'Salida',
+			default       => 'Salida · ' . ( Motivos::porClave( $motivo )?->nombre ?? $motivo ),
+		};
+	}
+
+	private static function iniciales( array $t ): string {
+		return mb_strtoupper( mb_substr( trim( (string) $t['nombres'] ), 0, 1 ) . mb_substr( trim( (string) $t['apellidos'] ), 0, 1 ) );
+	}
+
+	/** "09:00:00" → "9:00". */
+	private static function horaCorta( string $hora ): string {
+		return ltrim( substr( $hora, 0, 5 ), '0' );
+	}
+
+	/**
 	 * "Mi recibo": con el ticket de la huella da un permiso de 15 minutos para
 	 * ver y enviar sus recibos (elegir el PDF puede tomar más de 2 minutos).
 	 */
 	public static function misRecibos( WP_REST_Request $peticion ): WP_REST_Response|WP_Error {
-		$ticket = Temporales::leer( 'ticket', (string) $peticion->get_param( 'ticket' ) );
+		$t = self::trabajadorActual( $peticion );
 
-		if ( null === $ticket ) {
-			return new WP_Error( 'pka_ticket', 'Pasaron más de 2 minutos. Vuelve a poner tu huella.', array( 'status' => 401 ) );
-		}
-
-		$t = Trabajadores::buscar( (int) $ticket['trabajador_id'] );
-
-		if ( ! $t ) {
-			return new WP_Error( 'pka_ticket', 'Tu perfil no existe.', array( 'status' => 401 ) );
+		if ( $t instanceof WP_Error ) {
+			return $t;
 		}
 
 		$token = Temporales::guardar( 'recibo', array( 'trabajador_id' => (int) $t['id'] ), self::SEGUNDOS_RECIBO );
@@ -640,11 +865,10 @@ final class Api {
 
 	/** El trabajador avisa que olvidó marcar; queda pendiente para su jefe. */
 	public static function solicitarCorreccion( WP_REST_Request $peticion ): WP_REST_Response|WP_Error {
-		$clave  = (string) $peticion->get_param( 'ticket' );
-		$ticket = Temporales::leer( 'ticket', $clave );
+		$t = self::trabajadorActual( $peticion );
 
-		if ( null === $ticket ) {
-			return new WP_Error( 'pka_ticket', 'Pasaron más de 2 minutos. Vuelve a poner tu huella.', array( 'status' => 401 ) );
+		if ( $t instanceof WP_Error ) {
+			return $t;
 		}
 
 		$accion = Accion::tryFrom( (string) $peticion->get_param( 'accion' ) );
@@ -654,7 +878,7 @@ final class Api {
 		}
 
 		$resultado = Correcciones::solicitar(
-			(int) $ticket['trabajador_id'],
+			(int) $t['id'],
 			(string) $peticion->get_param( 'fecha' ),
 			(string) $peticion->get_param( 'hora' ),
 			$accion,
@@ -668,9 +892,7 @@ final class Api {
 			return $resultado;
 		}
 
-		Temporales::borrar( 'ticket', $clave );
-
-		return self::respuesta( array( 'ok' => true, 'mensaje' => 'Solicitud enviada. Tu jefe la revisará.' ) );
+		return self::respuesta( array( 'ok' => true, 'mensaje' => 'Solicitud enviada. Gerencia la revisará.' ) );
 	}
 
 	private static function motivoDe( Accion $accion, mixed $clave ): ?Motivo {

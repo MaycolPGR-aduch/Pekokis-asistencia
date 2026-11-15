@@ -288,6 +288,13 @@ Decidido el 14-11-2026, siguiendo las maquetas entregadas por Pekokis (`CONTEXTO
 - Gerencia (Asistencia → Recibos): pestañas por mes, filtros, comparación con el cálculo ("Coincide" / "Difiere S/ x"), recibido u observar, "Recordar" a quien falta (sale aunque los avisos estén apagados) y el historial de cada persona.
 - Los PDF van a `uploads/pka-recibos/`, con nombre aleatorio y un `.htaccess` que niega el acceso directo. Solo se abren desde wp-admin con permiso para ver sueldos, y cada apertura queda en el historial.
 
+### 6.8 App del trabajador (versión 0.12.0, diseño de las maquetas)
+
+- **Sesión:** al poner la huella se crea la cookie `pka_sesion` (HttpOnly, 30 días; los datos quedan en el servidor). Sirve para ver Marcar, Mis horas, Mi recibo y Perfil. **No sirve para marcar:** cada marca pide la huella otra vez (el ticket de 2 minutos). La sesión deja de valer si se revoca la llave o la persona cesa, y se cierra desde Perfil.
+- **Marcar (T2):** botón único según `VistaDia` (entrada → salir a comer → volver de comer → salida); las salidas temporales van como botón secundario con su motivo. Tarjeta grande: lo que lleva trabajando y lo que falta; en comida o fuera, desde cuándo. Sin presencia, los botones se apagan y aparece cómo conseguirla (WiFi o QR). El botón Escanear usa `BarcodeDetector` donde exista (Android) y, si no, el código de 6 números.
+- **Mis horas (T5/T6):** horas, extra y días completos (sin dinero), "Te falta marcar", calendario con cada día tocable y el detalle con sus pasos, otras salidas y correcciones pedidas. "Pedir corrección" manda la hora, qué pasó y un comentario a `POST /correcciones`.
+- **Perfil (T7):** DNI oculto; "Ver" lo trae con `POST /yo/dni` y queda en el historial.
+
 ---
 
 ## 7. Modelo de datos
@@ -340,8 +347,12 @@ Todas las rutas van bajo `/wp-json/asistencia/v1`.
 | `GET /presencia` | Público | Indica si la petición viene del WiFi del taller o tiene un pase de presencia vigente |
 | `POST /presencia/codigo` | Público | Valida el QR o el código de 6 dígitos y deja el pase de presencia |
 | `POST /marcas` | Trabajador (con ticket) | Crea la marca |
-| `GET /yo/marcas?mes=AAAA-MM` | Trabajador | Sus marcas y totales del mes |
-| `POST /yo/solicitudes` | Trabajador | Corrección, permiso o sustento |
+| `GET /yo` | Trabajador (sesión) | Estado del día, "Tu día", presencia y si falta aceptar el aviso |
+| `POST /yo/mes` | Trabajador (sesión o ticket) | Calendario, detalle de cada día y resumen del mes |
+| `GET /yo/perfil` · `POST /yo/dni` | Trabajador (sesión) | Perfil con el DNI oculto; mostrarlo completo queda en el historial |
+| `POST /yo/salir` | Trabajador | Cierra la sesión de ese celular |
+| `POST /yo/recibos` (y `/enviar`, `/anular`) | Trabajador (sesión) | Sus recibos por honorarios |
+| `POST /correcciones` | Trabajador (sesión o ticket) | "Olvidé marcar": queda pendiente para su jefe |
 | `GET /pantalla/codigo` | Pantalla | Token y código vigentes |
 | `…/admin/*` | Jefe, RR.HH. | Panel del día, aprobaciones, marcas manuales, reportes |
 
