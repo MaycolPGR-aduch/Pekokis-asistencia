@@ -123,7 +123,7 @@ final class PantallaAusencias {
 						<td><?php echo esc_html( $a['nota'] ); ?><?php echo 'anulada' === $a['estado'] ? '<br><em>Anulada: ' . esc_html( $a['motivo_anulacion'] ) . '</em>' : ''; ?></td>
 						<td>
 							<?php if ( 'vigente' === $a['estado'] ) : ?>
-								<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:flex;gap:6px">
+								<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="pk-fila junta">
 									<input type="hidden" name="action" value="pka_ausencia_anular">
 									<input type="hidden" name="id" value="<?php echo esc_attr( $a['id'] ); ?>">
 									<?php wp_nonce_field( 'pka_ausencia_anular' ); ?>
@@ -171,7 +171,7 @@ final class PantallaAusencias {
 	/** @param array<string, string> $errores */
 	private static function error( array $errores, string $campo ): void {
 		if ( isset( $errores[ $campo ] ) ) {
-			echo '<p class="description" style="color:#b32d2e">' . esc_html( $errores[ $campo ] ) . '</p>';
+			echo '<p class="description pk-txt-error">' . esc_html( $errores[ $campo ] ) . '</p>';
 		}
 	}
 

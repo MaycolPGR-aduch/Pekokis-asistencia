@@ -71,12 +71,12 @@ final class PantallaRecibos {
 		usort( $personas, static fn( $a, $b ) => strcmp( $a['apellidos'] . $a['nombres'], $b['apellidos'] . $b['nombres'] ) );
 		?>
 		<h1>Recibos por honorarios</h1>
-		<nav class="nav-tab-wrapper" style="margin-bottom:12px">
+		<nav class="nav-tab-wrapper pk-mb">
 			<?php foreach ( $meses as $m ) : ?>
 				<a class="nav-tab <?php echo $m === $mes ? 'nav-tab-active' : ''; ?>" href="<?php echo esc_url( self::url( $m ) ); ?>"><?php echo esc_html( PantallaResumen::nombreMes( $m ) ); ?></a>
 			<?php endforeach; ?>
 		</nav>
-		<ul class="subsubsub" style="float:none;margin-bottom:8px">
+		<ul class="subsubsub pk-sin-flotar">
 			<?php foreach ( self::FILTROS as $clave => $etiqueta ) : ?>
 				<li><a href="<?php echo esc_url( self::url( $mes, array( 'estado' => $clave ) ) ); ?>" <?php echo $clave === $filtro ? 'class="current"' : ''; ?>><?php echo esc_html( $etiqueta ); ?></a><?php echo 'observado' !== $clave ? ' |' : ''; ?></li>
 			<?php endforeach; ?>
@@ -120,7 +120,7 @@ final class PantallaRecibos {
 						<?php endif; ?>
 						<?php if ( $r && $f->sueldoFinal && current_user_can( Capacidades::VER_SUELDOS ) ) : ?>
 							<?php $comp = ValidacionRecibo::textoComparacion( (int) $r['monto_centimos'], $f->montos['total'] ); ?>
-							<br><strong style="color:<?php echo 'Coincide' === $comp ? '#00733a' : '#8a4b00'; ?>"><?php echo esc_html( $comp ); ?></strong>
+							<br><strong class="<?php echo 'Coincide' === $comp ? 'pk-txt-ok' : 'pk-txt-aviso'; ?>"><?php echo esc_html( $comp ); ?></strong>
 						<?php endif; ?>
 					</td>
 					<td>
@@ -129,7 +129,7 @@ final class PantallaRecibos {
 					</td>
 					<td>
 						<?php if ( $r && ValidacionRecibo::ENVIADO === $estado && ! Trabajadores::esPropio( $id ) ) : ?>
-							<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:flex;gap:6px;flex-wrap:wrap">
+							<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="pk-fila junta">
 								<input type="hidden" name="action" value="pka_recibo_revisar">
 								<input type="hidden" name="id" value="<?php echo esc_attr( (string) $r['id'] ); ?>">
 								<input type="hidden" name="mes" value="<?php echo esc_attr( $mes ); ?>">
@@ -175,7 +175,7 @@ final class PantallaRecibos {
 		?>
 		<p><a href="<?php echo esc_url( self::url() ); ?>">← Volver a los recibos</a></p>
 		<h1>Recibos de <?php echo esc_html( Trabajadores::nombreCompleto( $t ) ); ?></h1>
-		<table class="widefat striped" style="max-width:1000px">
+		<table class="widefat striped pk-max">
 			<thead><tr><th>Mes</th><th>Recibo</th><th>Monto</th><th>Estado</th><th>Enviado</th><th>Revisado</th></tr></thead>
 			<tbody>
 			<?php $filas = Recibos::historial( $id ); ?>
@@ -183,7 +183,7 @@ final class PantallaRecibos {
 				<tr><td colspan="6">Todavía no envió ningún recibo.</td></tr>
 			<?php endif; ?>
 			<?php foreach ( $filas as $r ) : ?>
-				<tr<?php echo ValidacionRecibo::ANULADO === $r['estado'] ? ' style="opacity:.6"' : ''; ?>>
+				<tr<?php echo ValidacionRecibo::ANULADO === $r['estado'] ? ' class="pk-atenuado"' : ''; ?>>
 					<td><?php echo esc_html( PantallaResumen::nombreMes( $r['mes'] ) ); ?></td>
 					<td><?php echo esc_html( $r['numero'] ); ?> · <a href="<?php echo esc_url( Menu::urlAccion( 'pka_recibo_pdf', array( 'id' => (int) $r['id'] ) ) ); ?>" target="_blank" rel="noopener">PDF</a></td>
 					<td><?php echo esc_html( Sueldo::soles( (int) $r['monto_centimos'] ) ); ?></td>

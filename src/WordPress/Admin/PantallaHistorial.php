@@ -53,11 +53,11 @@ final class PantallaHistorial {
 				<p>✔ El historial está íntegro: nadie lo alteró fuera del sistema. Los registros no se pueden editar ni borrar.</p>
 			<?php endif; ?>
 
-			<form method="get" style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin:16px 0">
+			<form class="pk-fila abajo espacio" method="get">
 				<input type="hidden" name="page" value="<?php echo esc_attr( self::SLUG ); ?>">
-				<p style="margin:0"><label for="pka-h-desde">Desde</label><br><input type="date" id="pka-h-desde" name="desde" value="<?php echo esc_attr( $filtros['desde'] ); ?>"></p>
-				<p style="margin:0"><label for="pka-h-hasta">Hasta</label><br><input type="date" id="pka-h-hasta" name="hasta" value="<?php echo esc_attr( $filtros['hasta'] ); ?>"></p>
-				<p style="margin:0">
+				<p class="pk-m0"><label for="pka-h-desde">Desde</label><br><input type="date" id="pka-h-desde" name="desde" value="<?php echo esc_attr( $filtros['desde'] ); ?>"></p>
+				<p class="pk-m0"><label for="pka-h-hasta">Hasta</label><br><input type="date" id="pka-h-hasta" name="hasta" value="<?php echo esc_attr( $filtros['hasta'] ); ?>"></p>
+				<p class="pk-m0">
 					<label for="pka-h-grupo">Tipo</label><br>
 					<select id="pka-h-grupo" name="grupo">
 						<option value="">Todo</option>
@@ -66,7 +66,7 @@ final class PantallaHistorial {
 						<?php endforeach; ?>
 					</select>
 				</p>
-				<p style="margin:0">
+				<p class="pk-m0">
 					<label for="pka-h-trabajador">Trabajador</label><br>
 					<select id="pka-h-trabajador" name="trabajador">
 						<option value="0">Todos</option>
@@ -75,7 +75,7 @@ final class PantallaHistorial {
 						<?php endforeach; ?>
 					</select>
 				</p>
-				<p style="margin:0">
+				<p class="pk-m0">
 					<label for="pka-h-usuario">Hecho por</label><br>
 					<select id="pka-h-usuario" name="usuario">
 						<option value="0">Cualquiera</option>
@@ -84,8 +84,8 @@ final class PantallaHistorial {
 						<?php endforeach; ?>
 					</select>
 				</p>
-				<p style="margin:0"><label for="pka-h-texto">Buscar en motivos y datos</label><br><input type="search" id="pka-h-texto" name="texto" value="<?php echo esc_attr( $filtros['texto'] ); ?>"></p>
-				<p style="margin:0"><button class="button button-primary">Filtrar</button> <a class="button" href="<?php echo esc_url( self::url() ); ?>">Limpiar</a></p>
+				<p class="pk-m0"><label for="pka-h-texto">Buscar en motivos y datos</label><br><input type="search" id="pka-h-texto" name="texto" value="<?php echo esc_attr( $filtros['texto'] ); ?>"></p>
+				<p class="pk-m0"><button class="button button-primary">Filtrar</button> <a class="button" href="<?php echo esc_url( self::url() ); ?>">Limpiar</a></p>
 			</form>
 
 			<p>
@@ -96,7 +96,7 @@ final class PantallaHistorial {
 			</p>
 
 			<table class="widefat striped">
-				<thead><tr><th style="width:130px">Fecha</th><th>Quién</th><th>Qué</th><th>Sobre</th><th>Cambios</th><th>Motivo</th></tr></thead>
+				<thead><tr><th>Fecha</th><th>Quién</th><th>Qué</th><th>Sobre</th><th>Cambios</th><th>Motivo</th></tr></thead>
 				<tbody>
 				<?php if ( ! $items ) : ?>
 					<tr><td colspan="6">No hay registros con estos filtros.</td></tr>

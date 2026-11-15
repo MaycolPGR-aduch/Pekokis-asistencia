@@ -53,7 +53,7 @@ final class PantallaHorarios {
 			<tbody>
 			<?php foreach ( Horarios::listar() as $fila ) : ?>
 				<?php $h = Horarios::completo( (int) $fila['id'] ); ?>
-				<tr <?php echo $fila['activo'] ? '' : 'style="opacity:.6"'; ?>>
+				<tr <?php echo $fila['activo'] ? '' : 'class="pk-atenuado"'; ?>>
 					<td><strong><?php echo esc_html( $fila['nombre'] ); ?></strong><?php echo $fila['activo'] ? '' : ' (desactivado)'; ?></td>
 					<td><?php echo esc_html( self::resumenDias( $h ) ); ?></td>
 					<td><?php echo (int) $fila['tolerancia_min']; ?> min</td>
@@ -117,7 +117,7 @@ final class PantallaHorarios {
 
 			<h2>Días</h2>
 			<?php self::error( $errores, 'dias' ); ?>
-			<table class="widefat striped" style="max-width:640px">
+			<table class="widefat striped pk-max-s">
 				<thead><tr><th>Día</th><th>Laborable</th><th>Entrada</th><th>Salida</th></tr></thead>
 				<tbody>
 				<?php foreach ( ValidacionHorario::DIAS as $n => $nombreDia ) : ?>
@@ -222,7 +222,7 @@ final class PantallaHorarios {
 	/** @param array<string, string> $errores */
 	private static function error( array $errores, string $campo ): void {
 		if ( isset( $errores[ $campo ] ) ) {
-			echo '<p class="description" style="color:#b32d2e">' . esc_html( $errores[ $campo ] ) . '</p>';
+			echo '<p class="description pk-txt-error">' . esc_html( $errores[ $campo ] ) . '</p>';
 		}
 	}
 

@@ -54,7 +54,7 @@ final class PantallaInforme {
 		<div class="wrap">
 			<?php Avisos::mostrar(); ?>
 			<h1>Informe por trabajador</h1>
-			<form method="get" style="margin:8px 0 16px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+			<form class="pk-fila espacio" method="get">
 				<input type="hidden" name="page" value="<?php echo esc_attr( self::SLUG ); ?>">
 				<label for="pka-i-trabajador">Trabajador</label>
 				<select id="pka-i-trabajador" name="trabajador">
@@ -95,13 +95,11 @@ final class PantallaInforme {
 		$zona    = Ajustes::zona();
 		$hoy     = wp_date( 'Y-m-d', null, $zona );
 
-		PantallaResumen::estilos();
-		self::estilos();
 		?>
-		<h2 style="margin-bottom:2px"><?php echo esc_html( Trabajadores::nombreCompleto( $t ) ); ?> · <?php echo esc_html( PantallaResumen::nombreMes( $mes ) ); ?></h2>
+		<h2><?php echo esc_html( Trabajadores::nombreCompleto( $t ) ); ?> · <?php echo esc_html( PantallaResumen::nombreMes( $mes ) ); ?></h2>
 		<p class="description">DNI <?php echo esc_html( $imprimir ? (string) $t['dni'] : PantallaCelulares::dniOculto( (string) $t['dni'] ) ); ?><?php echo '' !== (string) $t['area'] ? ' · ' . esc_html( $t['area'] ) : ''; ?><?php echo '' !== (string) $t['cargo'] ? ' · ' . esc_html( $t['cargo'] ) : ''; ?><?php echo Trabajadores::CESADO === $t['estado'] ? ' · Cesó el ' . esc_html( (string) $t['fecha_cese'] ) : ''; ?></p>
 
-		<div class="pka-tarjetas">
+		<div class="pk-kpis auto pk-max">
 			<?php
 			self::tarjeta( 'Días trabajados', $fila->dias['trabajados'] . ' de ' . $fila->dias['laborables'] );
 			self::tarjeta( 'Horas trabajadas', $h( $fila->minutos['trabajados'] ) );
@@ -123,63 +121,62 @@ final class PantallaInforme {
 		$vacios  = (int) $primero->format( 'N' ) - 1;
 		$ultimo  = (int) $primero->format( 't' );
 		?>
-		<table class="pka-cal" aria-label="Calendario del mes">
-			<thead><tr><th>Lun</th><th>Mar</th><th>Mié</th><th>Jue</th><th>Vie</th><th>Sáb</th><th>Dom</th></tr></thead>
-			<tbody><tr>
-			<?php
-			for ( $i = 0; $i < $vacios; $i++ ) {
-				echo '<td class="pka-cal-vacio"></td>';
-			}
-
-			for ( $d = 1; $d <= $ultimo; $d++ ) {
-				$dia   = $primero->format( 'Y-m-' ) . str_pad( (string) $d, 2, '0', STR_PAD_LEFT );
-				$j     = $dias[ $dia ] ?? null;
-				$clave = Informes::estadoVisual( $j );
-
-				[ $etiqueta, $color, $fondo ] = Informes::COLORES[ $clave ];
-
-				if ( ! $j ) {
-					$etiqueta = $dia >= $hoy ? '' : '—';
-				} elseif ( in_array( $clave, array( 'justificado', 'descanso' ), true ) && '' !== $j->detalle ) {
-					$etiqueta = preg_replace( '/^Feriado: /', '', $j->detalle );
+		<?php // El mismo calendario que ve el trabajador en la app (.pk-cal, colores .pk-est-*), en grande. ?>
+		<div class="pk-caja pk-max">
+			<div class="pk-cal grande" role="list" aria-label="Calendario del mes">
+				<?php
+				foreach ( array( 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom' ) as $cab ) {
+					echo '<span class="pk-cal-cab" aria-hidden="true">' . esc_html( $cab ) . '</span>';
 				}
 
-				$horas = $j && $j->minutosTrabajados ? $h( $j->minutosTrabajados ) . ' h' : '';
-				$extra = $j && $j->minutosTardanza ? '+' . $j->minutosTardanza . ' min' : '';
-
-				echo '<td style="background:' . esc_attr( $fondo ) . '"><div class="pka-cal-n">' . (int) $d . '</div>'
-					. '<div class="pka-cal-e" style="color:' . esc_attr( $color ) . '">' . esc_html( $etiqueta ) . '</div>'
-					. '<div class="pka-cal-h">' . esc_html( trim( $horas . ' ' . $extra ) ) . '</div></td>';
-
-				if ( 0 === ( $vacios + $d ) % 7 && $d < $ultimo ) {
-					echo '</tr><tr>';
+				for ( $i = 0; $i < $vacios; $i++ ) {
+					echo '<span class="pk-cal-vacio" aria-hidden="true"></span>';
 				}
-			}
 
-			$resto = ( 7 - ( $vacios + $ultimo ) % 7 ) % 7;
-			for ( $i = 0; $i < $resto; $i++ ) {
-				echo '<td class="pka-cal-vacio"></td>';
-			}
-			?>
-			</tr></tbody>
-		</table>
-		<p class="pka-leyenda">
-			<?php foreach ( Informes::COLORES as $clave => [ $etiqueta, $color, $fondo ] ) : ?>
-				<?php if ( 'pendiente' !== $clave ) : ?>
-					<span style="background:<?php echo esc_attr( $fondo ); ?>;color:<?php echo esc_attr( $color ); ?>"><?php echo esc_html( $etiqueta ); ?></span>
-				<?php endif; ?>
-			<?php endforeach; ?>
-		</p>
+				for ( $d = 1; $d <= $ultimo; $d++ ) {
+					$dia      = $primero->format( 'Y-m-' ) . str_pad( (string) $d, 2, '0', STR_PAD_LEFT );
+					$j        = $dias[ $dia ] ?? null;
+					$clave    = Informes::estadoVisual( $j );
+					$etiqueta = Informes::COLORES[ $clave ][0];
+
+					if ( ! $j ) {
+						$etiqueta = $dia >= $hoy ? '' : '—';
+					} elseif ( in_array( $clave, array( 'justificado', 'descanso' ), true ) && '' !== $j->detalle ) {
+						$etiqueta = preg_replace( '/^Feriado: /', '', $j->detalle );
+					}
+
+					$horas    = $j && $j->minutosTrabajados ? $h( $j->minutosTrabajados ) . ' h' : '';
+					$tarde    = $j && $j->minutosTardanza ? '+' . $j->minutosTardanza . ' min' : '';
+					$contenido = '<strong>' . (int) $d . '</strong><span class="e">' . esc_html( $etiqueta ) . '</span><span class="h">' . esc_html( trim( $horas . ' ' . $tarde ) ) . '</span>';
+					$clases    = 'pk-cal-dia pk-est-' . ( $dia === $hoy ? 'hoy' : $clave );
+
+					// En pantalla, cada día abre su detalle para corregirlo; en el impreso, no.
+					if ( $imprimir || ! $j ) {
+						echo '<span class="' . esc_attr( $clases ) . '" role="listitem">' . $contenido . '</span>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- armado con esc_html arriba.
+					} else {
+						echo '<a class="' . esc_attr( $clases ) . '" role="listitem" href="' . esc_url( PantallaDia::url( (int) $t['id'], $dia ) ) . '">' . $contenido . '</a>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+					}
+				}
+				?>
+			</div>
+			<p class="pk-leyenda">
+				<?php foreach ( Informes::COLORES as $clave => [ $etiqueta ] ) : ?>
+					<?php if ( 'pendiente' !== $clave ) : ?>
+						<span class="pk-est-<?php echo esc_attr( $clave ); ?>"><?php echo esc_html( $etiqueta ); ?></span>
+					<?php endif; ?>
+				<?php endforeach; ?>
+			</p>
+		</div>
 
 		<h3>Detalle de cada día</h3>
-		<table class="widefat striped pka-detalle">
+		<table class="widefat striped pk-detalle">
 			<thead><tr><th>Día</th><th>Estado</th><th>Marcas</th><th>Trabajado</th><th>Tardanza</th><th>Extra</th><th>Sáb./dom./fer.</th><th>Nota</th></tr></thead>
 			<tbody>
 			<?php if ( ! $dias ) : ?>
 				<tr><td colspan="8">Todavía no hay días terminados en este mes.</td></tr>
 			<?php endif; ?>
 			<?php foreach ( $dias as $dia => $j ) : ?>
-				<?php [ $etiqueta, $color ] = Informes::COLORES[ Informes::estadoVisual( $j ) ]; ?>
+				<?php $clave = Informes::estadoVisual( $j ); ?>
 				<tr>
 					<td>
 						<?php if ( $imprimir ) : ?>
@@ -188,10 +185,10 @@ final class PantallaInforme {
 							<a href="<?php echo esc_url( PantallaDia::url( (int) $t['id'], $dia ) ); ?>"><?php echo esc_html( wp_date( 'D j', strtotime( $dia . ' 12:00:00' ) ) ); ?></a>
 						<?php endif; ?>
 					</td>
-					<td style="color:<?php echo esc_attr( $color ); ?>;font-weight:600"><?php echo esc_html( $etiqueta ); ?></td>
+					<td><span class="pk-estado pk-est-<?php echo esc_attr( $clave ); ?>"><?php echo esc_html( Informes::COLORES[ $clave ][0] ); ?></span></td>
 					<td>
 						<?php foreach ( $marcas[ $dia ] ?? array() as $m ) : ?>
-							<span style="<?php echo null !== $m['anulada'] ? 'text-decoration:line-through;color:#8c8f94' : ''; ?>"><?php echo esc_html( Informes::textoMarca( $m ) ); ?></span><?php echo 'trabajador' !== $m['origen'] ? ' <em>(' . esc_html( PantallaDia::ORIGENES[ $m['origen'] ] ?? $m['origen'] ) . ')</em>' : ''; ?><br>
+							<span class="<?php echo null !== $m['anulada'] ? 'pk-tachado' : ''; ?>"><?php echo esc_html( Informes::textoMarca( $m ) ); ?></span><?php echo 'trabajador' !== $m['origen'] ? ' <em>(' . esc_html( PantallaDia::ORIGENES[ $m['origen'] ] ?? $m['origen'] ) . ')</em>' : ''; ?><br>
 						<?php endforeach; ?>
 					</td>
 					<td><?php echo $j->minutosTrabajados ? esc_html( $h( $j->minutosTrabajados ) ) : ''; ?></td>
@@ -237,18 +234,13 @@ final class PantallaInforme {
 			<meta charset="utf-8">
 			<meta name="viewport" content="width=device-width, initial-scale=1">
 			<title><?php echo esc_html( 'Informe ' . $mes . ' — ' . Trabajadores::nombreCompleto( $t ) ); ?></title>
-			<style>
-				body{font:13px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#1d2327;background:#fff;margin:24px}
-				h1{font-size:18px;margin:0}h2{font-size:16px}h3{font-size:14px;margin-top:20px}
-				.description{color:#50575e;margin:2px 0 10px}
-				table.widefat{border-collapse:collapse;width:100%}
-				table.widefat th,table.widefat td{border:1px solid #dcdcde;padding:4px 6px;text-align:left;vertical-align:top}
-				.pka-barra{margin-bottom:16px}
-				@media print{.pka-barra{display:none}body{margin:0}.pka-tarjeta,.pka-cal td,.pka-leyenda span{-webkit-print-color-adjust:exact;print-color-adjust:exact}tr{break-inside:avoid}}
-			</style>
+			<link rel="stylesheet" href="<?php echo esc_url( \Pekokis\Asistencia\WordPress\Rutas::asset( 'tokens.css' ) ); ?>">
+			<link rel="stylesheet" href="<?php echo esc_url( \Pekokis\Asistencia\WordPress\Rutas::asset( 'componentes.css' ) ); ?>">
+			<link rel="stylesheet" href="<?php echo esc_url( \Pekokis\Asistencia\WordPress\Rutas::asset( 'imprimir.css' ) ); ?>">
 		</head>
 		<body>
-			<div class="pka-barra"><button onclick="window.print()">Imprimir o guardar como PDF</button></div>
+			<div class="pk-barra-imprimir"><button type="button" id="pk-imprimir">Imprimir o guardar como PDF</button></div>
+			<script src="<?php echo esc_url( \Pekokis\Asistencia\WordPress\Rutas::asset( 'admin.js' ) ); ?>"></script>
 			<h1><?php echo esc_html( (string) $aj['razon_social'] ); ?> · RUC <?php echo esc_html( (string) $aj['ruc'] ); ?></h1>
 			<p class="description">Informe de asistencia generado el <?php echo esc_html( wp_date( 'Y-m-d H:i', null, Ajustes::zona() ) ); ?> por <?php echo esc_html( wp_get_current_user()->display_name ); ?>.</p>
 			<?php self::cuerpo( $t, $mes, true ); ?>
@@ -289,30 +281,14 @@ final class PantallaInforme {
 
 	private static function tarjeta( string $titulo, string $valor, string $pie = '' ): void {
 		?>
-		<div class="pka-tarjeta">
-			<div class="pka-tarjeta-titulo"><?php echo esc_html( $titulo ); ?></div>
-			<div class="pka-tarjeta-valor"><?php echo esc_html( $valor ); ?></div>
+		<div class="pk-kpi">
+			<span><?php echo esc_html( $titulo ); ?></span>
+			<b><?php echo esc_html( $valor ); ?></b>
 			<?php if ( '' !== $pie ) : ?>
-				<div class="pka-tarjeta-pie"><?php echo esc_html( $pie ); ?></div>
+				<small><?php echo esc_html( $pie ); ?></small>
 			<?php endif; ?>
 		</div>
 		<?php
 	}
 
-	private static function estilos(): void {
-		?>
-		<style>
-			.pka-cal{border-collapse:separate;border-spacing:4px;width:100%;max-width:900px;table-layout:fixed}
-			.pka-cal th{color:#50575e;font-weight:600;font-size:12px;text-align:left;padding:0 6px}
-			.pka-cal td{border:1px solid #dcdcde;border-radius:6px;height:64px;vertical-align:top;padding:4px 6px}
-			.pka-cal td.pka-cal-vacio{border:0;background:transparent}
-			.pka-cal-n{font-weight:600;font-size:12px;color:#1d2327}
-			.pka-cal-e{font-size:12px;font-weight:600;line-height:1.2;overflow-wrap:anywhere}
-			.pka-cal-h{font-size:11px;color:#50575e}
-			.pka-leyenda{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 16px}
-			.pka-leyenda span{border-radius:999px;padding:2px 10px;font-size:12px;font-weight:600}
-			.pka-detalle td{font-size:12px}
-		</style>
-		<?php
-	}
 }

@@ -56,31 +56,31 @@ final class PantallaDelegar {
 			<h1>Delegar permisos</h1>
 			<p class="description">El supervisor es gerencia. Si lo necesitas, puedes darle a un trabajador solo los permisos que elijas, y quitárselos cuando quieras. Lo que haga queda en la auditoría con su nombre.</p>
 
-			<div class="pka-dos">
-				<div class="pka-caja">
+			<div class="pk-dos">
+				<div class="pk-caja">
 					<h2>Con permisos delegados</h2>
 					<?php if ( ! $delegados ) : ?>
 						<p class="description">Nadie tiene permisos delegados.</p>
 					<?php else : ?>
-						<ul class="pka-alertas">
+						<ul class="pk-alertas">
 							<?php foreach ( $delegados as $tid => $d ) : ?>
 								<li>
-									<span class="pka-av"><?php echo esc_html( self::iniciales( $d['trabajador'] ) ); ?></span>
+									<span class="pk-av"><?php echo esc_html( self::iniciales( $d['trabajador'] ) ); ?></span>
 									<div>
 										<b><?php echo esc_html( Trabajadores::nombreCompleto( $d['trabajador'] ) ); ?></b>
 										<span>Desde el <?php echo esc_html( Ajustes::local( $d['desde'], 'j \d\e F' ) ); ?> · <?php echo count( $d['permisos'] ); ?> <?php echo 1 === count( $d['permisos'] ) ? 'permiso' : 'permisos'; ?></span>
 									</div>
-									<span class="pka-chip ok">Activo</span>
+									<span class="pk-chip ok">Activo</span>
 									<a class="button" href="<?php echo esc_url( self::url( $tid ) ); ?>">Editar</a>
 								</li>
 							<?php endforeach; ?>
 						</ul>
 					<?php endif; ?>
 
-					<form method="get" action="<?php echo esc_url( admin_url( 'admin.php' ) ); ?>" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
+					<form method="get" action="<?php echo esc_url( admin_url( 'admin.php' ) ); ?>" class="pk-fila pk-mt-s">
 						<input type="hidden" name="page" value="<?php echo esc_attr( self::SLUG ); ?>">
 						<label class="screen-reader-text" for="pka-delegar-a">Trabajador</label>
-						<select id="pka-delegar-a" name="trabajador" required style="flex:1;min-width:180px">
+						<select class="pk-crece" id="pka-delegar-a" name="trabajador" required>
 							<option value="">Elige a un trabajador…</option>
 							<?php foreach ( $libres as $x ) : ?>
 								<option value="<?php echo (int) $x['id']; ?>" <?php selected( $elegido, (int) $x['id'] ); ?>><?php echo esc_html( $x['apellidos'] . ', ' . $x['nombres'] ); ?></option>
@@ -91,7 +91,7 @@ final class PantallaDelegar {
 				</div>
 
 				<?php if ( $t ) : ?>
-					<div class="pka-caja">
+					<div class="pk-caja">
 						<h2>Permisos de <?php echo esc_html( Trabajadores::nombreCompleto( $t ) ); ?></h2>
 						<?php if ( $usuario && user_can( $usuario, 'manage_options' ) ) : ?>
 							<p>Es administrador de WordPress: ya tiene todos los permisos.</p>
@@ -102,15 +102,15 @@ final class PantallaDelegar {
 								<input type="hidden" name="action" value="pka_delegar">
 								<input type="hidden" name="trabajador" value="<?php echo (int) $t['id']; ?>">
 								<?php wp_nonce_field( 'pka_delegar' ); ?>
-								<ul class="pka-permisos">
+								<ul class="pk-permisos">
 									<?php foreach ( self::PERMISOS as $clave => [ $texto, $ayuda, , $sensible ] ) : ?>
 										<li>
-											<label for="pka-perm-<?php echo esc_attr( $clave ); ?>"><?php echo esc_html( $texto ); ?><?php echo $sensible ? ' <span class="pka-chip solo">Solo a propósito</span>' : ''; ?><small><?php echo esc_html( $ayuda ); ?></small></label>
-											<span class="pka-switch"><input type="checkbox" role="switch" id="pka-perm-<?php echo esc_attr( $clave ); ?>" name="permisos[]" value="<?php echo esc_attr( $clave ); ?>" <?php checked( in_array( $clave, $actuales, true ) ); ?>><span></span></span>
+											<label for="pka-perm-<?php echo esc_attr( $clave ); ?>"><?php echo esc_html( $texto ); ?><?php echo $sensible ? ' <span class="pk-chip solo">Solo a propósito</span>' : ''; ?><small><?php echo esc_html( $ayuda ); ?></small></label>
+											<span class="pk-switch"><input type="checkbox" role="switch" id="pka-perm-<?php echo esc_attr( $clave ); ?>" name="permisos[]" value="<?php echo esc_attr( $clave ); ?>" <?php checked( in_array( $clave, $actuales, true ) ); ?>><span></span></span>
 										</li>
 									<?php endforeach; ?>
 								</ul>
-								<p class="pka-nota-rosa"><span class="dashicons dashicons-shield" aria-hidden="true"></span> Los sueldos, los pagos y los recibos se delegan solo si los activas a propósito. Nadie aprueba ni corrige sus propias marcas.</p>
+								<p class="pk-nota-rosa"><span class="dashicons dashicons-shield" aria-hidden="true"></span> Los sueldos, los pagos y los recibos se delegan solo si los activas a propósito. Nadie aprueba ni corrige sus propias marcas.</p>
 								<?php if ( ! $usuario ) : ?>
 									<p>
 										<label for="pka-deleg-correo"><strong>Correo para su acceso al panel</strong></label><br>
@@ -118,7 +118,7 @@ final class PantallaDelegar {
 										<br><span class="description">Todavía no entra al panel: se le creará un acceso y le llegará un correo para elegir su contraseña.</span>
 									</p>
 								<?php endif; ?>
-								<p style="display:flex;gap:8px">
+								<p class="pk-fila">
 									<button class="button button-primary" name="que" value="guardar">Guardar permisos</button>
 									<?php if ( $actuales ) : ?>
 										<button class="button" name="que" value="quitar" onclick="return confirm('¿Quitarle todos los permisos delegados?')">Quitar todos</button>

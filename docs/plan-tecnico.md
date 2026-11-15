@@ -295,6 +295,12 @@ Decidido el 14-11-2026, siguiendo las maquetas entregadas por Pekokis (`CONTEXTO
 - **Mis horas (T5/T6):** horas, extra y días completos (sin dinero), "Te falta marcar", calendario con cada día tocable y el detalle con sus pasos, otras salidas y correcciones pedidas. "Pedir corrección" manda la hora, qué pasó y un comentario a `POST /correcciones`.
 - **Perfil (T7):** DNI oculto; "Ver" lo trae con `POST /yo/dni` y queda en el historial.
 
+### 6.11 Estilos compartidos (versión 0.14.1)
+
+- `tokens.css` (letra y colores, `--pk-*`) → `componentes.css` (`.pk-chip`, `.pk-kpi`, `.pk-caja`, `.pk-datos`, `.pk-aviso`, `.pk-av`, `.pk-cal` + `.pk-est-*`, `.pk-leyenda`, `.pk-barras`, `.pk-viz`, utilidades) → la hoja propia de cada interfaz (`app.css`, `admin.css`, `imprimir.css`).
+- Regla: nada de `style="…"` ni `<style>` en el PHP; si un estilo se repite, va a `componentes.css`; si es de una sola interfaz, a su hoja. Colores siempre por token.
+- Los colores de los estados del día existen dos veces a propósito: `.pk-est-*` en CSS (pantalla) e `Informes::COLORES` en PHP (textos y Excel).
+
 ### 6.10 Panel de gerencia (versión 0.14.0)
 
 - Se quedó dentro de wp-admin, con el estilo de las maquetas (`assets/admin.css`, `Admin\Tema`) y el menú por grupos. Quien solo usa Asistencia entra directo al Dashboard y no ve lo de WordPress.

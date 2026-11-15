@@ -51,7 +51,7 @@ final class PantallaResumen {
 		<div class="wrap">
 			<?php Avisos::mostrar(); ?>
 			<h1>Resumen del mes</h1>
-			<form method="get" style="margin:8px 0 4px">
+			<form class="pk-mt-s" method="get">
 				<input type="hidden" name="page" value="<?php echo esc_attr( self::SLUG ); ?>">
 				<label for="pka-r-mes">Mes</label>
 				<select id="pka-r-mes" name="mes" onchange="this.form.submit()">
@@ -67,14 +67,13 @@ final class PantallaResumen {
 
 			</p>
 
-			<?php self::estilos(); ?>
-			<div class="pka-tarjetas">
+			<div class="pk-kpis auto pk-max">
 				<?php
 				self::tarjeta( 'Horas trabajadas', $h( $total->minutos['trabajados'] ), self::plural( $total->dias['trabajados'], 'día trabajado', 'días trabajados' ) );
 				self::tarjeta( 'Horas extra', $h( $total->minutos['extra'] ), $sueldos ? Sueldo::soles( $total->montos['extra'] ) . ' · de lunes a viernes' : 'de lunes a viernes' );
 				self::tarjeta( 'Sábado, domingo y feriado', $h( ( $total->minutos['sabado'] + $total->minutos['domingo'] + $total->minutos['feriado'] ) ), $sueldos ? Sueldo::soles( $total->montos['sabado'] + $total->montos['domingo'] + $total->montos['feriado'] ) : self::plural( $total->dias['sabados'] + $total->dias['domingos'] + $total->dias['feriados'], 'día trabajado', 'días trabajados' ) );
-				self::tarjeta( 'Tardanzas', (string) $total->dias['con_tardanza'], $h( $total->minutos['tardanza'] ) . ' h en total', $total->dias['con_tardanza'] ? '#8a4b00' : '' );
-				self::tarjeta( 'Faltas', (string) $total->dias['faltas'], self::plural( $total->dias['justificados'], 'día justificado', 'días justificados' ), $total->dias['faltas'] ? '#b32d2e' : '' );
+				self::tarjeta( 'Tardanzas', (string) $total->dias['con_tardanza'], $h( $total->minutos['tardanza'] ) . ' h en total', $total->dias['con_tardanza'] ? 'pk-txt-aviso' : '' );
+				self::tarjeta( 'Faltas', (string) $total->dias['faltas'], self::plural( $total->dias['justificados'], 'día justificado', 'días justificados' ), $total->dias['faltas'] ? 'pk-txt-error' : '' );
 				self::tarjeta( 'Puntualidad', null === $total->puntualidad() ? '—' : $total->puntualidad() . ' %', 'días que llegaron a tiempo' );
 				if ( $sueldos ) {
 					self::tarjeta( 'Total a pagar', Sueldo::soles( $total->montos['total'] ), 'honorarios ' . Sueldo::soles( $total->montos['honorario'] ) . ' + horas ' . Sueldo::soles( $total->costoExtra() ) );
@@ -86,7 +85,7 @@ final class PantallaResumen {
 			<?php self::graficos( $mes, $historico, $datos ); ?>
 
 			<h2>Comparación con los meses anteriores</h2>
-			<table class="widefat striped" style="max-width:1100px">
+			<table class="widefat striped pk-max">
 				<thead><tr>
 					<th>Mes</th><th>Horas trabajadas</th><th>Horas extra</th><th>Sáb./dom./fer.</th><th>Tardanzas</th><th>Faltas</th><th>Puntualidad</th>
 					<?php if ( $sueldos ) : ?><th>Total a pagar (S/)</th><?php endif; ?>
@@ -98,7 +97,7 @@ final class PantallaResumen {
 					$t      = $historico[ $m ];
 					$previo = $historico[ $meses[ $i + 1 ] ?? '' ] ?? null;
 					?>
-					<tr<?php echo $m === $mes ? ' style="font-weight:600"' : ''; ?>>
+					<tr<?php echo $m === $mes ? ' class="pk-negrita"' : ''; ?>>
 						<td><?php echo esc_html( self::nombreMes( $m ) ); ?></td>
 						<td><?php echo esc_html( $h( $t->minutos['trabajados'] ) ); ?><?php self::tendencia( $t->minutos['trabajados'], $previo?->minutos['trabajados'], false ); ?></td>
 						<td><?php echo esc_html( $h( $t->minutos['extra'] ) ); ?><?php self::tendencia( $t->minutos['extra'], $previo?->minutos['extra'], true ); ?></td>
@@ -114,7 +113,7 @@ final class PantallaResumen {
 			<p class="description">▲ subió y ▼ bajó respecto al mes anterior. En rojo, lo que empeoró.</p>
 
 			<h2>Por trabajador</h2>
-			<div style="overflow-x:auto"><table class="widefat striped">
+			<div class="pk-desplaza"><table class="widefat striped">
 				<thead><tr>
 					<th>Trabajador</th><th>Días trabajados</th><th>Horas</th><th>Tardanzas</th><th>Faltas</th><th>Justificados</th><th>Horas extra</th><th>Sáb./dom./fer.</th><th>Puntualidad</th>
 					<?php if ( $sueldos ) : ?><th>Total (S/)</th><th>Estado</th><?php endif; ?>
@@ -130,14 +129,14 @@ final class PantallaResumen {
 						<td><?php echo (int) $f->dias['trabajados']; ?> de <?php echo (int) $f->dias['laborables']; ?></td>
 						<td><?php echo esc_html( $h( $f->minutos['trabajados'] ) ); ?></td>
 						<td><?php echo $f->dias['con_tardanza'] ? (int) $f->dias['con_tardanza'] . ' (' . (int) $f->minutos['tardanza'] . ' min)' : '0'; ?></td>
-						<td<?php echo $f->dias['faltas'] ? ' style="color:#b32d2e;font-weight:600"' : ''; ?>><?php echo (int) $f->dias['faltas']; ?></td>
+						<td<?php echo $f->dias['faltas'] ? ' class="pk-txt-error pk-negrita"' : ''; ?>><?php echo (int) $f->dias['faltas']; ?></td>
 						<td><?php echo (int) $f->dias['justificados']; ?></td>
 						<td><?php echo esc_html( $h( $f->minutos['extra'] ) ); ?></td>
 						<td><?php echo esc_html( $h( ( $f->minutos['sabado'] + $f->minutos['domingo'] + $f->minutos['feriado'] ) ) ); ?></td>
 						<td><?php echo null === $f->puntualidad() ? '—' : (int) $f->puntualidad() . ' %'; ?></td>
 						<?php if ( $sueldos ) : ?>
 							<td><?php echo $f->sueldoFinal ? esc_html( number_format( $f->montos['total'] / 100, 2, '.', ',' ) ) : '—'; ?></td>
-							<td<?php echo PrePlanilla::LISTO === $f->estado() ? ' style="color:#00733a"' : ' style="color:#b32d2e"'; ?>><?php echo esc_html( PrePlanilla::ESTADOS[ $f->estado() ] ); ?></td>
+							<td><span class="pk-chip <?php echo PrePlanilla::LISTO === $f->estado() ? 'ok' : 'error'; ?>"><?php echo esc_html( PrePlanilla::ESTADOS[ $f->estado() ] ); ?></span></td>
 						<?php endif; ?>
 					</tr>
 				<?php endforeach; ?>
@@ -163,7 +162,7 @@ final class PantallaResumen {
 			'Horas extra por mes'             => static fn( PrePlanilla $t ): int => $t->minutos['extra'] + $t->minutos['sabado'] + $t->minutos['domingo'] + $t->minutos['feriado'],
 		);
 
-		echo '<h2>Cómo va el mes</h2><div class="pka-graficos">';
+		echo '<h2>Cómo va el mes</h2><div class="pk-graficos">';
 
 		foreach ( $series as $titulo => $valor ) {
 			$puntos = array();
@@ -213,13 +212,14 @@ final class PantallaResumen {
 		return wp_date( 'F Y', strtotime( $mes . '-15 12:00:00' ) );
 	}
 
-	private static function tarjeta( string $titulo, string $valor, string $pie = '', string $color = '' ): void {
+	/** Tarjeta de cifra (.pk-kpi). $clase pinta el valor: pk-txt-error, pk-txt-aviso… */
+	private static function tarjeta( string $titulo, string $valor, string $pie = '', string $clase = '' ): void {
 		?>
-		<div class="pka-tarjeta">
-			<div class="pka-tarjeta-titulo"><?php echo esc_html( $titulo ); ?></div>
-			<div class="pka-tarjeta-valor"<?php echo '' !== $color ? ' style="color:' . esc_attr( $color ) . '"' : ''; ?>><?php echo esc_html( $valor ); ?></div>
+		<div class="pk-kpi">
+			<span><?php echo esc_html( $titulo ); ?></span>
+			<b class="<?php echo esc_attr( $clase ); ?>"><?php echo esc_html( $valor ); ?></b>
 			<?php if ( '' !== $pie ) : ?>
-				<div class="pka-tarjeta-pie"><?php echo wp_kses( $pie, array( 'a' => array( 'href' => array() ) ) ); ?></div>
+				<small><?php echo wp_kses( $pie, array( 'a' => array( 'href' => array() ) ) ); ?></small>
 			<?php endif; ?>
 		</div>
 		<?php
@@ -232,20 +232,9 @@ final class PantallaResumen {
 		}
 
 		$sube  = $actual > $anterior;
-		$color = $sube === $malSiSube ? '#b32d2e' : '#00733a';
+		$clase = $sube === $malSiSube ? 'pk-txt-error' : 'pk-txt-ok';
 
-		echo ' <span style="color:' . esc_attr( $color ) . '" title="Mes anterior: ' . esc_attr( (string) $anterior ) . '">' . ( $sube ? '▲' : '▼' ) . '</span>';
+		echo ' <span class="' . esc_attr( $clase ) . '" title="Mes anterior: ' . esc_attr( (string) $anterior ) . '">' . ( $sube ? '▲' : '▼' ) . '</span>';
 	}
 
-	public static function estilos(): void {
-		?>
-		<style>
-			.pka-tarjetas{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin:16px 0 24px;max-width:1100px}
-			.pka-tarjeta{background:#fff;border:1px solid #dcdcde;border-radius:8px;padding:12px 14px}
-			.pka-tarjeta-titulo{color:#50575e;font-size:13px}
-			.pka-tarjeta-valor{font-size:26px;font-weight:600;line-height:1.3;margin:4px 0;font-variant-numeric:tabular-nums}
-			.pka-tarjeta-pie{color:#646970;font-size:12px}
-		</style>
-		<?php
-	}
 }

@@ -51,7 +51,7 @@ final class PantallaAjustes {
 	private static function reglas(): void {
 		$a = Ajustes::todos();
 		?>
-		<h2 style="margin-top:32px" id="reglas">Reglas de horas y pagos</h2>
+		<h class="pk-mt"2 id="reglas">Reglas de horas y pagos</h2>
 		<p>Se paga por recibos por honorarios: <strong>honorario + horas extra, de sábado, de domingo y de feriado, cada una por la tarifa de la persona</strong> (se registran en la ficha de cada trabajador). De lunes a viernes es hora extra todo lo que pase de la jornada de su horario (9 h 30 min con el horario base), sin autorizar nada. El sábado, el domingo y los feriados, todas las horas van con su tarifa. Las faltas y tardanzas se señalan, pero no se descuentan.</p>
 		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 			<input type="hidden" name="action" value="pka_guardar_reglas">
@@ -121,7 +121,7 @@ final class PantallaAjustes {
 		);
 		$ultimos = Notificaciones::ultimos( 25 );
 		?>
-		<h2 style="margin-top:32px" id="avisos">Avisos por correo y WhatsApp</h2>
+		<h class="pk-mt"2 id="avisos">Avisos por correo y WhatsApp</h2>
 		<p>El sistema revisa cada 5 minutos y agrupa: si a las 9:15 faltan tres personas del mismo jefe, le llega un solo correo con las tres. Cada aviso sale una sola vez. Todos empiezan apagados.</p>
 		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 			<input type="hidden" name="action" value="pka_guardar_avisos">
@@ -133,7 +133,7 @@ final class PantallaAjustes {
 						<td>
 							<?php foreach ( ReglasAvisos::TIPOS as $tipo => $info ) : ?>
 								<?php if ( $info[1] === $para ) : ?>
-									<label style="display:block;margin-bottom:4px"><input type="checkbox" name="avisos_activos[]" value="<?php echo esc_attr( $tipo ); ?>" <?php checked( in_array( $tipo, $activos, true ) ); ?>> <?php echo esc_html( $info[0] ); ?></label>
+									<label class="pk-bloque"><input type="checkbox" name="avisos_activos[]" value="<?php echo esc_attr( $tipo ); ?>" <?php checked( in_array( $tipo, $activos, true ) ); ?>> <?php echo esc_html( $info[0] ); ?></label>
 								<?php endif; ?>
 							<?php endforeach; ?>
 						</td>
@@ -165,7 +165,7 @@ final class PantallaAjustes {
 			</table>
 			<?php submit_button( 'Guardar avisos', 'secondary' ); ?>
 		</form>
-		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="margin-top:-8px">
+		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 			<input type="hidden" name="action" value="pka_probar_avisos">
 			<?php wp_nonce_field( 'pka_probar_avisos' ); ?>
 			<button class="button">Enviarme un correo de prueba</button>
@@ -173,7 +173,7 @@ final class PantallaAjustes {
 		</form>
 
 		<h3>Últimos avisos</h3>
-		<table class="widefat striped" style="max-width:1100px">
+		<table class="widefat striped pk-max">
 			<thead><tr><th>Cuándo</th><th>Aviso</th><th>Para</th><th>Canal</th><th>Estado</th></tr></thead>
 			<tbody>
 			<?php if ( ! $ultimos ) : ?>
@@ -185,7 +185,7 @@ final class PantallaAjustes {
 					<td><strong><?php echo esc_html( ReglasAvisos::titulo( $u['tipo'] ) ); ?></strong><br><span class="description"><?php echo esc_html( $u['linea'] ); ?></span></td>
 					<td><?php echo esc_html( $u['nombre'] ); ?><br><span class="description"><?php echo esc_html( 'webhook' === $u['canal'] && '' !== $u['telefono'] ? $u['telefono'] : $u['destino'] ); ?></span></td>
 					<td><?php echo 'correo' === $u['canal'] ? 'Correo' : 'WhatsApp (webhook)'; ?></td>
-					<td><?php echo esc_html( self::ESTADOS_AVISO[ $u['estado'] ] ?? $u['estado'] ); ?><?php echo '' !== $u['error'] ? '<br><span class="description" style="color:#b32d2e">' . esc_html( $u['error'] ) . '</span>' : ''; ?></td>
+					<td><?php echo esc_html( self::ESTADOS_AVISO[ $u['estado'] ] ?? $u['estado'] ); ?><?php echo '' !== $u['error'] ? '<br><span class="description pk-txt-error">' . esc_html( $u['error'] ) . '</span>' : ''; ?></td>
 				</tr>
 			<?php endforeach; ?>
 			</tbody>
@@ -246,7 +246,7 @@ final class PantallaAjustes {
 		$c   = RecordatorioCampana::desdeAjustes( Ajustes::todos() );
 		$hoy = wp_date( 'Y-m-d', null, Ajustes::zona() );
 		?>
-		<h2 style="margin-top:32px" id="campana">Avisos de campaña</h2>
+		<h class="pk-mt"2 id="campana">Avisos de campaña</h2>
 		<p>Un recordatorio dentro de la app, al abrirla, para quien a esa hora todavía no marcó su entrada. Solo en días laborables y dentro de las fechas de la campaña. Desaparece al marcar. No manda correos ni WhatsApp.</p>
 		<p><strong><?php echo $c->enCampana( $hoy ) ? '✔ Hoy se está mostrando.' : ( $c->activo ? 'Activo, pero hoy está fuera de las fechas de la campaña.' : 'Apagado.' ); ?></strong></p>
 		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
@@ -273,7 +273,7 @@ final class PantallaAjustes {
 					<td>
 						<textarea id="pka-campana-texto" name="campana_texto" rows="2" class="large-text" maxlength="200"><?php echo esc_textarea( $c->texto ); ?></textarea>
 						<p class="description">Así lo verá el trabajador, arriba de "Marcar entrada":</p>
-						<div style="max-width:360px;background:#FFF1D6;color:#9A5B00;border-radius:16px;padding:12px 14px;font-weight:600;margin-top:6px"><?php echo esc_html( $c->texto ); ?></div>
+						<div class="pk-aviso espera pk-max-s"><?php echo esc_html( $c->texto ); ?></div>
 					</td>
 				</tr>
 			</table>
@@ -323,7 +323,7 @@ final class PantallaAjustes {
 	private static function pin(): void {
 		$a = Ajustes::todos();
 		?>
-		<h2 style="margin-top:32px" id="pin">PIN de ingreso</h2>
+		<h class="pk-mt"2 id="pin">PIN de ingreso</h2>
 		<p>Cada persona puede crear desde su perfil un PIN para <strong>entrar</strong> si su huella no funciona. Solo sirve en su celular registrado y <strong>nunca para marcar</strong> (marcar siempre pide la huella, para que nadie marque por otro con un PIN prestado). 5 PIN equivocados bloquean 15 minutos. Si alguien lo olvida, quítaselo en Asistencia → Celulares.</p>
 		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 			<input type="hidden" name="action" value="pka_guardar_pin">
@@ -367,7 +367,7 @@ final class PantallaAjustes {
 		$a      = Ajustes::todos();
 		$conteo = Aviso::conteo();
 		?>
-		<h2 style="margin-top:32px">Datos del empleador</h2>
+		<h class="pk-mt"2>Datos del empleador</h2>
 		<p>Aparecen en el registro de asistencia (Excel) y en el aviso de datos personales.</p>
 		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 			<input type="hidden" name="action" value="pka_guardar_empleador">
@@ -380,7 +380,7 @@ final class PantallaAjustes {
 			<?php submit_button( 'Guardar datos del empleador', 'secondary' ); ?>
 		</form>
 
-		<h2 style="margin-top:32px" id="aviso">Aviso de datos personales</h2>
+		<h class="pk-mt"2 id="aviso">Aviso de datos personales</h2>
 		<?php if ( Aviso::esBorrador() ) : ?>
 			<div class="notice notice-warning inline"><p><strong>Este texto es un borrador.</strong> Revísalo con el abogado antes de activar a los trabajadores. Cuando lo guardes, queda como texto oficial.</p></div>
 		<?php endif; ?>
@@ -458,7 +458,7 @@ final class PantallaAjustes {
 	private static function redesCandidatas(): void {
 		foreach ( Presencia::redesCandidatas() as $c ) {
 			?>
-			<div class="notice notice-warning inline" style="padding:8px 12px">
+			<div class="notice notice-warning inline">
 				<p>
 					<strong>¿Es la nueva IP del taller?</strong> Hoy llegaron <?php echo (int) $c['marcas']; ?> marcas por QR de <?php echo (int) $c['trabajadores']; ?> personas desde
 					<code><?php echo esc_html( $c['red'] ); ?></code>, que no está autorizada. Suele pasar cuando el proveedor de internet cambia la IP del router.
@@ -485,16 +485,16 @@ final class PantallaAjustes {
 		$puntos   = Diagnostico::revisar();
 		$pendient = array_filter( $puntos, static fn( array $p ): bool => Diagnostico::BIEN !== $p['estado'] );
 		$iconos   = array( Diagnostico::BIEN => '✔', Diagnostico::AVISO => '⚠', Diagnostico::PROBLEMA => '✘' );
-		$colores  = array( Diagnostico::BIEN => '#00733a', Diagnostico::AVISO => '#b26200', Diagnostico::PROBLEMA => '#b32d2e' );
+		$colores  = array( Diagnostico::BIEN => 'pk-txt-ok', Diagnostico::AVISO => 'pk-txt-aviso', Diagnostico::PROBLEMA => 'pk-txt-error' );
 		?>
-		<details <?php echo $pendient ? 'open' : ''; ?> style="background:#fff;border:1px solid #c3c4c7;padding:8px 16px;margin:12px 0 24px">
-			<summary style="cursor:pointer;font-weight:600">
+		<details class="pk-caja" <?php echo $pendient ? 'open' : ''; ?>>
+			<summary class="pk-resumen-clic">
 				Estado del sistema: <?php echo $pendient ? esc_html( count( $pendient ) . ' punto(s) por revisar' ) : '✔ todo en orden'; ?>
 			</summary>
-			<ul style="margin:12px 0">
+			<ul class="pk-mt-s">
 				<?php foreach ( $puntos as $p ) : ?>
 					<li>
-						<span style="color:<?php echo esc_attr( $colores[ $p['estado'] ] ); ?>;font-weight:700" aria-hidden="true"><?php echo esc_html( $iconos[ $p['estado'] ] ); ?></span>
+						<span class="pk-negrita <?php echo esc_attr( $colores[ $p['estado'] ] ); ?>" aria-hidden="true"><?php echo esc_html( $iconos[ $p['estado'] ] ); ?></span>
 						<strong><?php echo esc_html( $p['tema'] ); ?></strong>
 						<?php echo '' !== $p['detalle'] ? '— ' . esc_html( $p['detalle'] ) : ''; ?>
 					</li>
@@ -524,7 +524,7 @@ final class PantallaAjustes {
 				<?php $apagada = $p['activa'] && ( null === $p['ultima_conexion'] || $p['ultima_conexion'] < $limite ); ?>
 				<tr>
 					<td><?php echo esc_html( $p['nombre'] ); ?></td>
-					<td><?php echo $p['ultima_conexion'] ? esc_html( Ajustes::local( $p['ultima_conexion'], 'd/m H:i' ) ) : '—'; ?><?php echo $apagada ? ' <strong style="color:#b32d2e">sin conexión</strong>' : ''; ?></td>
+					<td><?php echo $p['ultima_conexion'] ? esc_html( Ajustes::local( $p['ultima_conexion'], 'd/m H:i' ) ) : '—'; ?><?php echo $apagada ? ' <strong class="pk-txt-error">sin conexión</strong>' : ''; ?></td>
 					<td><code><?php echo esc_html( $p['ultima_ip'] ); ?></code></td>
 					<td><?php echo $p['activa'] ? 'Activa' : 'Desactivada'; ?></td>
 					<td><a href="<?php echo esc_url( Menu::urlAccion( 'pka_cambiar_pantalla', array( 'id' => $p['id'] ) ) ); ?>"><?php echo $p['activa'] ? 'Desactivar' : 'Activar'; ?></a></td>
@@ -571,7 +571,7 @@ final class PantallaAjustes {
 				<?php wp_nonce_field( 'pka_guardar_modo' ); ?>
 				<fieldset>
 					<?php foreach ( ModoPresencia::cases() as $opcion ) : ?>
-						<label style="display:block;margin:6px 0">
+						<label class="pk-bloque pk-mt-s">
 							<input type="radio" name="modo" value="<?php echo esc_attr( $opcion->value ); ?>" <?php checked( $modo->value, $opcion->value ); ?>>
 							<?php echo esc_html( $opcion->etiqueta() ); ?>
 						</label>

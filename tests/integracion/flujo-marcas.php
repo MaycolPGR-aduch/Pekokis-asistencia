@@ -991,7 +991,7 @@ $fichaOk = true;
 foreach ( array( 'resumen', 'asistencia', 'pagos', 'celular', 'cambios' ) as $pest ) {
 	$_GET['pestana'] = $pest;
 	$html            = $dibujar( static fn() => \Pekokis\Asistencia\WordPress\Admin\PantallaFicha::pintar( Trabajadores::buscar( $id2 ) ) );
-	$fichaOk         = $fichaOk && str_contains( $html, 'Ficha de Luis' ) && str_contains( $html, 'pka-pestanas' );
+	$fichaOk         = $fichaOk && str_contains( $html, 'Ficha de Luis' ) && str_contains( $html, 'pk-pestanas' );
 }
 unset( $_GET['pestana'] );
 $comprobar( 'Ficha: las 5 pestañas se dibujan', $fichaOk );

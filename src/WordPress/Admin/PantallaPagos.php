@@ -81,12 +81,11 @@ final class PantallaPagos {
 			};
 		}
 
-		PantallaResumen::estilos();
 		?>
 		<div class="wrap">
 			<?php Avisos::mostrar(); ?>
 			<h1>Pagos de <?php echo esc_html( PantallaResumen::nombreMes( $mes ) ); ?></h1>
-			<form method="get" style="margin:8px 0 4px">
+			<form class="pk-mt-s" method="get">
 				<input type="hidden" name="page" value="<?php echo esc_attr( self::SLUG ); ?>">
 				<label for="pka-p-mes">Mes</label>
 				<select id="pka-p-mes" name="mes" onchange="this.form.submit()">
@@ -98,23 +97,23 @@ final class PantallaPagos {
 			</form>
 			<p class="description">Las horas vienen de la asistencia (días terminados hasta <?php echo esc_html( min( wp_date( 'Y-m-t', strtotime( $mes . '-15' ) ), Jornadas::ayer() ) ); ?>). Si cambia una tarifa o un registro, el cálculo se actualiza solo. El recibo por honorarios no frena el pago: puede llegar después.</p>
 
-			<div class="pka-tarjetas">
-				<div class="pka-tarjeta">
-					<div class="pka-tarjeta-titulo">Total del mes</div>
-					<div class="pka-tarjeta-valor"><?php echo esc_html( Sueldo::soles( $total->montos['total'] ) ); ?></div>
-					<div class="pka-tarjeta-pie">honorarios <?php echo esc_html( Sueldo::soles( $total->montos['honorario'] ) ); ?> + horas <?php echo esc_html( Sueldo::soles( $total->costoExtra() ) ); ?></div>
+			<div class="pk-kpis tres pk-max">
+				<div class="pk-kpi dest">
+					<span>Total del mes</span>
+					<b><?php echo esc_html( Sueldo::soles( $total->montos['total'] ) ); ?></b>
+					<small>honorarios <?php echo esc_html( Sueldo::soles( $total->montos['honorario'] ) ); ?> + horas <?php echo esc_html( Sueldo::soles( $total->costoExtra() ) ); ?></small>
 				</div>
-				<div class="pka-tarjeta" style="grid-column:span 2">
-					<div class="pka-tarjeta-titulo">Antes de pagar</div>
-					<ul style="margin:6px 0 0 18px;list-style:disc">
-						<li><?php echo $cuenta['incidencia'] ? '<strong style="color:#b32d2e">' . esc_html( PantallaResumen::plural( count( $cuenta['incidencia'] ), 'persona con días por resolver', 'personas con días por resolver' ) ) . ':</strong> ' . self::enlaces( $cuenta['incidencia'], $mes ) : '✔ Asistencia: no hay días incompletos ni marcas por revisar.'; ?></li>
-						<li><?php echo $cuenta['sin_tarifa'] ? '<strong style="color:#b32d2e">' . esc_html( PantallaResumen::plural( count( $cuenta['sin_tarifa'] ), 'persona sin honorario', 'personas sin honorario' ) ) . ':</strong> ' . self::enlaces( $cuenta['sin_tarifa'], $mes, true ) : '✔ Tarifas: todos tienen honorario y tarifas.'; ?></li>
+				<div class="pk-kpi ancha">
+					<span>Antes de pagar</span>
+					<ul class="pk-lista-puntos">
+						<li><?php echo $cuenta['incidencia'] ? '<strong class="pk-txt-error">' . esc_html( PantallaResumen::plural( count( $cuenta['incidencia'] ), 'persona con días por resolver', 'personas con días por resolver' ) ) . ':</strong> ' . self::enlaces( $cuenta['incidencia'], $mes ) : '✔ Asistencia: no hay días incompletos ni marcas por revisar.'; ?></li>
+						<li><?php echo $cuenta['sin_tarifa'] ? '<strong class="pk-txt-error">' . esc_html( PantallaResumen::plural( count( $cuenta['sin_tarifa'] ), 'persona sin honorario', 'personas sin honorario' ) ) . ':</strong> ' . self::enlaces( $cuenta['sin_tarifa'], $mes, true ) : '✔ Tarifas: todos tienen honorario y tarifas.'; ?></li>
 						<li>Recibos: <?php echo (int) $cuenta['recibidos']; ?> recibidos · <?php echo (int) $cuenta['por_revisar']; ?> por revisar · <?php echo (int) $cuenta['observados']; ?> observados · <?php echo (int) $cuenta['faltan']; ?> faltan. <a href="<?php echo esc_url( PantallaRecibos::url( $mes ) ); ?>">Ver recibos</a></li>
 					</ul>
 				</div>
 			</div>
 
-			<div style="overflow-x:auto">
+			<div class="pk-desplaza">
 			<table class="widefat striped">
 				<thead><tr><th>Persona</th><th>Honorario</th><th>Horas adicionales</th><th>Total</th><th>Recibo</th><th>Estado</th><th>Pagado</th><th></th></tr></thead>
 				<tbody>
@@ -135,12 +134,12 @@ final class PantallaPagos {
 						<td><?php echo esc_html( PrePlanilla::horas( $f->minutosAdicionales() ) . ' h' ); ?><?php echo $f->costoExtra() ? '<br><span class="description">' . esc_html( Sueldo::soles( $f->costoExtra() ) ) . '</span>' : ''; ?></td>
 						<td><strong><?php echo $f->sueldoFinal ? esc_html( Sueldo::soles( $f->montos['total'] ) ) : '—'; ?></strong></td>
 						<td><?php self::etiquetaRecibo( $r, $f ); ?></td>
-						<td style="font-weight:600;color:<?php echo PrePlanilla::LISTO === $estado ? '#00733a' : '#b32d2e'; ?>"><?php echo esc_html( PrePlanilla::ESTADOS[ $estado ] ); ?></td>
+						<td><span class="pk-chip <?php echo PrePlanilla::LISTO === $estado ? 'ok' : 'error'; ?>"><?php echo esc_html( PrePlanilla::ESTADOS[ $estado ] ); ?></span></td>
 						<td><?php self::casillaPagado( $p, $mes, $estado, $pago ); ?></td>
 						<td>
 							<details>
-								<summary style="cursor:pointer;color:#2271b1">Ver cálculo</summary>
-								<div style="padding:8px 0;min-width:260px">
+								<summary class="pk-resumen-clic">Ver cálculo</summary>
+								<div class="pk-mt-s">
 									<?php foreach ( $f->explicacion() as $linea ) : ?>
 										<div><?php echo esc_html( $linea ); ?></div>
 									<?php endforeach; ?>
@@ -157,7 +156,7 @@ final class PantallaPagos {
 			</table>
 			</div>
 
-			<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:16px;padding:12px 16px;background:#fff;border:1px solid #dcdcde;border-radius:8px;max-width:1100px">
+			<div class="pk-caja pk-fila pk-max pk-mt-s">
 				<strong><?php echo $listos ? esc_html( 'Ya puedes pagar a ' . PantallaResumen::plural( $listos, 'persona', 'personas' ) . '.' ) : 'No hay pagos listos pendientes.'; ?></strong>
 				<a class="button button-primary" href="<?php echo esc_url( Menu::urlAccion( 'pka_planilla_listos', array( 'mes' => $mes, 'solo' => 'listos' ) ) ); ?>">Planilla de las listas</a>
 				<a class="button" href="<?php echo esc_url( Menu::urlAccion( 'pka_planilla_listos', array( 'mes' => $mes ) ) ); ?>">Planilla de todas</a>
@@ -183,7 +182,7 @@ final class PantallaPagos {
 		echo esc_html( $texto );
 
 		if ( '' !== $comp ) {
-			echo '<br><span style="color:' . ( 'Coincide' === $comp ? '#00733a' : '#8a4b00' ) . '">' . esc_html( $comp ) . '</span>';
+			echo '<br><span class="' . ( 'Coincide' === $comp ? 'pk-txt-ok' : 'pk-txt-aviso' ) . '">' . esc_html( $comp ) . '</span>';
 		}
 	}
 
@@ -197,9 +196,9 @@ final class PantallaPagos {
 				<input type="hidden" name="trabajador" value="<?php echo esc_attr( (string) $id ); ?>">
 				<input type="hidden" name="mes" value="<?php echo esc_attr( $mes ); ?>">
 				<?php wp_nonce_field( 'pka_pago_desmarcar' ); ?>
-				<span style="color:#00733a;font-weight:600">✔ Pagado</span><br>
+				<span class="pk-txt-ok pk-negrita">✔ Pagado</span><br>
 				<span class="description"><?php echo esc_html( \Pekokis\Asistencia\WordPress\Ajustes::local( $pago['marcado_en'], 'd/m' ) . ' · ' . Sueldo::soles( (int) $pago['total_centimos'] ) ); ?></span><br>
-				<button class="button-link" style="color:#b32d2e">Desmarcar</button>
+				<button class="button-link pk-txt-error">Desmarcar</button>
 			</form>
 			<?php
 			return;

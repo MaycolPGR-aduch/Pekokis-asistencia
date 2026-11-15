@@ -73,7 +73,7 @@ final class PantallaTrabajadores {
 			<li><a href="<?php echo esc_url( add_query_arg( 'estado', Trabajadores::CESADO, $base ) ); ?>" <?php echo Trabajadores::CESADO === $estado ? 'class="current"' : ''; ?>>Cesados</a></li>
 		</ul>
 
-		<form method="get" class="search-form" style="float:right;margin:8px 0">
+		<form method="get" class="search-form pk-derecha">
 			<input type="hidden" name="page" value="<?php echo esc_attr( self::SLUG ); ?>">
 			<input type="hidden" name="estado" value="<?php echo esc_attr( $estado ); ?>">
 			<label class="screen-reader-text" for="pka-buscar">Buscar trabajador</label>
@@ -81,7 +81,7 @@ final class PantallaTrabajadores {
 			<button class="button">Buscar</button>
 		</form>
 
-		<table class="widefat striped" style="clear:both">
+		<table class="widefat striped pk-limpia">
 			<thead>
 				<tr><th>Nombre</th><th>Celular o WhatsApp</th><th>DNI</th><th>Cumpleaños</th><th>Celular para marcar</th><th>Acciones</th></tr>
 			</thead>
@@ -91,11 +91,11 @@ final class PantallaTrabajadores {
 			<?php endif; ?>
 			<?php foreach ( $filas as $t ) : ?>
 				<tr>
-					<td><span class="pka-av"><?php echo esc_html( mb_strtoupper( mb_substr( (string) $t['nombres'], 0, 1 ) . mb_substr( (string) $t['apellidos'], 0, 1 ) ) ); ?></span><a href="<?php echo esc_url( PantallaFicha::url( (int) $t['id'] ) ); ?>"><strong><?php echo esc_html( $t['apellidos'] . ', ' . $t['nombres'] ); ?></strong></a><?php echo '' !== trim( $t['cargo'] . $t['area'] ) ? '<br><span class="description">' . esc_html( trim( $t['cargo'] . ' · ' . $t['area'], ' ·' ) ) . '</span>' : ''; ?></td>
+					<td><span class="pk-av"><?php echo esc_html( mb_strtoupper( mb_substr( (string) $t['nombres'], 0, 1 ) . mb_substr( (string) $t['apellidos'], 0, 1 ) ) ); ?></span><a href="<?php echo esc_url( PantallaFicha::url( (int) $t['id'] ) ); ?>"><strong><?php echo esc_html( $t['apellidos'] . ', ' . $t['nombres'] ); ?></strong></a><?php echo '' !== trim( $t['cargo'] . $t['area'] ) ? '<br><span class="description">' . esc_html( trim( $t['cargo'] . ' · ' . $t['area'], ' ·' ) ) . '</span>' : ''; ?></td>
 					<td><?php echo esc_html( '' !== (string) $t['telefono'] ? (string) $t['telefono'] : '—' ); ?></td>
 					<td><?php echo esc_html( PantallaCelulares::dniOculto( (string) $t['dni'] ) ); ?></td>
 					<td><?php echo '' !== (string) $t['cumpleanos'] ? esc_html( wp_date( 'j M', strtotime( '2024-' . $t['cumpleanos'] . ' 12:00:00' ) ) ) : '<span class="description">—</span>'; ?></td>
-					<td><?php echo (int) $t['celulares'] > 0 ? '<span class="pka-chip ok">Registrado</span>' : '<span class="pka-chip aviso">Sin celular</span>'; ?></td>
+					<td><?php echo (int) $t['celulares'] > 0 ? '<span class="pk-chip ok">Registrado</span>' : '<span class="pk-chip aviso">Sin celular</span>'; ?></td>
 					<td>
 						<a href="<?php echo esc_url( PantallaFicha::url( (int) $t['id'] ) ); ?>">Ver ficha</a> |
 						<?php if ( Trabajadores::ACTIVO === $t['estado'] ) : ?>
@@ -103,7 +103,7 @@ final class PantallaTrabajadores {
 							<a href="<?php echo esc_url( Menu::urlAccion( 'pka_enlace_activacion', array( 'id' => $t['id'] ) ) ); ?>"
 								<?php echo (int) $t['celulares'] > 0 ? 'onclick="return confirm(\'Ya tiene un celular activado. Un enlace nuevo sirve para cambiar de celular: el anterior dejará de funcionar cuando active el nuevo. ¿Continuar?\')"' : ''; ?>>
 								Enlace de activación</a> |
-							<a href="<?php echo esc_url( add_query_arg( array( 'vista' => 'cesar', 'id' => $t['id'] ), $base ) ); ?>" style="color:#b32d2e">Cesar</a>
+							<a href="<?php echo esc_url( add_query_arg( array( 'vista' => 'cesar', 'id' => $t['id'] ), $base ) ); ?>" class="pk-txt-error">Cesar</a>
 						<?php else : ?>
 							Cesado el <?php echo esc_html( (string) $t['fecha_cese'] ); ?>
 						<?php endif; ?>
@@ -240,9 +240,9 @@ final class PantallaTrabajadores {
 
 		delete_transient( 'pka_form_sueldo_' . get_current_user_id() );
 		?>
-		<h2 id="remuneracion" style="margin-top:32px">Honorario y tarifas</h2>
+		<h class="pk-mt"2 id="remuneracion">Honorario y tarifas</h2>
 		<p class="description">Se paga por recibos por honorarios: el honorario mensual incluye las horas normales y cada hora adicional va con su tarifa. Solo lo ve gerencia; el trabajador nunca ve estos montos.</p>
-		<table class="widefat striped" style="max-width:1000px">
+		<table class="widefat striped pk-max">
 			<thead><tr><th>Honorario y tarifas por hora</th><th>Desde</th><th>Hasta</th><th>Nota</th><th>Registró</th><th></th></tr></thead>
 			<tbody>
 			<?php if ( ! $historial ) : ?>
@@ -250,7 +250,7 @@ final class PantallaTrabajadores {
 			<?php endif; ?>
 			<?php foreach ( $historial as $s ) : ?>
 				<?php $quien = get_userdata( (int) $s['creado_por'] ); ?>
-				<tr<?php echo 'anulado' === $s['estado'] ? ' style="opacity:.6"' : ''; ?>>
+				<tr<?php echo 'anulado' === $s['estado'] ? ' class="pk-atenuado"' : ''; ?>>
 					<td><strong><?php echo esc_html( Sueldos::etiqueta( $s ) ); ?></strong></td>
 					<td><?php echo esc_html( $s['vigente_desde'] ); ?></td>
 					<td><?php echo esc_html( $s['vigente_hasta'] ? $s['vigente_hasta'] : ( 'anulado' === $s['estado'] ? '—' : 'Vigente' ) ); ?></td>
@@ -258,7 +258,7 @@ final class PantallaTrabajadores {
 					<td><?php echo esc_html( $quien ? $quien->display_name : '—' ); ?></td>
 					<td>
 						<?php if ( 'vigente' === $s['estado'] && null === $s['vigente_hasta'] && ! $propio ) : ?>
-							<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:flex;gap:6px">
+							<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="pk-fila junta">
 								<input type="hidden" name="action" value="pka_sueldo_anular">
 								<input type="hidden" name="id" value="<?php echo esc_attr( $s['id'] ); ?>">
 								<input type="hidden" name="trabajador_id" value="<?php echo esc_attr( $t['id'] ); ?>">
@@ -439,7 +439,7 @@ final class PantallaTrabajadores {
 	/** @param array<string, string> $errores */
 	private static function error( array $errores, string $campo ): void {
 		if ( isset( $errores[ $campo ] ) ) {
-			echo '<p class="description" style="color:#b32d2e">' . esc_html( $errores[ $campo ] ) . '</p>';
+			echo '<p class="description pk-txt-error">' . esc_html( $errores[ $campo ] ) . '</p>';
 		}
 	}
 

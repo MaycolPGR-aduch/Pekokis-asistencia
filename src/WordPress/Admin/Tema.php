@@ -44,19 +44,34 @@ final class Tema {
 		return self::esPagina() || self::soloAsistencia();
 	}
 
+	/**
+	 * La misma base que la app: tokens.css (letra y colores), componentes.css
+	 * (chip, cifra, caja, aviso, iniciales, calendario, gráficos) y, encima,
+	 * admin.css (lo que viste a WordPress). admin.js: tooltip de los gráficos.
+	 */
 	public static function estilos(): void {
-		if ( self::activo() ) {
-			wp_enqueue_style( 'pka-admin', Rutas::asset( 'admin.css' ), array(), null ); // phpcs:ignore WordPress.WP.EnqueuedResourceParameters.MissingVersion -- la URL ya lleva la versión.
+		if ( ! self::activo() ) {
+			return;
 		}
+
+		// phpcs:disable WordPress.WP.EnqueuedResourceParameters.MissingVersion -- la URL ya lleva la versión.
+		wp_enqueue_style( 'pk-tokens', Rutas::asset( 'tokens.css' ), array(), null );
+		wp_enqueue_style( 'pk-componentes', Rutas::asset( 'componentes.css' ), array( 'pk-tokens' ), null );
+		wp_enqueue_style( 'pk-admin', Rutas::asset( 'admin.css' ), array( 'pk-componentes' ), null );
+
+		if ( self::esPagina() ) {
+			wp_enqueue_script( 'pk-admin', Rutas::asset( 'admin.js' ), array(), null, true );
+		}
+		// phpcs:enable
 	}
 
 	public static function clases( string $clases ): string {
 		if ( self::activo() ) {
-			$clases .= ' pka-tema';
+			$clases .= ' pk-tema';
 		}
 
 		if ( self::esPagina() ) {
-			$clases .= ' pka-pagina';
+			$clases .= ' pk-pagina';
 		}
 
 		return $clases;

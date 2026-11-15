@@ -131,17 +131,17 @@ final class PantallaDia {
 					<?php
 					$motivo  = Motivos::porClave( $m['motivo_clave'] );
 					$anulada = null !== $m['anulada'];
-					$estilo  = $anulada ? 'text-decoration:line-through;color:#8c8f94' : '';
+					$estilo  = $anulada ? 'pk-tachado' : '';
 					?>
 					<tr>
-						<td style="<?php echo esc_attr( $estilo ); ?>"><strong><?php echo esc_html( ( new DateTimeImmutable( $m['marcado_utc'], new DateTimeZone( 'UTC' ) ) )->setTimezone( $zona )->format( 'H:i' ) ); ?></strong></td>
-						<td style="<?php echo esc_attr( $estilo ); ?>"><?php echo esc_html( 'entrada' === $m['tipo'] ? 'Entrada' : 'Salida · ' . ( $motivo ? $motivo->nombre : $m['motivo_clave'] ) ); ?></td>
+						<td class="<?php echo esc_attr( $estilo ); ?>"><strong><?php echo esc_html( ( new DateTimeImmutable( $m['marcado_utc'], new DateTimeZone( 'UTC' ) ) )->setTimezone( $zona )->format( 'H:i' ) ); ?></strong></td>
+						<td class="<?php echo esc_attr( $estilo ); ?>"><?php echo esc_html( 'entrada' === $m['tipo'] ? 'Entrada' : 'Salida · ' . ( $motivo ? $motivo->nombre : $m['motivo_clave'] ) ); ?></td>
 						<td><?php echo esc_html( Marcas::etiquetaPrueba( PruebaPresencia::from( $m['prueba'] ) ) ); ?></td>
 						<td><?php echo esc_html( self::ORIGENES[ $m['origen'] ] ?? $m['origen'] ); ?></td>
 						<td><?php echo esc_html( $m['nota'] ); ?><?php echo $anulada ? '<br><em>Anulada: ' . esc_html( $m['anulada'] ) . '</em>' : ''; ?></td>
 						<td>
 							<?php if ( $puedeCorregir && ! $anulada ) : ?>
-								<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:flex;gap:6px">
+								<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="pk-fila junta">
 									<input type="hidden" name="action" value="pka_anular_marca">
 									<input type="hidden" name="marca" value="<?php echo esc_attr( $m['id'] ); ?>">
 									<?php wp_nonce_field( 'pka_anular_marca' ); ?>
@@ -200,12 +200,12 @@ final class PantallaDia {
 		$solicitudes = current_user_can( Capacidades::APROBAR ) ? Correcciones::pendientes( $alcance ) : array();
 		$pendientes  = Seguimiento::pendientes( $alcance, $hoy );
 		?>
-		<h2 style="margin-top:32px">Solicitudes "olvidé marcar" (<?php echo count( $solicitudes ); ?>)</h2>
+		<h class="pk-mt"2>Solicitudes "olvidé marcar" (<?php echo count( $solicitudes ); ?>)</h2>
 		<?php if ( ! $solicitudes ) : ?>
 			<p>No hay solicitudes pendientes.</p>
 		<?php else : ?>
 			<table class="widefat striped">
-				<thead><tr><th>Trabajador</th><th>Marca pedida</th><th>Qué pasó</th><th style="width:44%">Decisión</th></tr></thead>
+				<thead><tr><th>Trabajador</th><th>Marca pedida</th><th>Qué pasó</th><th>Decisión</th></tr></thead>
 				<tbody>
 				<?php foreach ( $solicitudes as $c ) : ?>
 					<?php
@@ -217,14 +217,14 @@ final class PantallaDia {
 						<td><?php echo esc_html( $momento->format( 'd/m H:i' ) . ' · ' . ( 'entrada' === $c['tipo'] ? 'Entrada' : 'Salida · ' . ( $motivo ? $motivo->nombre : '' ) ) ); ?></td>
 						<td><?php echo esc_html( $c['justificacion'] ); ?></td>
 						<td>
-							<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:flex;gap:6px;flex-wrap:wrap">
+							<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="pk-fila junta">
 								<input type="hidden" name="action" value="pka_resolver_correccion">
 								<input type="hidden" name="correccion" value="<?php echo esc_attr( $c['id'] ); ?>">
 								<?php wp_nonce_field( 'pka_resolver_correccion' ); ?>
 								<label for="pka-hora-c<?php echo esc_attr( $c['id'] ); ?>" title="Si la hora pedida no es la correcta, cámbiala: el trabajador verá «Aprobada con corrección».">Hora final</label>
 								<input type="time" id="pka-hora-c<?php echo esc_attr( $c['id'] ); ?>" name="hora_final" value="<?php echo esc_attr( $momento->format( 'H:i' ) ); ?>">
 								<label class="screen-reader-text" for="pka-nota-c<?php echo esc_attr( $c['id'] ); ?>">Respuesta</label>
-								<input type="text" id="pka-nota-c<?php echo esc_attr( $c['id'] ); ?>" name="nota" placeholder="Respuesta (obligatoria si rechazas)" style="flex:1;min-width:150px">
+								<input type="text" id="pka-nota-c<?php echo esc_attr( $c['id'] ); ?>" name="nota" placeholder="Respuesta (obligatoria si rechazas)" class="pk-crece">
 								<button class="button button-primary" name="decision" value="aprobar">Aprobar</button>
 								<button class="button" name="decision" value="rechazar">Rechazar</button>
 							</form>
@@ -235,7 +235,7 @@ final class PantallaDia {
 			</table>
 		<?php endif; ?>
 
-		<h2 style="margin-top:32px">Días anteriores por revisar (<?php echo count( $pendientes ); ?>)</h2>
+		<h class="pk-mt"2>Días anteriores por revisar (<?php echo count( $pendientes ); ?>)</h2>
 		<p class="description">Últimos 7 días: días que quedaron sin salida y días laborables sin ninguna marca.</p>
 		<?php if ( ! $pendientes ) : ?>
 			<p>Todo en orden.</p>
@@ -247,7 +247,7 @@ final class PantallaDia {
 					<tr>
 						<td><?php echo esc_html( wp_date( 'D d/m', ( new DateTimeImmutable( $p['dia'] . ' 12:00', $zona ) )->getTimestamp(), $zona ) ); ?></td>
 						<td><?php echo esc_html( $p['trabajador']['apellidos'] . ', ' . $p['trabajador']['nombres'] ); ?></td>
-						<td><?php echo Seguimiento::INCOMPLETO === $p['tipo'] ? 'Sin marca de salida' : '<span style="color:#b32d2e">Sin marcas (¿falta?)</span>'; ?></td>
+						<td><?php echo Seguimiento::INCOMPLETO === $p['tipo'] ? 'Sin marca de salida' : '<span class="pk-txt-error">Sin marcas (¿falta?)</span>'; ?></td>
 						<td><a href="<?php echo esc_url( self::url( (int) $p['trabajador']['id'], $p['dia'] ) ); ?>">Ver y corregir</a></td>
 					</tr>
 				<?php endforeach; ?>

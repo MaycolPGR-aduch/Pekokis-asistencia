@@ -1,0 +1,71 @@
+/*
+ * Tokens de Pekokis Asistencia: la letra, los colores y las medidas, en un solo
+ * lugar. Los cargan la app del trabajador, la pantalla del QR, el panel de
+ * gerencia (wp-admin) y el informe para imprimir. Para cambiar el rosa de toda
+ * la marca, se cambia aquí.
+ *
+ * Reglas de color (maquetas): rosa para la acción principal, verde para lo
+ * bueno, ámbar para avisos, rojo solo para errores, azul para información.
+ */
+
+@font-face { font-family: Poligon; font-weight: 400; font-style: normal; font-display: swap; src: url("fuentes/poligon-400.otf") format("opentype"); }
+@font-face { font-family: Poligon; font-weight: 600; font-style: normal; font-display: swap; src: url("fuentes/poligon-600.otf") format("opentype"); }
+@font-face { font-family: Poligon; font-weight: 700; font-style: normal; font-display: swap; src: url("fuentes/poligon-700.otf") format("opentype"); }
+
+:root {
+	/* Letra */
+	--pk-letra: Poligon, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+	/* Fondos y texto */
+	--pk-bg: #FFF8FB;
+	--pk-fondo: #F4EEF1;
+	--pk-blanco: #FFFFFF;
+	--pk-fg: #212322;
+	--pk-verde: #243B34;
+	--pk-muted: #62716B;
+	--pk-apagado: #8F8189;
+	--pk-line: #EFE3EA;
+
+	/* Marca */
+	--pk-rosa: #F048A5;
+	--pk-rosa-oscuro: #C2287F;
+	--pk-rosa-suave: #FFEAF3;
+	--pk-rosa-claro: #F794CC;
+	--pk-rosa-borde: #F9CFE5;
+	--pk-rosa-barra: #F8A8D4;
+	--pk-degradado: linear-gradient(135deg, #D8369A, #A81F6B);
+	--pk-turq: #6DDDDA;
+	--pk-turq-suave: #E4FAF9;
+	--pk-turq-borde: #BDEFED;
+	--pk-turq-tinta: #0B6E69;
+	--pk-lima: #C7F485;
+	--pk-lima-suave: #F1FCD9;
+	--pk-lima-borde: #DCF3A8;
+	--pk-aro-lima: #D6FB9A;
+	--pk-aro-rosa: #FBC6E3;
+
+	/* Estados */
+	--pk-ok: #1F7A4D;
+	--pk-ok-suave: #E6F5EC;
+	--pk-aviso: #9A5B00;
+	--pk-aviso-suave: #FFF1D6;
+	--pk-aviso-borde: #E3B057;
+	--pk-error: #B3261E;
+	--pk-error-suave: #FDE7E5;
+	--pk-info: #3B4CC0;
+	--pk-info-suave: #E8EBFB;
+	--pk-morado: #6B3FA0;
+	--pk-morado-suave: #F1EAFA;
+	--pk-gris-suave: #EFEDEE;
+
+	/* Sombras, foco y formas */
+	--pk-sombra-caja: 0 3px 0 #F6E3EC;
+	--pk-sombra-sec: 0 3px 0 #EFCFE0;
+	--pk-sombra-principal: 0 3px 0 #C2287F;
+	--pk-foco: #5A35F0;
+	--pk-r-s: 12px;
+	--pk-r-m: 16px;
+	--pk-r-l: 20px;
+	--pk-r-xl: 22px;
+	--pk-pildora: 999px;
+}

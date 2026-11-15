@@ -47,7 +47,7 @@ final class PantallaCelulares {
 
 			<h2>Esperando aprobación</h2>
 			<table class="widefat striped">
-				<thead><tr><th>Qué pide</th><th>Persona</th><th>Datos</th><th>Cuándo</th><th>Celular</th><th style="width:34%">Decisión</th></tr></thead>
+				<thead><tr><th>Qué pide</th><th>Persona</th><th>Datos</th><th>Cuándo</th><th>Celular</th><th>Decisión</th></tr></thead>
 				<tbody>
 				<?php if ( ! $pendientes ) : ?>
 					<tr><td colspan="6">No hay nada esperando.</td></tr>
@@ -69,15 +69,15 @@ final class PantallaCelulares {
 							<?php if ( Trabajadores::esPropio( (int) $s['trabajador_id'] ) ) : ?>
 								<em>Es tu propio celular: que lo apruebe otra persona.</em>
 							<?php else : ?>
-								<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+								<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="pk-fila junta">
 									<input type="hidden" name="action" value="pka_resolver_celular">
 									<input type="hidden" name="id" value="<?php echo (int) $s['id']; ?>">
 									<?php wp_nonce_field( 'pka_resolver_celular' ); ?>
 									<button class="button button-primary" name="decision" value="aprobar">Aprobar</button>
-									<input type="text" name="respuesta" placeholder="Si rechazas, ¿por qué?" style="flex:1;min-width:140px">
+									<input class="pk-crece" type="text" name="respuesta" placeholder="Si rechazas, ¿por qué?">
 									<button class="button" name="decision" value="rechazar">Rechazar</button>
 								</form>
-								<p class="description" style="margin:4px 0 0">
+								<p class="description pk-mt-s">
 									<?php
 									echo esc_html(
 										match ( $s['tipo'] ) {
@@ -95,9 +95,9 @@ final class PantallaCelulares {
 				</tbody>
 			</table>
 
-			<h2 style="margin-top:32px">Celular de cada persona</h2>
+			<h class="pk-mt"2>Celular de cada persona</h2>
 			<table class="widefat striped">
-				<thead><tr><th>Persona</th><th>Celular</th><th>Registrado</th><th>Último uso</th><th>PIN</th><th style="width:30%">Liberar</th></tr></thead>
+				<thead><tr><th>Persona</th><th>Celular</th><th>Registrado</th><th>Último uso</th><th>PIN</th><th>Liberar</th></tr></thead>
 				<tbody>
 				<?php if ( ! $vigentes ) : ?>
 					<tr><td colspan="6">Nadie tiene un celular registrado todavía.</td></tr>
@@ -117,11 +117,11 @@ final class PantallaCelulares {
 							<?php endif; ?>
 						</td>
 						<td>
-							<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:flex;gap:6px">
+							<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="pk-fila junta">
 								<input type="hidden" name="action" value="pka_liberar_celular">
 								<input type="hidden" name="dispositivo" value="<?php echo (int) $d['id']; ?>">
 								<?php wp_nonce_field( 'pka_liberar_celular' ); ?>
-								<input type="text" name="motivo" placeholder="Motivo (perdió el celular…)" required style="flex:1">
+								<input class="pk-crece" type="text" name="motivo" placeholder="Motivo (perdió el celular…)" required>
 								<button class="button" onclick="return confirm('Ese celular quedará sin acceso y la persona tendrá que registrar otro en el taller. Sus datos y horas se conservan. Queda en el historial. ¿Liberar?')">Liberar</button>
 							</form>
 						</td>

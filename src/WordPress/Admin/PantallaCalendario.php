@@ -45,7 +45,7 @@ final class PantallaCalendario {
 			<p>En los feriados y días no laborables nadie aparece como ausente ni con falta. Si alguien trabaja ese día, sus marcas se registran igual.</p>
 
 			<?php if ( $faltan ) : ?>
-				<div class="notice notice-warning inline" style="padding:8px 12px">
+				<div class="notice notice-warning inline">
 					<p><strong>Faltan <?php echo count( $faltan ); ?> feriados nacionales de <?php echo (int) $anio; ?></strong> según la lista sugerida:
 						<?php echo esc_html( implode( ', ', array_map( static fn( $f, $n ) => wp_date( 'j M', strtotime( $f . ' 12:00' ), $zona ) . ' (' . $n . ')', array_keys( $faltan ), $faltan ) ) ); ?>.</p>
 					<p>Revísala contra el calendario oficial antes de cargarla: los feriados cambian por ley.</p>
@@ -59,12 +59,12 @@ final class PantallaCalendario {
 			<?php endif; ?>
 
 			<h2>Agregar un día</h2>
-			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end">
+			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="pk-fila abajo">
 				<input type="hidden" name="action" value="pka_calendario_agregar">
 				<?php wp_nonce_field( 'pka_calendario_agregar' ); ?>
-				<p style="margin:0"><label for="pka-c-fecha">Fecha</label><br><input type="date" id="pka-c-fecha" name="fecha" required></p>
-				<p style="margin:0"><label for="pka-c-nombre">Nombre</label><br><input type="text" id="pka-c-nombre" name="nombre" class="regular-text" required placeholder="Por ejemplo: Aniversario de Pekokis"></p>
-				<p style="margin:0">
+				<p class="pk-m0"><label for="pka-c-fecha">Fecha</label><br><input type="date" id="pka-c-fecha" name="fecha" required></p>
+				<p class="pk-m0"><label for="pka-c-nombre">Nombre</label><br><input type="text" id="pka-c-nombre" name="nombre" class="regular-text" required placeholder="Por ejemplo: Aniversario de Pekokis"></p>
+				<p class="pk-m0">
 					<label for="pka-c-tipo">Tipo</label><br>
 					<select id="pka-c-tipo" name="tipo">
 						<?php foreach ( Calendario::TIPOS as $clave => $etiqueta ) : ?>
@@ -72,11 +72,11 @@ final class PantallaCalendario {
 						<?php endforeach; ?>
 					</select>
 				</p>
-				<p style="margin:0"><button class="button">Agregar</button></p>
+				<p class="pk-m0"><button class="button">Agregar</button></p>
 			</form>
 
-			<h2 style="margin-top:24px">Días de <?php echo (int) $anio; ?> (<?php echo count( $dias ); ?>)</h2>
-			<table class="widefat striped" style="max-width:760px">
+			<h class="pk-mt"2>Días de <?php echo (int) $anio; ?> (<?php echo count( $dias ); ?>)</h2>
+			<table class="widefat striped pk-max-m">
 				<thead><tr><th>Fecha</th><th>Nombre</th><th>Tipo</th><th></th></tr></thead>
 				<tbody>
 				<?php if ( ! $dias ) : ?>

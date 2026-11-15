@@ -63,15 +63,15 @@ final class PantallaFicha {
 			<?php endif; ?>
 		</h1>
 
-		<div class="pka-ficha-cab">
-			<span class="pka-av grande"><?php echo esc_html( self::iniciales( $t ) ); ?></span>
+		<div class="pk-ficha-cab">
+			<span class="pk-av xl"><?php echo esc_html( self::iniciales( $t ) ); ?></span>
 			<div class="quien">
 				<b><?php echo esc_html( Trabajadores::nombreCompleto( $t ) ); ?></b>
 				<span><?php echo esc_html( trim( implode( ' · ', array_filter( array( (string) $t['cargo'], (string) $t['area'] ) ) ) . ( $t['creado_en'] ? ' · en el sistema desde el ' . Ajustes::local( (string) $t['creado_en'], 'j \d\e F \d\e Y' ) : '' ), ' ·' ) ); ?></span>
-				<p style="margin:6px 0 0;display:flex;gap:6px;flex-wrap:wrap">
-					<span class="pka-chip <?php echo $activo ? 'ok' : 'gris'; ?>"><?php echo esc_html( $activo ? 'Activo' : ucfirst( (string) $t['estado'] ) ); ?></span>
-					<span class="pka-chip <?php echo $celular ? 'ok' : 'aviso'; ?>"><?php echo $celular ? 'Celular registrado' : 'Sin celular'; ?></span>
-					<span class="pka-chip <?php echo $porVer ? 'aviso' : 'gris'; ?>"><?php echo $porVer ? esc_html( $porVer . ( 1 === $porVer ? ' día por revisar' : ' días por revisar' ) ) : 'Sin incidencias pendientes'; ?></span>
+				<p class="pk-fila junta pk-mt-s">
+					<span class="pk-chip <?php echo $activo ? 'ok' : 'gris'; ?>"><?php echo esc_html( $activo ? 'Activo' : ucfirst( (string) $t['estado'] ) ); ?></span>
+					<span class="pk-chip <?php echo $celular ? 'ok' : 'aviso'; ?>"><?php echo $celular ? 'Celular registrado' : 'Sin celular'; ?></span>
+					<span class="pk-chip <?php echo $porVer ? 'aviso' : 'gris'; ?>"><?php echo $porVer ? esc_html( $porVer . ( 1 === $porVer ? ' día por revisar' : ' días por revisar' ) ) : 'Sin incidencias pendientes'; ?></span>
 				</p>
 			</div>
 			<div class="acciones">
@@ -82,7 +82,7 @@ final class PantallaFicha {
 			</div>
 		</div>
 
-		<nav class="pka-pestanas" aria-label="Secciones de la ficha">
+		<nav class="pk-pestanas" aria-label="Secciones de la ficha">
 			<?php foreach ( $tabs as $clave => $texto ) : ?>
 				<a href="<?php echo esc_url( self::url( $id, $clave ) ); ?>" class="<?php echo $clave === $pestana ? 'activa' : ''; ?>" <?php echo $clave === $pestana ? 'aria-current="page"' : ''; ?>><?php echo esc_html( $texto ); ?></a>
 			<?php endforeach; ?>
@@ -114,10 +114,10 @@ final class PantallaFicha {
 			Auditoria::registrar( 'trabajador.ver_dni', 'trabajador', $id, null, null, 'Desde la ficha' );
 		}
 		?>
-		<div class="pka-tres">
-			<div class="pka-caja">
+		<div class="pk-tres">
+			<div class="pk-caja">
 				<h2>Datos personales</h2>
-				<dl>
+				<dl class="pk-datos">
 					<div><dt>Celular o WhatsApp</dt><dd><?php echo esc_html( '' !== (string) $t['telefono'] ? (string) $t['telefono'] : '—' ); ?></dd></div>
 					<div><dt>DNI</dt><dd><?php echo esc_html( $verDni ? (string) $t['dni'] : PantallaCelulares::dniOculto( (string) $t['dni'] ) ); ?>
 						<?php if ( ! $verDni ) : ?>
@@ -127,52 +127,52 @@ final class PantallaFicha {
 					<div><dt>Horario</dt><dd><?php echo esc_html( $horario ); ?></dd></div>
 					<div><dt>Ingreso</dt><dd><?php echo esc_html( $t['fecha_ingreso'] ? wp_date( 'j \d\e F \d\e Y', strtotime( $t['fecha_ingreso'] . ' 12:00:00' ) ) : '—' ); ?></dd></div>
 				</dl>
-				<p class="description" style="margin:8px 0 0">Mostrar el DNI queda registrado en la auditoría.</p>
+				<p class="description pk-mt-s">Mostrar el DNI queda registrado en la auditoría.</p>
 			</div>
 
-			<div class="pka-caja">
+			<div class="pk-caja">
 				<h2>Este mes · <?php echo esc_html( wp_date( 'F', null, $zona ) ); ?></h2>
-				<div class="pka-tarjetas" style="grid-template-columns:1fr 1fr;margin:0">
-					<div class="pka-kpi turq"><b><?php echo (int) $hechos; ?></b><small>días completos</small></div>
-					<div class="pka-kpi lima"><b><?php echo esc_html( PrePlanilla::horasDecimal( $trabajo ) ); ?> h</b><small>trabajadas</small></div>
-					<div class="pka-kpi rosa"><b><?php echo esc_html( PrePlanilla::horasDecimal( $extra ) ); ?> h</b><small>extra</small></div>
-					<div class="pka-kpi <?php echo $abiertos ? 'rosa' : ''; ?>"><b><?php echo (int) $abiertos; ?></b><small><?php echo 1 === $abiertos ? 'día incompleto' : 'días incompletos'; ?></small></div>
+				<div class="pk-kpis dos pk-m0">
+					<div class="pk-kpi turq"><b><?php echo (int) $hechos; ?></b><small>días completos</small></div>
+					<div class="pk-kpi lima"><b><?php echo esc_html( PrePlanilla::horasDecimal( $trabajo ) ); ?> h</b><small>trabajadas</small></div>
+					<div class="pk-kpi rosa"><b><?php echo esc_html( PrePlanilla::horasDecimal( $extra ) ); ?> h</b><small>extra</small></div>
+					<div class="pk-kpi <?php echo $abiertos ? 'rosa' : ''; ?>"><b><?php echo (int) $abiertos; ?></b><small><?php echo 1 === $abiertos ? 'día incompleto' : 'días incompletos'; ?></small></div>
 				</div>
-				<p class="description" style="margin:8px 0 0">Hasta ayer. <a href="<?php echo esc_url( self::url( $id, 'asistencia' ) ); ?>">Ver día por día</a></p>
+				<p class="description pk-mt-s">Hasta ayer. <a href="<?php echo esc_url( self::url( $id, 'asistencia' ) ); ?>">Ver día por día</a></p>
 			</div>
 
-			<div class="pka-caja">
+			<div class="pk-caja">
 				<h2>Celular para marcar</h2>
 				<?php self::datosCelular( $t, $celular ); ?>
 			</div>
 
 			<?php if ( current_user_can( Capacidades::VER_SUELDOS ) ) : ?>
 				<?php $s = Sueldos::vigente( $id ); ?>
-				<div class="pka-caja">
-					<h2>Pago <span class="pka-chip solo">Solo gerencia</span></h2>
+				<div class="pk-caja">
+					<h2>Pago <span class="pk-chip solo">Solo gerencia</span></h2>
 					<?php if ( ! $s ) : ?>
 						<p>Todavía no tiene honorario ni tarifas: no se puede calcular su pago.</p>
 					<?php else : ?>
-						<dl>
+						<dl class="pk-datos">
 							<div><dt>Honorario mensual</dt><dd><?php echo esc_html( Sueldo::soles( $s->honorarioCentimos ) ); ?></dd></div>
 							<div><dt>Hora extra</dt><dd><?php echo esc_html( Sueldo::soles( $s->tarifaExtra ) ); ?></dd></div>
 							<div><dt>Sábado · domingo</dt><dd><?php echo esc_html( Sueldo::soles( $s->tarifaSabado ) . ' · ' . Sueldo::soles( $s->tarifaDomingo ) ); ?></dd></div>
 							<div><dt>Feriado</dt><dd><?php echo esc_html( Sueldo::soles( $s->tarifaFeriado ) ); ?></dd></div>
 						</dl>
 					<?php endif; ?>
-					<p style="margin:10px 0 0"><a class="button" href="<?php echo esc_url( self::url( $id, 'pagos' ) ); ?>">Ver cálculo</a></p>
+					<p class="pk-mt-s"><a class="button" href="<?php echo esc_url( self::url( $id, 'pagos' ) ); ?>">Ver cálculo</a></p>
 				</div>
 			<?php endif; ?>
 
 			<?php if ( current_user_can( Capacidades::RECIBOS ) ) : ?>
-				<div class="pka-caja">
+				<div class="pk-caja">
 					<h2>Recibos por honorarios</h2>
 					<?php self::recibosCortos( $id, 3 ); ?>
 				</div>
 			<?php endif; ?>
 
 			<?php if ( current_user_can( Capacidades::AUDITORIA ) ) : ?>
-				<div class="pka-caja">
+				<div class="pk-caja">
 					<h2>Últimos cambios</h2>
 					<?php self::cambios( $t, 4, true ); ?>
 				</div>
@@ -186,7 +186,7 @@ final class PantallaFicha {
 		$meses = array_slice( Exportes::meses(), 0, 6 );
 		$mes   = isset( $_GET['mes'] ) && in_array( $_GET['mes'], Exportes::meses(), true ) ? sanitize_text_field( wp_unslash( $_GET['mes'] ) ) : $meses[0]; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		?>
-		<nav class="pka-pestanas" aria-label="Mes">
+		<nav class="pk-pestanas" aria-label="Mes">
 			<?php foreach ( $meses as $m ) : ?>
 				<a href="<?php echo esc_url( self::url( (int) $t['id'], 'asistencia', array( 'mes' => $m ) ) ); ?>" class="<?php echo $m === $mes ? 'activa' : ''; ?>"><?php echo esc_html( PantallaResumen::nombreMes( $m ) ); ?></a>
 			<?php endforeach; ?>
@@ -205,21 +205,21 @@ final class PantallaFicha {
 			$mes   = $meses[1] ?? $meses[0];
 			$fila  = Jornadas::prePlanilla( array( $t ), $mes )[ $id ] ?? new PrePlanilla();
 			?>
-			<div class="pka-dos">
-				<div class="pka-caja">
+			<div class="pk-dos">
+				<div class="pk-caja">
 					<h2>Cómo se calcula su pago de <?php echo esc_html( PantallaResumen::nombreMes( $mes ) ); ?></h2>
-					<ul style="margin:0;padding-left:18px">
+					<ul class="pk-sin-lista">
 						<?php foreach ( $fila->explicacion() as $linea ) : ?>
 							<li><?php echo esc_html( $linea ); ?></li>
 						<?php endforeach; ?>
 					</ul>
-					<p style="margin:12px 0 0;display:flex;gap:8px;flex-wrap:wrap">
+					<p class="pk-fila pk-mt-s">
 						<a class="button" href="<?php echo esc_url( PantallaPagos::url( $mes ) ); ?>">Calculadora de pagos</a>
 						<a class="button" href="<?php echo esc_url( add_query_arg( array( 'page' => PantallaTrabajadores::SLUG, 'vista' => 'editar', 'id' => $id ), admin_url( 'admin.php' ) ) . '#remuneracion' ); ?>">Cambiar honorario y tarifas</a>
 					</p>
 				</div>
 				<?php if ( current_user_can( Capacidades::RECIBOS ) ) : ?>
-					<div class="pka-caja">
+					<div class="pk-caja">
 						<h2>Recibos por honorarios</h2>
 						<?php self::recibosCortos( $id, 12 ); ?>
 					</div>
@@ -229,7 +229,7 @@ final class PantallaFicha {
 			return;
 		}
 		?>
-		<div class="pka-caja" style="max-width:640px">
+		<div class="pk-caja pk-max-s">
 			<h2>Recibos por honorarios</h2>
 			<?php self::recibosCortos( $id, 12 ); ?>
 		</div>
@@ -239,19 +239,19 @@ final class PantallaFicha {
 	private static function pestanaCelular( array $t, ?array $celular ): void {
 		$pendiente = Celulares::pendienteDe( (int) $t['id'] );
 		?>
-		<div class="pka-dos">
-			<div class="pka-caja">
+		<div class="pk-dos">
+			<div class="pk-caja">
 				<h2>Celular para marcar</h2>
 				<?php self::datosCelular( $t, $celular ); ?>
 			</div>
-			<div class="pka-caja">
+			<div class="pk-caja">
 				<h2>Acceso</h2>
-				<dl>
+				<dl class="pk-datos">
 					<div><dt>PIN de ingreso</dt><dd><?php echo '' !== (string) $t['pin_hash'] ? 'Creado el ' . esc_html( Ajustes::local( (string) $t['pin_creado_en'], 'j \d\e F' ) ) : 'Sin PIN'; ?></dd></div>
 					<div><dt>Solicitud pendiente</dt><dd><?php echo $pendiente ? esc_html( Celulares::TIPOS[ $pendiente['tipo'] ] ?? $pendiente['tipo'] ) . ' · <a href="' . esc_url( admin_url( 'admin.php?page=' . PantallaCelulares::SLUG ) ) . '">Resolver</a>' : 'Ninguna'; ?></dd></div>
 				</dl>
 				<?php if ( Trabajadores::ACTIVO === $t['estado'] ) : ?>
-					<p class="description" style="margin:10px 0 6px">Si no puede registrarse solo en el taller (por ejemplo, porque no tiene su cumpleaños registrado), genera un enlace de activación y entrégaselo.</p>
+					<p class="description pk-mt-s">Si no puede registrarse solo en el taller (por ejemplo, porque no tiene su cumpleaños registrado), genera un enlace de activación y entrégaselo.</p>
 					<a class="button" href="<?php echo esc_url( Menu::urlAccion( 'pka_enlace_activacion', array( 'id' => (int) $t['id'] ) ) ); ?>" <?php echo $celular ? 'onclick="return confirm(\'Ya tiene un celular registrado. Un enlace nuevo sirve para cambiar de celular: el anterior dejará de funcionar cuando active el nuevo. ¿Continuar?\')"' : ''; ?>>Enlace de activación</a>
 				<?php endif; ?>
 			</div>
@@ -269,11 +269,11 @@ final class PantallaFicha {
 		}
 
 		if ( $corto ) {
-			echo '<dl>';
+			echo '<dl class="pk-datos">';
 			foreach ( $filas as $f ) {
-				printf( '<div><dt>%s<br><small>%s</small></dt><dd style="font-weight:400">%s</dd></div>', esc_html( substr( $f['fecha'], 0, 10 ) ), esc_html( $f['quien'] ), esc_html( $f['accion'] ) );
+				printf( '<div><dt>%s<br><small>%s</small></dt><dd class="pk-normal">%s</dd></div>', esc_html( substr( $f['fecha'], 0, 10 ) ), esc_html( $f['quien'] ), esc_html( $f['accion'] ) );
 			}
-			echo '</dl><p style="margin:10px 0 0"><a href="' . esc_url( self::url( (int) $t['id'], 'cambios' ) ) . '">Ver todos</a></p>';
+			echo '</dl><p class="pk-mt-s"><a href="' . esc_url( self::url( (int) $t['id'], 'cambios' ) ) . '">Ver todos</a></p>';
 			return;
 		}
 		?>
@@ -304,11 +304,11 @@ final class PantallaFicha {
 		}
 
 		$chip = array( ValidacionRecibo::RECIBIDO => 'ok', ValidacionRecibo::OBSERVADO => 'error', ValidacionRecibo::ENVIADO => 'aviso' );
-		echo '<dl>';
+		echo '<dl class="pk-datos">';
 
 		foreach ( $filas as $r ) {
 			printf(
-				'<div><dt>%s<br><small>%s · %s</small></dt><dd><span class="pka-chip %s">%s</span></dd></div>',
+				'<div><dt>%s<br><small>%s · %s</small></dt><dd><span class="pk-chip %s">%s</span></dd></div>',
 				esc_html( PantallaResumen::nombreMes( $r['mes'] ) ),
 				esc_html( $r['numero'] ),
 				esc_html( Sueldo::soles( (int) $r['monto_centimos'] ) ),
@@ -317,7 +317,7 @@ final class PantallaFicha {
 			);
 		}
 
-		echo '</dl><p style="margin:10px 0 0"><a href="' . esc_url( PantallaRecibos::url( '', array( 'trabajador' => $id ) ) ) . '">Ver todos sus recibos</a></p>';
+		echo '</dl><p class="pk-mt-s"><a href="' . esc_url( PantallaRecibos::url( '', array( 'trabajador' => $id ) ) ) . '">Ver todos sus recibos</a></p>';
 	}
 
 	private static function datosCelular( array $t, ?array $celular ): void {
@@ -326,13 +326,13 @@ final class PantallaFicha {
 			return;
 		}
 		?>
-		<dl>
+		<dl class="pk-datos">
 			<div><dt>Equipo</dt><dd><?php echo esc_html( PantallaCelulares::celularCorto( (string) $celular['user_agent'] ) ); ?></dd></div>
 			<div><dt>Registrado</dt><dd><?php echo esc_html( Ajustes::local( (string) $celular['creado_en'], 'j \d\e F' ) ); ?></dd></div>
-			<div><dt>Llave</dt><dd><span class="pka-chip ok">Activa</span></dd></div>
+			<div><dt>Llave</dt><dd><span class="pk-chip ok">Activa</span></dd></div>
 			<div><dt>Último uso</dt><dd><?php echo esc_html( $celular['ultima_huella'] ? Ajustes::local( (string) $celular['ultima_huella'], 'd/m H:i' ) : '—' ); ?></dd></div>
 		</dl>
-		<p style="margin:10px 0 0"><a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=' . PantallaCelulares::SLUG ) ); ?>">Liberar celular</a></p>
+		<p class="pk-mt-s"><a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=' . PantallaCelulares::SLUG ) ); ?>">Liberar celular</a></p>
 		<?php
 	}
 

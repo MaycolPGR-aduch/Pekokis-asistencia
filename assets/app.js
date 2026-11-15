@@ -77,7 +77,7 @@
 	}
 
 	function aviso( tipo, texto, extra ) {
-		return el( 'div', { class: 'aviso ' + tipo, role: 'error' === tipo ? 'alert' : 'status' }, [ texto, extra || null ] );
+		return el( 'div', { class: 'pk-aviso ' + tipo, role: 'error' === tipo ? 'alert' : 'status' }, [ texto, extra || null ] );
 	}
 
 	function cargando( texto ) {
@@ -845,7 +845,7 @@
 					lista.replaceChildren.apply( lista, r.perfiles.length ? r.perfiles.map( function ( p ) {
 						return el( 'li', {}, [ el( 'button', { class: 'enlace-fila', type: 'button', alHacerClic: function () {
 							vistaConfirmar( p );
-						} }, [ el( 'span', { class: 'dia', texto: p.nombre } ), el( 'span', { class: 'etiqueta bien', texto: 'Soy yo' } ) ] ) ] );
+						} }, [ el( 'span', { class: 'dia', texto: p.nombre } ), el( 'span', { class: 'pk-chip ok', texto: 'Soy yo' } ) ] ) ] );
 					} ) : [ el( 'li', { class: 'vacio' }, [ el( 'b', { texto: 'No apareces' } ), el( 'span', { class: 'ayuda', texto: 'Revisa cómo lo escribiste o pide ayuda a gerencia.' } ) ] ) ] );
 				} ).catch( function ( error ) {
 					estado.replaceChildren( aviso( 'error', error.message ) );
@@ -1276,9 +1276,9 @@
 
 		var resumen = null;
 		if ( 'fin_jornada' === accion && v.terminado ) {
-			resumen = el( 'div', { class: 'resumen' }, [
-				el( 'div', {}, [ el( 'span', { texto: 'Trabajaste' } ), el( 'b', { texto: duracion( v.trabajado ) } ) ] ),
-				el( 'div', {}, [ el( 'span', { texto: 'Horas extra' } ), el( 'b', { texto: v.extra ? duracion( v.extra ) : '—' } ) ] ),
+			resumen = el( 'div', { class: 'pk-kpis dos' }, [
+				el( 'div', { class: 'pk-kpi rosa compacto' }, [ el( 'span', { texto: 'Trabajaste' } ), el( 'b', { texto: duracion( v.trabajado ) } ) ] ),
+				el( 'div', { class: 'pk-kpi rosa compacto' }, [ el( 'span', { texto: 'Horas extra' } ), el( 'b', { texto: v.extra ? duracion( v.extra ) : '—' } ) ] ),
 			] );
 		}
 
@@ -1588,10 +1588,10 @@
 			return r.detalle[ f ].pedir.length;
 		} );
 
-		var resumen = r.resumen.hay ? el( 'div', { class: 'resumen tres' }, [
-			el( 'div', {}, [ el( 'span', { texto: 'Trabajadas' } ), el( 'b', { texto: r.resumen.horas } ) ] ),
-			el( 'div', {}, [ el( 'span', { texto: 'Extra' } ), el( 'b', { texto: r.resumen.extra } ) ] ),
-			el( 'div', {}, [ el( 'span', { texto: 'Días completos' } ), el( 'b', { texto: String( r.resumen.completos ) } ) ] ),
+		var resumen = r.resumen.hay ? el( 'div', { class: 'pk-kpis tres' }, [
+			el( 'div', { class: 'pk-kpi rosa compacto' }, [ el( 'span', { texto: 'Trabajadas' } ), el( 'b', { texto: r.resumen.horas } ) ] ),
+			el( 'div', { class: 'pk-kpi rosa compacto' }, [ el( 'span', { texto: 'Extra' } ), el( 'b', { texto: r.resumen.extra } ) ] ),
+			el( 'div', { class: 'pk-kpi rosa compacto' }, [ el( 'span', { texto: 'Días completos' } ), el( 'b', { texto: String( r.resumen.completos ) } ) ] ),
 		] ) : el( 'div', { class: 'vacio' }, [ el( 'b', { texto: 'Todavía no hay horas este mes' } ), el( 'span', { class: 'ayuda', texto: 'Cuando marques tu primera jornada, aquí verás tus horas.' } ) ] );
 
 		pintar(
@@ -1605,7 +1605,7 @@
 					vistaDiaDetalle( r, f );
 				} }, [
 					el( 'span', { class: 'dia', texto: d.titulo } ),
-					el( 'span', { class: 'etiqueta falta', texto: d.falta ? 'Sin marcas' : 'Falta la ' + d.pedir[0].paso.toLowerCase() } ),
+					el( 'span', { class: 'pk-chip error', texto: d.falta ? 'Sin marcas' : 'Falta la ' + d.pedir[0].paso.toLowerCase() } ),
 					el( 'span', { class: 'horas', texto: 'Toca para pedir la corrección' } ),
 				] ) ] );
 			} ) ) : null,
@@ -1619,11 +1619,11 @@
 	function calendarioMes( r ) {
 		var cal = r.calendario;
 		var celdas = [ 'L', 'M', 'M', 'J', 'V', 'S', 'D' ].map( function ( d ) {
-			return el( 'span', { class: 'cal-cabecera', texto: d, 'aria-hidden': 'true' } );
+			return el( 'span', { class: 'pk-cal-cab', texto: d, 'aria-hidden': 'true' } );
 		} );
 
 		for ( var i = 0; i < cal.vacios; i++ ) {
-			celdas.push( el( 'span', { class: 'cal-vacio', 'aria-hidden': 'true' } ) );
+			celdas.push( el( 'span', { class: 'pk-cal-vacio', 'aria-hidden': 'true' } ) );
 		}
 
 		cal.dias.forEach( function ( d ) {
@@ -1631,18 +1631,18 @@
 			var conDetalle = !! r.detalle[ d.fecha ];
 			var hijos = [
 				el( 'strong', { texto: String( d.n ) } ),
-				d.corto ? el( 'small', { texto: d.corto, 'aria-hidden': 'true' } ) : null,
-				d.horas ? el( 'small', { class: 'cal-horas', texto: d.horas, 'aria-hidden': 'true' } ) : null,
+				d.corto ? el( 'small', { class: 'e', texto: d.corto, 'aria-hidden': 'true' } ) : null,
+				d.horas ? el( 'small', { class: 'h', texto: d.horas, 'aria-hidden': 'true' } ) : null,
 			];
-			celdas.push( conDetalle ? el( 'button', { type: 'button', class: 'cal-dia cal-' + d.estado, 'aria-label': nombre, alHacerClic: function () {
+			celdas.push( conDetalle ? el( 'button', { type: 'button', class: 'pk-cal-dia pk-est-' + d.estado, 'aria-label': nombre, alHacerClic: function () {
 				vistaDiaDetalle( r, d.fecha );
-			} }, hijos ) : el( 'span', { class: 'cal-dia cal-' + d.estado, role: 'img', 'aria-label': nombre }, hijos ) );
+			} }, hijos ) : el( 'span', { class: 'pk-cal-dia pk-est-' + d.estado, role: 'img', 'aria-label': nombre }, hijos ) );
 		} );
 
-		return el( 'div', { class: 'tarjeta calendario' }, [
-			el( 'div', { class: 'cal-grilla', 'aria-label': 'Calendario de ' + r.etiqueta }, celdas ),
-			cal.leyenda.length ? el( 'div', { class: 'cal-leyenda' }, cal.leyenda.map( function ( l ) {
-				return el( 'span', { class: 'cal-' + l.estado, texto: l.texto } );
+		return el( 'div', { class: 'pk-caja plana' }, [
+			el( 'div', { class: 'pk-cal', 'aria-label': 'Calendario de ' + r.etiqueta }, celdas ),
+			cal.leyenda.length ? el( 'div', { class: 'pk-leyenda' }, cal.leyenda.map( function ( l ) {
+				return el( 'span', { class: 'pk-est-' + l.estado, texto: l.texto } );
 			} ) ) : null,
 		] );
 	}
@@ -1678,9 +1678,9 @@
 		];
 
 		if ( d.horas || d.extra ) {
-			hijos.push( el( 'div', { class: 'resumen' }, [
-				el( 'div', {}, [ el( 'span', { texto: 'Trabajaste' } ), el( 'b', { texto: d.horas || '—' } ) ] ),
-				el( 'div', {}, [ el( 'span', { texto: 'Horas extra' } ), el( 'b', { texto: d.extra || '—' } ) ] ),
+			hijos.push( el( 'div', { class: 'pk-kpis dos' }, [
+				el( 'div', { class: 'pk-kpi rosa compacto' }, [ el( 'span', { texto: 'Trabajaste' } ), el( 'b', { texto: d.horas || '—' } ) ] ),
+				el( 'div', { class: 'pk-kpi rosa compacto' }, [ el( 'span', { texto: 'Horas extra' } ), el( 'b', { texto: d.extra || '—' } ) ] ),
 			] ) );
 		}
 
@@ -1804,7 +1804,7 @@
 					vistaUnRecibo( estado, m );
 				} }, [
 					el( 'span', { class: 'dia', texto: m.etiqueta } ),
-					el( 'span', { class: 'etiqueta ' + ( 'recibido' === m.estado ? 'bien' : ( 'observado' === m.estado ? 'falta' : 'tarde' ) ), texto: m.pagado && 'recibido' === m.estado ? 'Pagado' : m.texto } ),
+					el( 'span', { class: 'pk-chip ' + ( 'recibido' === m.estado ? 'ok' : ( 'observado' === m.estado ? 'error' : 'aviso' ) ), texto: m.pagado && 'recibido' === m.estado ? 'Pagado' : m.texto } ),
 					el( 'span', { class: 'horas', texto: m.numero ? m.numero + ' · S/ ' + m.monto : ( m.puede_enviar ? 'Toca para enviarlo' : '' ) } ),
 				] ),
 			] );
@@ -1826,7 +1826,7 @@
 		var titulo = el( 'h1', {}, [ 'Recibo de ', el( 'em', { texto: m.etiqueta } ) ] );
 
 		if ( ! m.puede_enviar ) {
-			var ficha = el( 'div', { class: 'ficha' }, [
+			var ficha = el( 'div', { class: 'pk-caja lista pk-datos' }, [
 				el( 'div', {}, [ el( 'span', { texto: 'Estado' } ), el( 'b', { texto: m.pagado && 'recibido' === m.estado ? 'Pagado' : m.texto } ) ] ),
 				el( 'div', {}, [ el( 'span', { texto: 'Número' } ), el( 'b', { texto: m.numero } ) ] ),
 				el( 'div', {}, [ el( 'span', { texto: 'Monto' } ), el( 'b', { texto: 'S/ ' + m.monto } ) ] ),
@@ -1954,9 +1954,9 @@
 			} );
 
 			pintar(
-				el( 'div', { class: 'perfil-cab' }, [ el( 'span', { class: 'avm', 'aria-hidden': 'true', texto: p.iniciales } ), el( 'div', {}, [ el( 'h1', { texto: p.nombre } ), el( 'span', { texto: p.cargo } ) ] ) ] ),
+				el( 'div', { class: 'perfil-cab' }, [ el( 'span', { class: 'pk-av l', 'aria-hidden': 'true', texto: p.iniciales } ), el( 'div', {}, [ el( 'h1', { texto: p.nombre } ), el( 'span', { texto: p.cargo } ) ] ) ] ),
 				mensaje || null,
-				el( 'div', { class: 'ficha' }, [
+				el( 'div', { class: 'pk-caja lista pk-datos' }, [
 					el( 'div', {}, [ el( 'span', { texto: 'DNI' } ), el( 'div', {}, [ dni, ver ] ) ] ),
 					p.telefono ? el( 'div', {}, [ el( 'span', { texto: 'Teléfono' } ), el( 'b', { texto: p.telefono } ) ] ) : null,
 					el( 'div', {}, [ el( 'span', { texto: 'Este celular' } ), el( 'b', { texto: p.celular } ) ] ),

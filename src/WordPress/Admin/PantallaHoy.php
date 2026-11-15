@@ -26,15 +26,16 @@ defined( 'ABSPATH' ) || exit;
  */
 final class PantallaHoy {
 	private const SITUACIONES = array(
-		ResumenDia::AUSENTE    => array( 'Ausente', '#b32d2e' ),
-		ResumenDia::TARDE      => array( 'Llegó tarde', '#b26200' ),
-		ResumenDia::REFRIGERIO => array( 'En refrigerio', '#2271b1' ),
-		ResumenDia::FUERA      => array( 'Fuera', '#2271b1' ),
-		ResumenDia::PRESENTE   => array( 'Presente', '#00733a' ),
-		ResumenDia::JUSTIFICADO => array( 'Ausencia justificada', '#2271b1' ),
-		ResumenDia::POR_LLEGAR => array( 'Por llegar', '#50575e' ),
-		ResumenDia::SALIO      => array( 'Terminó', '#50575e' ),
-		ResumenDia::LIBRE      => array( 'Día libre', '#50575e' ),
+		// situación => [texto, tipo de .pk-chip].
+		ResumenDia::AUSENTE    => array( 'Sin marcar', 'error' ),
+		ResumenDia::TARDE      => array( 'Llegó tarde', 'aviso' ),
+		ResumenDia::REFRIGERIO => array( 'En comida', 'info' ),
+		ResumenDia::FUERA      => array( 'Fuera', 'info' ),
+		ResumenDia::PRESENTE   => array( 'En el taller', 'ok' ),
+		ResumenDia::JUSTIFICADO => array( 'Ausencia justificada', 'info' ),
+		ResumenDia::POR_LLEGAR => array( 'Por llegar', 'gris' ),
+		ResumenDia::SALIO      => array( 'Ya salió', 'gris' ),
+		ResumenDia::LIBRE      => array( 'Día libre', 'gris' ),
 	);
 
 	public static function registrar(): void {
@@ -101,12 +102,10 @@ final class PantallaHoy {
 
 			<?php self::alertas(); ?>
 
-			<p style="display:flex;flex-wrap:wrap;gap:8px;margin:16px 0">
-				<?php foreach ( self::SITUACIONES as $clave => [ $etiqueta, $color ] ) : ?>
+			<p class="pk-fila espacio">
+				<?php foreach ( self::SITUACIONES as $clave => [ $etiqueta, $tipo ] ) : ?>
 					<?php if ( $cuentas[ $clave ] ) : ?>
-						<span style="border:2px solid <?php echo esc_attr( $color ); ?>;color:<?php echo esc_attr( $color ); ?>;border-radius:999px;padding:4px 12px;font-weight:600">
-							<?php echo esc_html( $etiqueta . ': ' . $cuentas[ $clave ] ); ?>
-						</span>
+						<span class="pk-chip <?php echo esc_attr( $tipo ); ?>"><?php echo esc_html( $etiqueta . ': ' . $cuentas[ $clave ] ); ?></span>
 					<?php endif; ?>
 				<?php endforeach; ?>
 			</p>
@@ -118,23 +117,23 @@ final class PantallaHoy {
 					<tr><td colspan="5"><?php echo is_array( $alcance ) ? 'No tienes trabajadores a tu cargo.' : 'No hay trabajadores activos.'; ?></td></tr>
 				<?php endif; ?>
 				<?php foreach ( $filas as [ 't' => $t, 'r' => $r, 'dia' => $diaT ] ) : ?>
-					<?php [ $etiqueta, $color ] = self::SITUACIONES[ $r->situacion ]; ?>
+					<?php [ $etiqueta, $tipo ] = self::SITUACIONES[ $r->situacion ]; ?>
 					<tr>
 						<td><strong><a href="<?php echo esc_url( PantallaDia::url( (int) $t['id'], $diaT ) ); ?>"><?php echo esc_html( $t['apellidos'] . ', ' . $t['nombres'] ); ?></a></strong><br><span class="description"><?php echo esc_html( $t['area'] ); ?></span></td>
-						<td><span style="color:<?php echo esc_attr( $color ); ?>;font-weight:600"><?php echo esc_html( $etiqueta ); ?></span></td>
-						<td><?php echo esc_html( $hora( $r->primeraEntrada ) ); ?><?php echo $r->minutosTardanza ? ' <span style="color:#b26200">(+' . (int) $r->minutosTardanza . ' min)</span>' : ''; ?></td>
+						<td><span class="pk-chip <?php echo esc_attr( $tipo ); ?>"><?php echo esc_html( $etiqueta ); ?></span></td>
+						<td><?php echo esc_html( $hora( $r->primeraEntrada ) ); ?><?php echo $r->minutosTardanza ? ' <span class="pk-txt-aviso">(+' . (int) $r->minutosTardanza . ' min)</span>' : ''; ?></td>
 						<td><?php echo Estado::FUERA !== $r->estado || $r->desde ? esc_html( $hora( $r->desde ) ) : '—'; ?></td>
 						<td>
 							<?php
 							if ( $diaT !== $dia ) {
-								echo '<strong style="color:#6b3fa0">Sigue en la jornada de ayer</strong> (pasó la medianoche). ';
+								echo '<strong class="pk-txt-morado">Sigue en la jornada de ayer</strong> (pasó la medianoche). ';
 							}
 
 							if ( '' !== $r->detalle && in_array( $r->situacion, array( ResumenDia::JUSTIFICADO, ResumenDia::LIBRE ), true ) ) {
 								echo esc_html( $r->detalle );
 							} elseif ( ResumenDia::REFRIGERIO === $r->situacion ) {
 								echo esc_html( 'Hace ' . $r->minutosEnEstado . ' min' );
-								echo $r->excedeRefrigerio ? ' <strong style="color:#b32d2e">pasó el tiempo de refrigerio</strong>' : '';
+								echo $r->excedeRefrigerio ? ' <strong class="pk-txt-error">pasó el tiempo de refrigerio</strong>' : '';
 							} elseif ( ResumenDia::FUERA === $r->situacion ) {
 								echo esc_html( ( $r->motivoActual ? $r->motivoActual->nombre : 'Salida' ) . ' · hace ' . $r->minutosEnEstado . ' min' );
 							}
@@ -183,7 +182,7 @@ final class PantallaHoy {
 
 		$pendientes = Revisiones::pendientes( $alcance );
 		?>
-		<h2 style="margin-top:32px" id="revisar">Marcas por revisar (<?php echo count( $pendientes ); ?>)</h2>
+		<h class="pk-mt"2 id="revisar">Marcas por revisar (<?php echo count( $pendientes ); ?>)</h2>
 		<p class="description">Emergencias marcadas fuera del taller y salidas que requieren aprobación.</p>
 		<?php if ( ! $pendientes ) : ?>
 			<p>No hay nada pendiente.</p>
@@ -203,7 +202,7 @@ final class PantallaHoy {
 					<td><?php echo esc_html( $m['nota'] ); ?></td>
 					<td><?php echo esc_html( Marcas::etiquetaPrueba( PruebaPresencia::from( $m['prueba'] ) ) ); ?></td>
 					<td>
-						<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:flex;gap:6px;flex-wrap:wrap">
+						<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="pk-fila junta">
 							<input type="hidden" name="action" value="pka_revisar_marca">
 							<input type="hidden" name="marca" value="<?php echo esc_attr( $m['id'] ); ?>">
 							<?php wp_nonce_field( 'pka_revisar_marca' ); ?>

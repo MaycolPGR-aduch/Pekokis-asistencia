@@ -1,0 +1,24 @@
+/*
+ * Informe de asistencia para imprimir o guardar como PDF (Registros por
+ * persona → "Imprimir o guardar PDF"). Usa tokens.css y componentes.css: el
+ * mismo calendario y las mismas tarjetas que en pantalla, en papel.
+ */
+
+body { font: 13px/1.45 var(--pk-letra); color: var(--pk-fg); background: var(--pk-blanco); margin: 24px; }
+h1 { font-size: 18px; margin: 0; color: var(--pk-verde); }
+h2 { font-size: 16px; color: var(--pk-verde); }
+h3 { font-size: 14px; margin-top: 20px; color: var(--pk-verde); }
+.description { color: var(--pk-muted); margin: 2px 0 10px; }
+table.widefat { border-collapse: collapse; width: 100%; }
+table.widefat th, table.widefat td { border: 1px solid var(--pk-line); padding: 4px 6px; text-align: left; vertical-align: top; }
+table.widefat th { background: var(--pk-rosa-suave); }
+.pk-caja, .pk-kpi { box-shadow: none; }
+.pk-barra-imprimir { margin-bottom: 16px; }
+.pk-barra-imprimir button { font: 600 14px var(--pk-letra); padding: 8px 18px; border: 2px solid var(--pk-rosa); border-radius: var(--pk-pildora); background: var(--pk-rosa); color: #fff; cursor: pointer; }
+
+@media print {
+	.pk-barra-imprimir { display: none; }
+	body { margin: 0; }
+	.pk-kpi, .pk-cal-dia, .pk-leyenda span, .pk-estado { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+	tr, .pk-cal-dia { break-inside: avoid; }
+}

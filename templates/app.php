@@ -24,6 +24,8 @@ defined( 'ABSPATH' ) || exit;
 	<meta name="apple-mobile-web-app-title" content="Asistencia">
 	<meta name="apple-mobile-web-app-status-bar-style" content="default">
 	<link rel="preload" href="<?php echo esc_url( Rutas::asset( 'fuentes/poligon-600.otf' ) ); ?>" as="font" type="font/otf" crossorigin>
+	<link rel="stylesheet" href="<?php echo esc_url( Rutas::asset( 'tokens.css' ) ); ?>">
+	<link rel="stylesheet" href="<?php echo esc_url( Rutas::asset( 'componentes.css' ) ); ?>">
 	<link rel="stylesheet" href="<?php echo esc_url( Rutas::asset( 'app.css' ) ); ?>">
 	<script type="application/json" id="pka-config"><?php echo wp_json_encode( $config ); ?></script>
 	<script src="<?php echo esc_url( Rutas::asset( 'app.js' ) ); ?>" defer></script>
@@ -32,7 +34,7 @@ defined( 'ABSPATH' ) || exit;
 	<div class="app" id="app">
 		<header class="barra">
 			<img class="logo" src="<?php echo esc_url( Rutas::asset( 'logo-pekokis.png' ) ); ?>" alt="Pekokis" width="98" height="26">
-			<span class="quien" id="quien" hidden></span>
+			<button type="button" class="quien pk-av m" id="quien" hidden></button>
 		</header>
 		<main class="cuerpo" id="contenido" aria-live="polite">
 			<p class="cargando">Cargando…</p>

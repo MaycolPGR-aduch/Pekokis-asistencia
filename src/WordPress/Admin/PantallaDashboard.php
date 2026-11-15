@@ -63,45 +63,45 @@ final class PantallaDashboard {
 		?>
 		<div class="wrap">
 			<?php Avisos::mostrar(); ?>
-			<h1>Dashboard <span class="pka-h1-der">Hoy · <?php echo esc_html( wp_date( 'l j \d\e F', $ahora->getTimestamp(), $zona ) ); ?></span></h1>
+			<h1>Dashboard <span class="pk-h1-der">Hoy · <?php echo esc_html( wp_date( 'l j \d\e F', $ahora->getTimestamp(), $zona ) ); ?></span></h1>
 
-			<div class="pka-tarjetas">
-				<a class="pka-kpi" href="<?php echo esc_url( admin_url( 'admin.php?page=' . Menu::SLUG ) ); ?>">
+			<div class="pk-kpis">
+				<a class="pk-kpi" href="<?php echo esc_url( admin_url( 'admin.php?page=' . Menu::SLUG ) ); ?>">
 					<span>En el taller hoy</span>
 					<b><?php echo (int) $hoyDatos['en_taller']; ?> de <?php echo (int) $hoyDatos['esperados']; ?></b>
 					<small><?php echo esc_html( wp_date( 'H:i', $ahora->getTimestamp(), $zona ) ); ?> · <?php echo (int) $hoyDatos['salieron']; ?> ya salieron</small>
 				</a>
-				<a class="pka-kpi turq" href="<?php echo esc_url( admin_url( 'admin.php?page=' . Menu::SLUG ) ); ?>">
+				<a class="pk-kpi turq" href="<?php echo esc_url( admin_url( 'admin.php?page=' . Menu::SLUG ) ); ?>">
 					<span>Llegaron tarde</span>
 					<b><?php echo (int) $hoyDatos['tarde']; ?></b>
 					<small><?php echo $hoyDatos['tarde'] ? 'Pasada la tolerancia' : 'Nadie, por ahora'; ?></small>
 				</a>
-				<a class="pka-kpi lima" href="<?php echo esc_url( admin_url( 'admin.php?page=' . Menu::SLUG ) ); ?>">
+				<a class="pk-kpi lima" href="<?php echo esc_url( admin_url( 'admin.php?page=' . Menu::SLUG ) ); ?>">
 					<span>Sin marcar</span>
 					<b><?php echo count( $hoyDatos['ausentes'] ); ?></b>
 					<small>Pasada su hora de entrada</small>
 				</a>
-				<a class="pka-kpi rosa" href="<?php echo esc_url( PantallaSolicitudes::url() ); ?>">
+				<a class="pk-kpi rosa" href="<?php echo esc_url( PantallaSolicitudes::url() ); ?>">
 					<span>Por decidir</span>
 					<b><?php echo (int) $solicitudes; ?></b>
 					<small>Solicitudes y marcas por revisar</small>
 				</a>
 			</div>
 
-			<div class="pka-tarjetas">
+			<div class="pk-kpis">
 				<?php if ( $pago ) : ?>
-					<a class="pka-kpi dest" href="<?php echo esc_url( admin_url( 'admin.php?page=' . PantallaPagos::SLUG . '&mes=' . $mesPago ) ); ?>">
+					<a class="pk-kpi dest" href="<?php echo esc_url( admin_url( 'admin.php?page=' . PantallaPagos::SLUG . '&mes=' . $mesPago ) ); ?>">
 						<span>Por pagar de <?php echo esc_html( $nombreMesPago ); ?></span>
 						<b><?php echo esc_html( Sueldo::soles( $pago['total']->montos['total'] ) ); ?></b>
 						<small><?php echo (int) $listos; ?> de <?php echo count( $pago['filas'] ); ?> listos para pagar</small>
 					</a>
 				<?php endif; ?>
-				<div class="pka-kpi turq">
+				<div class="pk-kpi turq">
 					<span>Horas de <?php echo esc_html( $nombreMes ); ?></span>
 					<b><?php echo esc_html( PrePlanilla::horasDecimal( $trabajo ) ); ?> h</b>
 					<small>Hasta ayer · <?php echo count( $personas ); ?> personas</small>
 				</div>
-				<div class="pka-kpi lima">
+				<div class="pk-kpi lima">
 					<span>Horas extra de <?php echo esc_html( $nombreMes ); ?></span>
 					<b><?php echo esc_html( PrePlanilla::horasDecimal( $extra ) ); ?> h</b>
 					<small>Incluye sábados, domingos y feriados</small>
@@ -111,7 +111,7 @@ final class PantallaDashboard {
 					$conRecibo  = count( array_filter( $personas, static fn( array $t ): bool => isset( $recibos[ (int) $t['id'] ] ) ) );
 					$observados = count( array_filter( $recibos, static fn( array $r ): bool => 'observado' === $r['estado'] ) );
 					?>
-					<a class="pka-kpi rosa" href="<?php echo esc_url( admin_url( 'admin.php?page=' . PantallaRecibos::SLUG . '&mes=' . $mesPago ) ); ?>">
+					<a class="pk-kpi rosa" href="<?php echo esc_url( admin_url( 'admin.php?page=' . PantallaRecibos::SLUG . '&mes=' . $mesPago ) ); ?>">
 						<span>Recibos de <?php echo esc_html( $nombreMesPago ); ?></span>
 						<b><?php echo (int) $conRecibo; ?> de <?php echo count( $personas ); ?></b>
 						<small>Faltan <?php echo count( $personas ) - $conRecibo; ?><?php echo $observados ? ' y ' . (int) $observados . ( 1 === $observados ? ' está observado' : ' están observados' ) : ''; ?></small>
@@ -119,13 +119,13 @@ final class PantallaDashboard {
 				<?php endif; ?>
 			</div>
 
-			<div class="pka-dos">
-				<div class="pka-caja">
+			<div class="pk-dos">
+				<div class="pk-caja">
 					<h2>Horas por día · <?php echo esc_html( $nombreMes ); ?></h2>
-					<div class="pka-leyenda-graf"><i class="no"></i> Normales <i class="ex"></i> Extra</div>
+					<div class="pk-leyenda-graf"><i class="no"></i> Normales <i class="ex"></i> Extra</div>
 					<?php self::grafico( $porDia ); ?>
 				</div>
-				<div class="pka-caja">
+				<div class="pk-caja">
 					<h2>Requiere tu atención</h2>
 					<?php self::alertas( $hoyDatos['ausentes'], $alcance, $hoy, $zona, $recibos, $personas, $mesPago ); ?>
 				</div>
@@ -207,7 +207,7 @@ final class PantallaDashboard {
 		}
 
 		$max = max( 60, max( array_column( $porDia, 'trabajado' ) ) );
-		echo '<div class="pka-barras" role="img" aria-label="Horas trabajadas por día del mes">';
+		echo '<div class="pk-barras" role="img" aria-label="Horas trabajadas por día del mes">';
 
 		foreach ( $porDia as $dia => $v ) {
 			$extra   = min( $v['extra'], $v['trabajado'] );
@@ -285,11 +285,11 @@ final class PantallaDashboard {
 		}
 
 		if ( ! $items ) {
-			echo '<p class="pka-alertas vacio">✔ Todo en orden.</p>';
+			echo '<p class="pk-alertas vacio">✔ Todo en orden.</p>';
 			return;
 		}
 
-		echo '<ul class="pka-alertas">';
+		echo '<ul class="pk-alertas">';
 
 		foreach ( $items as [ $clase, $icono, $titulo, $detalle, $boton, $url ] ) {
 			printf(
