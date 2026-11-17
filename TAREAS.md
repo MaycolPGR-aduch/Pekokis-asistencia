@@ -256,6 +256,21 @@ Vienen de la sección 16 del plan; se resuelven con gerencia y el contador.
 
 ## Bitácora
 
+### 17-11-2026 — datos de prueba en producción (borrarlos antes del piloto real)
+- **Red WiFi de prueba:** 187.102.208.128, "Casa de Maycol (solo pruebas, quitar)". El dominio solo tiene IPv4, así que los celulares conectados a ese WiFi salen con esa IP. Si el proveedor cambia la IP de la casa, hay que agregar la nueva.
+- **Usuarios del panel**, todos con correo `admin1+…@pekokis.com` (Google Workspace entrega las variantes con `+` en admin1). No se mandó el correo de bienvenida y las contraseñas las pone Maycol:
+  - `prueba.jefe` (2), con rol Jefe de área;
+  - `prueba.rrhh` (3), con rol RR.HH.;
+  - `prueba.gerencia` (4), con rol Gerencia (solo lectura);
+  - `carla.prueba`, supervisor delegado con "horarios" y "asistencia".
+- **Trabajadores** (Horario base, ingreso 01-11-2026, sueldos vigentes desde 01-11 con nota "Datos de prueba", tarifas 10/12/20/20):
+  - 1: Julia Jefa (prueba), DNI 90000001, cumple 5 de marzo, enlazada a `prueba.jefe`, sin jefe, S/ 1800;
+  - 2: Ana Prueba Uno, DNI 90000002, cumple 12 de marzo, jefa Julia, S/ 1300;
+  - 3: Beto Prueba Dos, DNI 90000003, cumple 20 de julio, jefa Julia, S/ 1300;
+  - 4: Carla Prueba Tres, DNI 90000004, cumple 8 de septiembre, sin jefe, área Ventas, S/ 1400, delegada.
+- **Correo de RR.HH. (Exportar):** admin1@pekokis.com.
+- **Antes del piloto real:** cesar o borrar estos 4 trabajadores, borrar los 4 usuarios, quitar la red de la casa y poner el correo real de RR.HH.
+
 ### 15-11-2026 (noche, 3) — 0.15.0 en producción; revisión antes de configurar el piloto
 - Producción ya tiene la **0.15.0** (sw.js `pka-0.15.0`) y el Dashboard se ve bien.
 - Estado del sistema dice 3 puntos:
