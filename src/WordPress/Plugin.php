@@ -29,6 +29,8 @@ final class Plugin {
 
 		Rutas::registrar();
 		Api::registrar();
+		AccesoGerencia::registrar();
+		GerenciaMovil::registrar();
 		Respaldo::registrar();
 		Notificaciones::registrar();
 

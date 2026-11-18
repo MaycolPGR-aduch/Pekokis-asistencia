@@ -49,7 +49,7 @@ final class PantallaDashboard {
 		$mes      = substr( $hoy, 0, 7 );
 		$meses    = Exportes::meses();
 		$mesPago  = $meses[1] ?? $mes;
-		$hoyDatos = self::hoy( $personas, $hoy, $ahora, $zona );
+		$hoyDatos = self::cifrasHoy( $personas, $hoy, $ahora, $zona );
 		$porDia   = self::horasPorDia( $personas, $mes );
 		$trabajo  = array_sum( array_column( $porDia, 'trabajado' ) );
 		$extra    = array_sum( array_column( $porDia, 'extra' ) );
@@ -140,7 +140,7 @@ final class PantallaDashboard {
 	 * @param array<int, array<string, mixed>> $personas
 	 * @return array{en_taller: int, esperados: int, tarde: int, salieron: int, ausentes: array<int, array<string, mixed>>}
 	 */
-	private static function hoy( array $personas, string $hoy, DateTimeImmutable $ahora, DateTimeZone $zona ): array {
+	public static function cifrasHoy( array $personas, string $hoy, DateTimeImmutable $ahora, DateTimeZone $zona ): array {
 		$ids       = array_map( static fn( array $t ): int => (int) $t['id'], $personas );
 		$ausencias = Ausencias::delRango( $ids, $hoy, $hoy );
 		$datos     = array( 'en_taller' => 0, 'esperados' => 0, 'tarde' => 0, 'salieron' => 0, 'ausentes' => array() );
@@ -233,56 +233,7 @@ final class PantallaDashboard {
 	 * @param array<int, array<string, mixed>>      $personas
 	 */
 	private static function alertas( array $ausentes, ?array $alcance, string $hoy, DateTimeZone $zona, ?array $recibos, array $personas, string $mesPago ): void {
-		$items = array();
-
-		foreach ( array_slice( $ausentes, 0, self::MAX_ALERTAS_POR_TIPO ) as $t ) {
-			$items[] = array( 'error', 'warning', Trabajadores::nombreCompleto( $t ) . ' no marcó entrada', ( '' !== $t['desde'] ? 'Desde las ' . $t['desde'] . ' · ' : '' ) . 'hoy', 'Ver', PantallaDia::url( (int) $t['id'], $hoy ) );
-		}
-
-		if ( count( $ausentes ) > self::MAX_ALERTAS_POR_TIPO ) {
-			$items[] = array( 'error', 'warning', 'Y ' . ( count( $ausentes ) - self::MAX_ALERTAS_POR_TIPO ) . ' personas más sin marcar', 'Todas en Asistencia de hoy', 'Ver', admin_url( 'admin.php?page=' . Menu::SLUG ) );
-		}
-
-		$pendientesDias = array_values( array_filter( Seguimiento::pendientes( $alcance, $hoy ), static fn( array $p ): bool => Seguimiento::INCOMPLETO === $p['tipo'] ) );
-
-		foreach ( array_slice( $pendientesDias, 0, self::MAX_ALERTAS_POR_TIPO ) as $p ) {
-			$items[] = array( 'aviso', 'warning', Trabajadores::nombreCompleto( $p['trabajador'] ) . ' sin salida', 'Día incompleto · ' . wp_date( 'j \d\e F', strtotime( $p['dia'] . ' 12:00:00' ) ), 'Corregir', PantallaDia::url( (int) $p['trabajador']['id'], $p['dia'] ) );
-		}
-
-		if ( current_user_can( Capacidades::APROBAR ) ) {
-			$correcciones = Correcciones::pendientes( $alcance );
-
-			if ( $correcciones ) {
-				$dias    = max( 0, (int) floor( ( time() - strtotime( $correcciones[0]['creado_en'] . ' UTC' ) ) / DAY_IN_SECONDS ) );
-				$items[] = array( 'aviso', 'email-alt', count( $correcciones ) . ( 1 === count( $correcciones ) ? ' solicitud de corrección' : ' solicitudes de corrección' ), 'La más antigua es ' . ( $dias ? 'de hace ' . $dias . ( 1 === $dias ? ' día' : ' días' ) : 'de hoy' ), 'Revisar', PantallaSolicitudes::url() );
-			}
-
-			$revisar = Revisiones::pendientes( $alcance );
-
-			if ( $revisar ) {
-				$items[] = array( 'aviso', 'flag', count( $revisar ) . ( 1 === count( $revisar ) ? ' marca por revisar' : ' marcas por revisar' ), 'Emergencias, salidas fuera del taller o jornadas muy largas', 'Revisar', PantallaSolicitudes::url() . '#revisar' );
-			}
-		}
-
-		if ( current_user_can( Capacidades::GESTIONAR_PERSONAL ) && Celulares::contarPendientes() ) {
-			$n       = Celulares::contarPendientes();
-			$items[] = array( 'info', 'smartphone', $n . ( 1 === $n ? ' celular por aprobar' : ' celulares por aprobar' ), 'Registros nuevos, cambios o liberaciones', 'Ver', admin_url( 'admin.php?page=' . PantallaCelulares::SLUG ) );
-		}
-
-		if ( null !== $recibos ) {
-			$faltan = array_filter( $personas, static fn( array $t ): bool => ! isset( $recibos[ (int) $t['id'] ] ) );
-
-			if ( $faltan ) {
-				$nombres = implode( ', ', array_map( static fn( array $t ): string => (string) $t['nombres'], array_slice( array_values( $faltan ), 0, 3 ) ) ) . ( count( $faltan ) > 3 ? '…' : '' );
-				$items[] = array( 'info', 'media-document', count( $faltan ) . ( 1 === count( $faltan ) ? ' recibo por honorarios pendiente' : ' recibos por honorarios pendientes' ), $nombres, 'Ver', admin_url( 'admin.php?page=' . PantallaRecibos::SLUG . '&mes=' . $mesPago ) );
-			}
-		}
-
-		if ( current_user_can( Capacidades::AJUSTES ) ) {
-			foreach ( Pantallas::sinConexion() as $p ) {
-				$items[] = array( 'error', 'desktop', 'La pantalla "' . $p['nombre'] . '" no se conecta', 'Sin ella solo se marca con el WiFi del taller', 'Ver', admin_url( 'admin.php?page=' . PantallaAjustes::SLUG ) );
-			}
-		}
+		$items = self::itemsAlerta( $ausentes, $alcance, $hoy, $recibos, $personas, $mesPago );
 
 		if ( ! $items ) {
 			echo '<p class="pk-alertas vacio">✔ Todo en orden.</p>';
@@ -304,5 +255,69 @@ final class PantallaDashboard {
 		}
 
 		echo '</ul>';
+	}
+
+	/**
+	 * "Requiere tu atención": [tipo, ícono, título, detalle, botón, url]. En el
+	 * celular ($movil) lo que tiene pantalla propia abre esa pantalla.
+	 *
+	 * @param array<int, array<string, mixed>> $ausentes
+	 * @param array<int, array<string, mixed>> $personas
+	 * @return array<int, array{0: string, 1: string, 2: string, 3: string, 4: string, 5: string}>
+	 */
+	public static function itemsAlerta( array $ausentes, ?array $alcance, string $hoy, ?array $recibos, array $personas, string $mesPago, bool $movil = false ): array {
+		$items = array();
+		$dia   = static fn( int $id, string $d ): string => $movil ? \Pekokis\Asistencia\WordPress\GerenciaMovil::url( 'persona', array( 't' => $id, 'mes' => substr( $d, 0, 7 ), 'dia' => $d ) ) : PantallaDia::url( $id, $d );
+
+		foreach ( array_slice( $ausentes, 0, self::MAX_ALERTAS_POR_TIPO ) as $t ) {
+			$items[] = array( 'error', 'warning', Trabajadores::nombreCompleto( $t ) . ' no marcó entrada', ( '' !== $t['desde'] ? 'Desde las ' . $t['desde'] . ' · ' : '' ) . 'hoy', 'Ver', $dia( (int) $t['id'], $hoy ) );
+		}
+
+		if ( count( $ausentes ) > self::MAX_ALERTAS_POR_TIPO ) {
+			$items[] = array( 'error', 'warning', 'Y ' . ( count( $ausentes ) - self::MAX_ALERTAS_POR_TIPO ) . ' personas más sin marcar', 'Todas en Asistencia de hoy', 'Ver', $movil ? \Pekokis\Asistencia\WordPress\GerenciaMovil::url( 'hoy', array( 'f' => 'ausente' ) ) : admin_url( 'admin.php?page=' . Menu::SLUG ) );
+		}
+
+		$pendientesDias = array_values( array_filter( Seguimiento::pendientes( $alcance, $hoy ), static fn( array $p ): bool => Seguimiento::INCOMPLETO === $p['tipo'] ) );
+
+		foreach ( array_slice( $pendientesDias, 0, self::MAX_ALERTAS_POR_TIPO ) as $p ) {
+			$items[] = array( 'aviso', 'warning', Trabajadores::nombreCompleto( $p['trabajador'] ) . ' sin salida', 'Día incompleto · ' . wp_date( 'j \d\e F', strtotime( $p['dia'] . ' 12:00:00' ) ), 'Corregir', $dia( (int) $p['trabajador']['id'], $p['dia'] ) );
+		}
+
+		if ( current_user_can( Capacidades::APROBAR ) ) {
+			$correcciones = Correcciones::pendientes( $alcance );
+
+			if ( $correcciones ) {
+				$dias    = max( 0, (int) floor( ( time() - strtotime( $correcciones[0]['creado_en'] . ' UTC' ) ) / DAY_IN_SECONDS ) );
+				$items[] = array( 'aviso', 'email-alt', count( $correcciones ) . ( 1 === count( $correcciones ) ? ' solicitud de corrección' : ' solicitudes de corrección' ), 'La más antigua es ' . ( $dias ? 'de hace ' . $dias . ( 1 === $dias ? ' día' : ' días' ) : 'de hoy' ), 'Revisar', $movil ? \Pekokis\Asistencia\WordPress\GerenciaMovil::url( 'solicitudes' ) : PantallaSolicitudes::url() );
+			}
+
+			$revisar = Revisiones::pendientes( $alcance );
+
+			if ( $revisar ) {
+				$items[] = array( 'aviso', 'flag', count( $revisar ) . ( 1 === count( $revisar ) ? ' marca por revisar' : ' marcas por revisar' ), 'Emergencias, salidas fuera del taller o jornadas muy largas', 'Revisar', $movil ? \Pekokis\Asistencia\WordPress\GerenciaMovil::url( 'solicitudes' ) : PantallaSolicitudes::url() . '#revisar' );
+			}
+		}
+
+		if ( current_user_can( Capacidades::GESTIONAR_PERSONAL ) && Celulares::contarPendientes() ) {
+			$n       = Celulares::contarPendientes();
+			$items[] = array( 'info', 'smartphone', $n . ( 1 === $n ? ' celular por aprobar' : ' celulares por aprobar' ), 'Registros nuevos, cambios o liberaciones', 'Ver', admin_url( 'admin.php?page=' . PantallaCelulares::SLUG ) );
+		}
+
+		if ( null !== $recibos ) {
+			$faltan = array_filter( $personas, static fn( array $t ): bool => ! isset( $recibos[ (int) $t['id'] ] ) );
+
+			if ( $faltan ) {
+				$nombres = implode( ', ', array_map( static fn( array $t ): string => (string) $t['nombres'], array_slice( array_values( $faltan ), 0, 3 ) ) ) . ( count( $faltan ) > 3 ? '…' : '' );
+				$items[] = array( 'info', 'media-document', count( $faltan ) . ( 1 === count( $faltan ) ? ' recibo por honorarios pendiente' : ' recibos por honorarios pendientes' ), $nombres, 'Ver', $movil ? \Pekokis\Asistencia\WordPress\GerenciaMovil::url( 'recibos', array( 'mes' => $mesPago ) ) : admin_url( 'admin.php?page=' . PantallaRecibos::SLUG . '&mes=' . $mesPago ) );
+			}
+		}
+
+		if ( current_user_can( Capacidades::AJUSTES ) ) {
+			foreach ( Pantallas::sinConexion() as $p ) {
+				$items[] = array( 'error', 'desktop', 'La pantalla "' . $p['nombre'] . '" no se conecta', 'Sin ella solo se marca con el WiFi del taller', 'Ver', admin_url( 'admin.php?page=' . PantallaAjustes::SLUG ) );
+			}
+		}
+
+		return $items;
 	}
 }

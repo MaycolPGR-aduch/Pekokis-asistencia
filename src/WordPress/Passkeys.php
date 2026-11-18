@@ -200,7 +200,7 @@ final class Passkeys {
 		return $fila;
 	}
 
-	private static function servidor(): WebAuthn {
+	public static function servidor(): WebAuthn {
 		return new WebAuthn( 'Pekokis Asistencia', self::rpId(), null, true );
 	}
 
@@ -210,7 +210,7 @@ final class Passkeys {
 	}
 
 	/** Comprobación propia y exacta del origen, además de la de la librería. */
-	private static function origenValido( string $clientDataJSON ): bool {
+	public static function origenValido( string $clientDataJSON ): bool {
 		$datos = json_decode( $clientDataJSON, true );
 
 		return is_array( $datos ) && isset( $datos['origin'] ) && hash_equals( self::origen(), (string) $datos['origin'] );

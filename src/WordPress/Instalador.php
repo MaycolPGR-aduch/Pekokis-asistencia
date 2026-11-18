@@ -13,7 +13,7 @@ defined( 'ABSPATH' ) || exit;
  * lo que RR.HH. haya cambiado.
  */
 final class Instalador {
-	public const VERSION_BD = '8';
+	public const VERSION_BD = '9';
 
 	private const OPCION_VERSION = 'pka_version_bd';
 
@@ -56,7 +56,7 @@ final class Instalador {
 		$c = $wpdb->get_charset_collate();
 		$t = array();
 
-		foreach ( array( 'trabajadores', 'horarios', 'horario_dias', 'motivos', 'marcas', 'revisiones', 'correcciones', 'credenciales', 'dispositivos', 'activaciones', 'redes', 'pantallas', 'auditoria', 'calendario', 'ausencias', 'sueldos', 'sobretiempo', 'avisos', 'pagos', 'recibos', 'solicitudes_celular' ) as $tabla ) {
+		foreach ( array( 'trabajadores', 'horarios', 'horario_dias', 'motivos', 'marcas', 'revisiones', 'correcciones', 'credenciales', 'dispositivos', 'activaciones', 'redes', 'pantallas', 'auditoria', 'calendario', 'ausencias', 'sueldos', 'sobretiempo', 'avisos', 'pagos', 'recibos', 'solicitudes_celular', 'llaves_gerencia' ) as $tabla ) {
 			$t[ $tabla ] = Tablas::nombre( $tabla );
 		}
 
@@ -199,6 +199,22 @@ final class Instalador {
 				PRIMARY KEY  (id),
 				UNIQUE KEY credential_hash (credential_hash),
 				KEY trabajador (trabajador_id)
+			) {$c};",
+
+			"CREATE TABLE {$t['llaves_gerencia']} (
+				id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+				user_id bigint(20) unsigned NOT NULL,
+				credential_id varchar(255) NOT NULL,
+				credential_hash char(64) NOT NULL,
+				public_key text NOT NULL,
+				sign_count int(10) unsigned NOT NULL DEFAULT 0,
+				nombre varchar(120) NOT NULL DEFAULT '',
+				creado_en datetime NOT NULL,
+				ultimo_uso datetime NULL,
+				revocada_en datetime NULL,
+				PRIMARY KEY  (id),
+				UNIQUE KEY credential_hash (credential_hash),
+				KEY usuario (user_id)
 			) {$c};",
 
 			"CREATE TABLE {$t['dispositivos']} (

@@ -96,7 +96,17 @@ final class Menu {
 		self::volverA( add_query_arg( array( 'page' => $pagina ) + $args, admin_url( 'admin.php' ) ) );
 	}
 
+	/**
+	 * Redirige después de guardar. Si el formulario vino de la versión para
+	 * celular (campo pk_volver), vuelve allí; solo se aceptan sus propias URL.
+	 */
 	public static function volverA( string $url ): never {
+		$volver = isset( $_REQUEST['pk_volver'] ) ? esc_url_raw( wp_unslash( $_REQUEST['pk_volver'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+
+		if ( '' !== $volver && str_starts_with( $volver, \Pekokis\Asistencia\WordPress\GerenciaMovil::url() ) ) {
+			$url = $volver;
+		}
+
 		wp_safe_redirect( $url );
 		exit;
 	}

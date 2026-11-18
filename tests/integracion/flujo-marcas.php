@@ -44,7 +44,7 @@ $api = static function ( string $metodo, string $ruta, array $cuerpo = array() )
 };
 
 // ---- Preparación: tablas vacías, una red autorizada y la IP del "WiFi del taller".
-foreach ( array( 'trabajadores', 'marcas', 'auditoria', 'credenciales', 'dispositivos', 'activaciones', 'redes', 'correcciones', 'pantallas', 'revisiones', 'calendario', 'ausencias', 'sueldos', 'avisos', 'pagos', 'recibos', 'solicitudes_celular' ) as $tabla ) {
+foreach ( array( 'trabajadores', 'marcas', 'auditoria', 'credenciales', 'dispositivos', 'activaciones', 'redes', 'correcciones', 'pantallas', 'revisiones', 'calendario', 'ausencias', 'sueldos', 'avisos', 'pagos', 'recibos', 'solicitudes_celular', 'llaves_gerencia' ) as $tabla ) {
 	$wpdb->query( 'TRUNCATE TABLE ' . Tablas::nombre( $tabla ) ); // phpcs:ignore
 }
 $wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE '\\_transient\\_pka\\_%' OR option_name LIKE '\\_transient\\_timeout\\_pka\\_%'" ); // phpcs:ignore
@@ -1044,6 +1044,76 @@ $comprobar( 'y con una fecha posterior se guarda (el anterior queda en el histor
 $htmlSu = $dibujar( array( $SU, 'pintar' ) );
 $comprobar( 'Sueldos y tarifas se dibuja con el contador de cambios', str_contains( $htmlSu, 'Rebeca Registro' ) && str_contains( $htmlSu, 'pk-sin-guardar' ) && str_contains( $htmlSu, 'data-antes="1500.00"' ) );
 Trabajadores::cesar( $reg, gmdate( 'Y-m-d' ), 'Prueba' );
+
+// ---- 18. G2, G14, G0 y gerencia en el celular (M1–M9).
+WP_CLI::line( '18. Filtros de hoy, ajustes en pestañas, acceso de gerencia y celular' );
+wp_set_current_user( 1 );
+$_GET    = array( 'page' => 'pka-asistencia', 'filtro' => 'ausente' );
+$htmlHoy = $dibujar( array( \Pekokis\Asistencia\WordPress\Admin\PantallaHoy::class, 'pintar' ) );
+$_GET    = array();
+$comprobar( 'G2: Asistencia de hoy con pestañas de filtro (Todos y el filtro elegido)', str_contains( $htmlHoy, 'pk-filtros' ) && str_contains( $htmlHoy, 'Todos <span class="pk-cuenta">' ) && ( str_contains( $htmlHoy, 'aria-current="page">Sin marcar' ) || str_contains( $htmlHoy, 'Nadie en esta situación' ) ) );
+$comprobar( 'G2: datos() trae filas y cuentas por situación', is_array( \Pekokis\Asistencia\WordPress\Admin\PantallaHoy::datos()['cuentas'] ) );
+
+$_GET     = array( 'page' => 'pka-ajustes', 'pestana' => 'reglas' );
+$htmlAju  = $dibujar( array( \Pekokis\Asistencia\WordPress\Admin\PantallaAjustes::class, 'pintar' ) );
+$_GET     = array( 'page' => 'pka-ajustes' );
+$htmlAju2 = $dibujar( array( \Pekokis\Asistencia\WordPress\Admin\PantallaAjustes::class, 'pintar' ) );
+$_GET     = array();
+$comprobar( 'G14: Seguridad y reglas en pestañas, cada una con lo suyo y los cambios contados', str_contains( $htmlAju, 'Reglas de horas y pagos' ) && ! str_contains( $htmlAju, 'Redes del WiFi del taller' ) && str_contains( $htmlAju, 'class="pk-sigue"' ) && str_contains( $htmlAju, 'pk-sin-guardar' ) && str_contains( $htmlAju2, 'Redes del WiFi del taller' ) && ! str_contains( $htmlAju2, 'Reglas de horas y pagos' ) && ! str_contains( $htmlAju . $htmlAju2, '<h class=' ) );
+
+// G0: llave de gerencia con el autenticador simulado.
+$AG     = \Pekokis\Asistencia\WordPress\AccesoGerencia::class;
+$laptop = new AutenticadorSimulado( Passkeys::rpId(), Passkeys::origen() );
+[ $s1, $op ] = $api( 'POST', 'gerencia/llave/opciones' );
+[ $s2, $ok ] = $api( 'POST', 'gerencia/llave', array( 'reto' => $op['reto'] ?? '', 'credencial' => $laptop->crear( (string) ( $op['publicKey']['challenge'] ?? '' ) ) ) );
+$comprobar( 'G0: activar Face ID o huella desde el perfil (queda una llave del usuario)', 200 === $s1 && 200 === $s2 && 1 === count( $AG::llavesDe( 1 ) ) && 'none' === ( $op['publicKey']['attestation'] ?? '' ), wp_json_encode( array( $s1, $s2, $ok ) ) );
+wp_set_current_user( 0 );
+[ $s3 ]      = $api( 'POST', 'gerencia/llave/opciones' );
+[ , $oe ]    = $api( 'POST', 'gerencia/entrar/opciones' );
+[ $s4, $en ] = $api( 'POST', 'gerencia/entrar', array( 'reto' => $oe['reto'] ?? '', 'redirigir' => admin_url( 'admin.php?page=pka-registros' ), 'credencial' => $laptop->firmar( (string) ( $oe['publicKey']['challenge'] ?? '' ) ) ) );
+$comprobar( 'G0: sin sesión no se activan llaves; con la llave se entra y va a lo pedido', 401 === $s3 && 200 === $s4 && 1 === get_current_user_id() && str_contains( (string) ( $en['ir'] ?? '' ), 'page=pka-registros' ), wp_json_encode( array( $s3, $s4, $en, get_current_user_id() ) ) );
+wp_set_current_user( 0 );
+[ , $oe2 ]   = $api( 'POST', 'gerencia/entrar/opciones' );
+[ $s5, $e5 ] = $api( 'POST', 'gerencia/entrar', array( 'reto' => $oe2['reto'] ?? '', 'credencial' => $celular->firmar( (string) ( $oe2['publicKey']['challenge'] ?? '' ) ) ) );
+$comprobar( 'G0: la llave de un trabajador no abre el panel', 401 === $s5 && 'pka_llave' === ( $e5['code'] ?? '' ) && 0 === get_current_user_id(), wp_json_encode( $e5 ) );
+\Pekokis\Asistencia\WordPress\Temporales::limpiarFallos( 'login|' . \Pekokis\Asistencia\WordPress\Peticion::ip() );
+wp_set_current_user( 1 );
+[ $s6 ]    = $api( 'POST', 'gerencia/llave/quitar', array( 'id' => (int) ( $AG::llavesDe( 1 )[0]['id'] ?? 0 ) ) );
+wp_set_current_user( 0 );
+[ , $oe3 ] = $api( 'POST', 'gerencia/entrar/opciones' );
+[ $s7 ]    = $api( 'POST', 'gerencia/entrar', array( 'reto' => $oe3['reto'] ?? '', 'credencial' => $laptop->firmar( (string) ( $oe3['publicKey']['challenge'] ?? '' ) ) ) );
+$comprobar( 'G0: una llave quitada ya no entra', 200 === $s6 && 401 === $s7 && ! $AG::llavesDe( 1 ) );
+\Pekokis\Asistencia\WordPress\Temporales::limpiarFallos( 'login|' . \Pekokis\Asistencia\WordPress\Peticion::ip() );
+wp_set_current_user( 1 );
+$comprobar( 'G0: a dónde va gerencia al entrar (lo pedido si es del sitio; si no, el panel)', admin_url() === $AG::destino( get_userdata( 1 ), 'https://otro.ejemplo/x' ) && admin_url( 'admin.php?page=pka-pagos' ) === $AG::destino( get_userdata( 1 ), admin_url( 'admin.php?page=pka-pagos' ) ) );
+
+// M1–M9: cada vista del celular se dibuja.
+$GM      = \Pekokis\Asistencia\WordPress\GerenciaMovil::class;
+$vistaGM = static function ( string $v, array $get = array() ) use ( $GM ): array {
+	$_GET = $get;
+	$r    = $GM::vista( $v );
+	$_GET = array();
+	return $r;
+};
+[ $tIni, $hIni ] = $vistaGM( 'inicio' );
+[ , $hHoyM ]     = $vistaGM( 'hoy' );
+[ , $hSolM ]     = $vistaGM( 'solicitudes' );
+[ $tPag, $hPag ] = $vistaGM( 'pagos' );
+[ , $hRec ]      = $vistaGM( 'recibos' );
+[ , $hMas ]      = $vistaGM( 'mas' );
+$unaPersona      = (int) ( Trabajadores::listar()[0]['id'] ?? 0 );
+[ $tPer, $hPer ] = $vistaGM( 'persona', array( 't' => $unaPersona ) );
+$comprobar( 'M1: Inicio con las cuatro cifras, el pago y "Requiere tu atención"', 'Inicio' === $tIni && str_contains( $hIni, 'En el taller hoy' ) && str_contains( $hIni, 'Por pagar de' ) && str_contains( $hIni, 'Requiere tu atención' ) );
+$comprobar( 'M2: Asistencia de hoy con filtros y una tarjeta por persona', str_contains( $hHoyM, 'gm-chips' ) && ( str_contains( $hHoyM, 'gm-persona' ) || str_contains( $hHoyM, 'gm-vacio' ) ) );
+$comprobar( 'M3: Solicitudes (o "nada por decidir")', str_contains( $hSolM, 'gm-sol' ) || str_contains( $hSolM, 'No hay nada por decidir' ) );
+$comprobar( 'M5/M7/M9: Pagos, Recibos y Más', str_starts_with( $tPag, 'Pago de ' ) && str_contains( $hPag, 'Antes de pagar' ) && str_contains( $hRec, 'gm-chips' ) && str_contains( $hMas, 'Seguridad y reglas' ) && str_contains( $hMas, 'Cerrar sesión' ) );
+$comprobar( 'M8: Asistencia de una persona con calendario y detalle del día', '' !== $tPer && str_contains( $hPer, 'pk-cal' ) && str_contains( $hPer, 'gm-dia' ) );
+$pend = \Pekokis\Asistencia\WordPress\Correcciones::pendientes( null );
+if ( $pend ) {
+	[ , $hM4 ] = $vistaGM( 'solicitudes', array( 'abrir' => 'c' . (int) $pend[0]['id'] ) );
+	$comprobar( 'M4: Resolver una solicitud con las tres opciones y vuelta al celular', str_contains( $hM4, 'Aprobar tal como se pidió' ) && str_contains( $hM4, 'value="otra"' ) && str_contains( $hM4, 'name="pk_volver"' ) );
+}
+$comprobar( 'El celular tiene su propia URL (/gerencia/?v=…)', str_ends_with( $GM::url(), '/gerencia/' ) && str_contains( $GM::url( 'hoy', array( 'f' => 'ausente' ) ), 'v=hoy' ) );
 
 $comprobar( 'presencia por IP del taller', ( $_SERVER['REMOTE_ADDR'] = '203.0.113.10' ) && Presencia::enRedDelTaller() );
 

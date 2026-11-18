@@ -295,6 +295,12 @@ Decidido el 14-11-2026, siguiendo las maquetas entregadas por Pekokis (`CONTEXTO
 - **Mis horas (T5/T6):** horas, extra y días completos (sin dinero), "Te falta marcar", calendario con cada día tocable y el detalle con sus pasos, otras salidas y correcciones pedidas. "Pedir corrección" manda la hora, qué pasó y un comentario a `POST /correcciones`.
 - **Perfil (T7):** DNI oculto; "Ver" lo trae con `POST /yo/dni` y queda en el historial.
 
+### 6.13 Acceso de gerencia y gerencia en el celular (versión 0.16.0)
+
+- `AccesoGerencia` (G0): estilos de `wp-login.php` (`assets/login.css` y `login.js`); passkeys de gerencia en `llaves_gerencia` (user_id, credential_hash único, public_key, sign_count, revocada_en), con `userHandle` = HMAC('gerencia|id'), distinto del de los trabajadores. Rutas: `POST gerencia/entrar/opciones` y `gerencia/entrar` (públicas, con bloqueo por IP compartido con el login), y `gerencia/llave/opciones`, `gerencia/llave` y `gerencia/llave/quitar` (con sesión y nonce). `destino()` lleva al celular cuando se entra desde un celular sin un destino pedido.
+- `GerenciaMovil` (M1–M9): ruta `/gerencia/?v=inicio|hoy|solicitudes|pagos|recibos|persona|mas`, dibujada en el servidor con `tokens.css`, `componentes.css` y `gerencia.css`, y la misma CSP que la app. Reusa `PantallaHoy::datos()`, `PantallaDashboard::cifrasHoy()` e `itemsAlerta( …, $movil )`, `Informes`, `Pagos` y `Recibos`. Los formularios van a los admin-post de siempre con `pk_volver`.
+- `PantallaAjustes` (G14): pestañas `?pestana=`; `PantallaAjustes::url( $pestana )`.
+
 ### 6.12 Registros y revisión y Sueldos y tarifas (versión 0.15.0)
 
 - `Admin\PantallaRegistros` (G4/G4B): filas desde `Jornadas::delRango` + `Marcas::delRango` + `PasosDelDia`; "Editado" = alguna marca con `origen <> 'trabajador'`; "Por revisar" = `Revisiones::pendientes`. Edición con `Correcciones::editarDia( trabajador, día, [paso => "HH:MM" o ''], motivo )`: valida el día final con `MaquinaEstados::problemaEnSecuencia` y horas repetidas antes de anular o agregar; marcas nuevas con `origen = 'manual'` y el `dia_laboral` del día editado; auditoría `marca.editar_dia`.

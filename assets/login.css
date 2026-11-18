@@ -1,0 +1,241 @@
+/**
+ * Página de acceso de WordPress con la marca (maqueta G0 · Iniciar sesión de
+ * gerencia). Usa los tokens de tokens.css y pisa los estilos de login.css de WP.
+ */
+
+body.login.pk-login {
+	font-family: var(--pk-letra);
+	color: var(--pk-fg);
+	background-color: var(--pk-rosa-claro);
+	background-image:
+		radial-gradient(circle at 0 0, transparent 0 40px, var(--pk-aro-lima) 41px 84px, transparent 85px),
+		radial-gradient(circle at 100% 100%, transparent 0 50px, var(--pk-aro-rosa) 51px 110px, transparent 111px),
+		radial-gradient(circle at 10% 88%, transparent 0 22px, #BDFAFA 23px 44px, transparent 45px);
+	background-attachment: fixed;
+	min-height: 100vh;
+}
+
+body.login.pk-login::before {
+	content: "";
+	position: fixed;
+	top: 36px;
+	right: 22%;
+	width: 44px;
+	height: 44px;
+	background: #fff;
+	clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+}
+
+body.pk-login #login {
+	width: 420px;
+	max-width: calc(100% - 32px);
+	padding: 6vh 0 24px;
+}
+
+/* Logo de Pekokis en lugar del de WordPress. */
+body.pk-login #login h1 a,
+body.pk-login .login h1 a {
+	background-image: url("logo-pekokis.png");
+	background-size: contain;
+	background-position: center;
+	width: 150px;
+	height: 40px;
+	margin: 0 auto 4px;
+}
+
+/* En "Iniciar sesión", el logo va dentro de la tarjeta (login.js mete el
+   título en el formulario); el h1 de WordPress queda solo para lectores. */
+body.pk-login-entrar #login > h1 {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip: rect(0 0 0 0);
+}
+
+body.pk-login #loginform,
+body.pk-login #lostpasswordform,
+body.pk-login #resetpassform {
+	background: #fff;
+	border: 0;
+	border-radius: 26px;
+	padding: 24px 26px;
+	margin: 12px 0 0;
+	box-shadow: 0 8px 0 rgba(194, 40, 127, .22);
+}
+
+body.pk-login .pk-lg-titulo {
+	background: #fff;
+	border-radius: 26px;
+	padding: 24px 26px 8px;
+}
+
+body.pk-login #loginform .pk-lg-titulo {
+	padding: 0 0 6px;
+	border-radius: 0;
+}
+
+body.pk-login .pk-lg-cab { display: flex; align-items: center; gap: 10px; }
+body.pk-login .pk-lg-cab img { height: 28px; width: auto; }
+
+body.pk-login .pk-lg-etq {
+	display: inline-block;
+	font-size: 12px;
+	font-weight: 700;
+	color: #fff;
+	background: var(--pk-verde);
+	border-radius: var(--pk-pildora);
+	padding: 2px 10px;
+}
+
+body.pk-login .pk-lg-titulo h2 {
+	margin: 14px 0 2px;
+	font-size: 24px;
+	line-height: 1.2;
+	font-weight: 700;
+	color: var(--pk-verde);
+	font-family: var(--pk-letra);
+}
+
+body.pk-login .pk-lg-titulo p {
+	margin: 0;
+	color: var(--pk-muted);
+	font-size: 13px;
+}
+
+body.pk-login .message,
+body.pk-login .notice,
+body.pk-login #login_error {
+	border-radius: 12px;
+	border-left-width: 4px;
+	box-shadow: none;
+	margin: 12px 0;
+}
+
+/* Campos. */
+body.pk-login label {
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--pk-muted);
+}
+
+body.pk-login input[type="text"],
+body.pk-login input[type="password"],
+body.pk-login input[type="email"] {
+	border: 2px solid var(--pk-line);
+	border-radius: 12px;
+	box-shadow: none;
+	font-size: 16px;
+	padding: 6px 12px;
+	margin-top: 4px;
+	background: #fff;
+}
+
+body.pk-login input[type="text"]:focus,
+body.pk-login input[type="password"]:focus,
+body.pk-login input[type="email"]:focus {
+	border-color: var(--pk-rosa);
+	box-shadow: 0 0 0 3px var(--pk-rosa-suave);
+	outline: none;
+}
+
+body.pk-login .wp-pwd .button.wp-hide-pw { color: var(--pk-muted); }
+body.pk-login .wp-pwd .button.wp-hide-pw:focus { border-color: var(--pk-rosa); box-shadow: 0 0 0 2px var(--pk-rosa-suave); }
+
+body.pk-login .forgetmenot { float: none; margin-bottom: 14px; }
+body.pk-login .forgetmenot label { font-size: 13px; color: var(--pk-fg); font-weight: 500; }
+body.pk-login input[type="checkbox"]:checked::before { content: none; }
+body.pk-login input[type="checkbox"]:checked { background: var(--pk-rosa); border-color: var(--pk-rosa); }
+
+/* Botón "Acceder": ancho y rosa, como .btn.ancho de las maquetas. */
+body.pk-login p.submit { float: none; clear: both; }
+
+body.pk-login .button-primary,
+body.pk-login #wp-submit {
+	float: none;
+	width: 100%;
+	min-height: 44px;
+	font-family: var(--pk-letra);
+	font-size: 15px;
+	font-weight: 600;
+	border: 2px solid var(--pk-rosa);
+	border-radius: var(--pk-pildora);
+	background: var(--pk-rosa);
+	color: #fff;
+	text-shadow: none;
+	box-shadow: var(--pk-sombra-principal);
+}
+
+body.pk-login .button-primary:hover,
+body.pk-login .button-primary:focus { background: var(--pk-rosa-oscuro); border-color: var(--pk-rosa-oscuro); color: #fff; }
+
+/* "o" + Entrar con Face ID o huella. */
+body.pk-login .pk-lg-llave[hidden] { display: none; }
+
+body.pk-login .pk-lg-o {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin: 14px 0 12px;
+	color: var(--pk-muted);
+	font-size: 12px;
+}
+
+body.pk-login .pk-lg-o::before,
+body.pk-login .pk-lg-o::after { content: ""; flex: 1; height: 1px; background: var(--pk-line); }
+
+body.pk-login .pk-lg-boton {
+	display: flex;
+	width: 100%;
+	min-height: 44px;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	font-family: var(--pk-letra);
+	font-size: 15px;
+	font-weight: 600;
+	border: 2px solid var(--pk-rosa);
+	border-radius: var(--pk-pildora);
+	background: #fff;
+	color: var(--pk-rosa-oscuro);
+	box-shadow: var(--pk-sombra-sec);
+}
+
+body.pk-login .pk-lg-boton:hover,
+body.pk-login .pk-lg-boton:focus { background: var(--pk-rosa-suave); border-color: var(--pk-rosa); color: var(--pk-rosa-oscuro); }
+body.pk-login .pk-lg-boton:disabled { opacity: .6; }
+
+body.pk-login .pk-lg-nota {
+	margin: 8px 0 0;
+	font-size: 12px;
+	color: var(--pk-muted);
+	text-align: center;
+}
+
+body.pk-login .pk-lg-error {
+	margin: 10px 0 0;
+	padding: 8px 12px;
+	border-radius: 12px;
+	background: var(--pk-error-suave);
+	color: var(--pk-error);
+	font-size: 13px;
+}
+
+/* Enlaces de abajo. */
+body.pk-login #nav,
+body.pk-login #backtoblog {
+	text-align: center;
+	padding: 0;
+	margin: 16px 0 0;
+}
+
+body.pk-login #nav a,
+body.pk-login #backtoblog a {
+	color: var(--pk-verde);
+	font-weight: 600;
+	text-decoration: underline;
+}
+
+body.pk-login #backtoblog { display: none; }
+body.pk-login .language-switcher { display: none; }
+body.pk-login .privacy-policy-page-link { display: none; }

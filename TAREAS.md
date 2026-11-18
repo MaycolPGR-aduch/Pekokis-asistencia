@@ -3,7 +3,7 @@
 Este archivo lleva lo hecho, lo pendiente y la bitácora del proyecto. Se actualiza cada vez que avanzamos.
 El detalle técnico de cada punto está en [docs/plan-tecnico.md](docs/plan-tecnico.md).
 
-**Estado actual:** en producción está la **0.8.1**. En local está lista la **0.15.0**, que agrega: avisos por correo (fase 4); el pago por recibos por honorarios de las maquetas (honorario y tarifas, horas extra automáticas); la **calculadora de pagos** con "Ver cálculo" y "Pagado"; los **recibos por honorarios** (el trabajador los sube desde la app y gerencia los revisa); y la **app del trabajador con el diseño de las maquetas** (entra una vez con su huella y ve las pestañas Marcar, Mis horas, Mi recibo y Perfil, con "Tu día" en 4 pasos, el detalle de cada día y "Pedir corrección"); y la **etapa B**: PIN de ingreso, registro propio y cambio de celular aprobados por gerencia (Asistencia → Celulares), liberar el celular, QR de hasta 30 min, jornadas que pasan la medianoche y el recordatorio de campaña. Y el **panel de gerencia con el diseño de las maquetas** (dentro de wp-admin): menú por grupos, Dashboard, Solicitudes con "aprobar con otra hora", ficha con pestañas y delegar permisos. La cubren 150 pruebas del núcleo y 244 de punta a punta. **Siguiente:** subir la versión y confirmar con el responsable lo marcado "por confirmar" (16 h, aprobación de gerencia, vigencia del QR). También falta el correo de RR.HH., la red o pantalla del taller, cambiar `PKA_SECRETO` y hacer el piloto.
+**Estado actual:** en producción está la **0.8.1**. En local está lista la **0.16.0**, que agrega: avisos por correo (fase 4); el pago por recibos por honorarios de las maquetas (honorario y tarifas, horas extra automáticas); la **calculadora de pagos** con "Ver cálculo" y "Pagado"; los **recibos por honorarios** (el trabajador los sube desde la app y gerencia los revisa); y la **app del trabajador con el diseño de las maquetas** (entra una vez con su huella y ve las pestañas Marcar, Mis horas, Mi recibo y Perfil, con "Tu día" en 4 pasos, el detalle de cada día y "Pedir corrección"); y la **etapa B**: PIN de ingreso, registro propio y cambio de celular aprobados por gerencia (Asistencia → Celulares), liberar el celular, QR de hasta 30 min, jornadas que pasan la medianoche y el recordatorio de campaña. Y el **panel de gerencia con el diseño de las maquetas** (dentro de wp-admin): menú por grupos, Dashboard, Solicitudes con "aprobar con otra hora", ficha con pestañas y delegar permisos. La cubren 150 pruebas del núcleo y 244 de punta a punta. **Siguiente:** subir la versión y confirmar con el responsable lo marcado "por confirmar" (16 h, aprobación de gerencia, vigencia del QR). También falta el correo de RR.HH., la red o pantalla del taller, cambiar `PKA_SECRETO` y hacer el piloto.
 
 **Estrategia:** primero un MVP con las fases 0 y 1 del plan (registro de asistencia funcionando y conforme a la norma). Después, mejoras por etapas según lo que opine gerencia.
 
@@ -243,7 +243,8 @@ Leyenda: `[x]` hecho · `[ ]` pendiente · `[~]` en curso
   - **Perfiles (G12) y ficha (G3):** la lista con iniciales, celular, DNI oculto, cumpleaños y celular para marcar; la ficha con cabecera, "Ver su asistencia", "Ver cálculo de pago" y pestañas Resumen (datos con "Mostrar" el DNI, que queda en la auditoría; el mes; el celular; el pago; los recibos; los últimos cambios), Asistencia (el informe del mes con selector), Pagos y recibos, Celular y Cambios;
   - **Delegar permisos (G17):** a un trabajador se le encienden permisos sueltos (horarios; revisar la asistencia de todos; corregir y aprobar; sueldos y pagos; recibos). Sueldos y recibos, solo a propósito. Si no tiene acceso al panel se le crea uno (rol "Supervisor delegado") y le llega un correo para elegir su contraseña. En la auditoría figura como "(supervisor delegado)". Permisos nuevos: `pka_horarios` y `pka_recibos` (RR.HH. y el administrador los tienen).
   - [x] **Registros y revisión (G4) y editar en panel lateral (G4B)** y **Sueldos y tarifas (G8)**, en la 0.15.0 (ver la bitácora).
-  - [ ] Quedan fuera (por decidir): un panel propio fuera de wp-admin, la versión celular de gerencia (M1–M9) y el inicio de sesión con Face ID (G0).
+  - [x] **Filtros en Hoy (G2), Seguridad y reglas en pestañas (G14), inicio de sesión con la marca y Face ID (G0) y gerencia en el celular (M1–M9)**, en la 0.16.0 (ver la bitácora).
+  - [ ] Quedan fuera (por decidir): un panel propio fuera de wp-admin y la versión tablet afinada (TG1–TG8; hoy el iPad usa la de computadora).
 
 ## Decisiones pendientes
 
@@ -262,6 +263,27 @@ Vienen de la sección 16 del plan; se resuelven con gerencia y el contador.
 ---
 
 ## Bitácora
+
+### 18-11-2026 (tarde) — versión 0.16.0: G2, G14, G0 y gerencia en el celular (M1–M9)
+- **Producción:** el cron ya corre con PHP 8.3 (`/opt/alt/php83/usr/bin/php`) y Estado del sistema dice "✔ todo en orden". La 0.15.1 no quedó subida (el plugin dice 0.15.0); su freno de PHP viene en la 0.16.0.
+- **G2 · Asistencia de hoy:** pestañas para filtrar por situación ("Todos", "Sin marcar", "Llegó tarde", "En comida"…), cada una con su cuenta. El filtro se mantiene en la recarga de cada minuto. Los datos salen de `PantallaHoy::datos()`, que también usa el celular. Arreglé el título roto de "Marcas por revisar" y otros `<h class="pk-mt"2>` en Ajustes, Calendario, Celulares, Día, Exportar y Trabajadores.
+- **G14 · Seguridad y reglas** (antes "Ajustes"): seis pestañas (Presencia en el taller, Reglas de horas, Avisos, Avisos de campaña, PIN de ingreso, Empresa y datos personales) y cada guardado vuelve a su pestaña. Los formularios `.pk-sigue` resaltan lo cambiado, lo cuentan arriba ("2 cambios sin guardar"; un grupo de opciones cuenta como un cambio) y avisan antes de salir sin guardar.
+- **G0 · Iniciar sesión:**
+  - La página de acceso de WordPress lleva la marca: fondo rosa con aros, tarjeta con el logo y la etiqueta "Gerencia", y "Iniciar sesión · Desde la laptop, el iPad o el iPhone de gerencia".
+  - **Entrar con Face ID o huella:** cada usuario del panel lo activa en su perfil ("Activar Face ID o huella en este equipo") después de entrar una vez con la contraseña. Las llaves van en la tabla nueva `llaves_gerencia` (base v9), aparte de las de los trabajadores, así que la llave de un trabajador no abre el panel.
+  - Entrar con la llave suma intentos fallidos igual que la contraseña (5 en 15 min) y queda en la auditoría al activarla o quitarla.
+  - En el celular, gerencia entra directo a la versión para celular.
+- **Gerencia en el celular (M1–M9)** en `/gerencia/`, con una barra abajo (Inicio, Hoy, Pagos, Solicitudes con su número, Más):
+  - **Inicio (M1):** las cuatro cifras, lo que hay por pagar y "Requiere tu atención", que abre cada cosa en el celular.
+  - **Hoy (M2):** tarjetas con filtros y el aviso de quien pasó la medianoche.
+  - **Solicitudes (M3/M4):** una hoja que sube con el día como está, lo que pide y la decisión entre tres opciones: tal cual, con otra hora (`decision=otra` + `hora_otra`) o rechazar. Incluye las marcas por revisar.
+  - **Pagos (M5/M6):** mes, "Antes de pagar", personas con su estado, "Cómo se calculó" (horas × tarifa), "Marcar como pagado" y la planilla de las listas.
+  - **Recibos (M7):** por mes y estado; Recibido, Observar y Recordar.
+  - **Persona (M8):** el calendario del mes, el detalle del día y "Editar este día", que abre el panel de Registros.
+  - **Más (M9):** el menú agrupado, Face ID, la versión de computadora y Cerrar sesión.
+  - Los formularios usan los mismos admin-post y vuelven al celular con `pk_volver` (`Menu::volverA` solo acepta URL de `/gerencia/`).
+- **Pruebas:** pasan las 153 pruebas unitarias y las 269 comprobaciones de punta a punta (14 nuevas), entre ellas filtros, pestañas, activar, entrar, quitar y rechazar la llave de un trabajador con el autenticador simulado, y cada vista del celular.
+- **En el navegador local:** Hoy con filtros; Ajustes con "2 cambios sin guardar"; la página de acceso; las 7 vistas del celular en 375 px; aprobé una solicitud "con otra hora" desde el celular (quedó a las 19:15 en vez de 19:30, con la respuesta) y volvió a la lista.
 
 ### 18-11-2026 — versión 0.15.1: freno de versión de PHP
 - Si el plugin carga con un PHP menor que 8.2, se detiene antes de cargar las librerías, así que WordPress ya no se cae con "error crítico". Muestra un aviso a los administradores y, si es el cron, deja anotada la versión (`pka_php_viejo`). Estado del sistema la nombra en el punto Cron ("El cron se ejecuta con PHP 8.1… créalo como Personalizado…"). Cuando el cron corre con el PHP bueno, la nota se borra.

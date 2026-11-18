@@ -317,6 +317,12 @@ final class PantallaDia {
 		$decision = isset( $_POST['decision'] ) ? sanitize_key( wp_unslash( $_POST['decision'] ) ) : '';
 		$nota     = isset( $_POST['nota'] ) ? sanitize_text_field( wp_unslash( $_POST['nota'] ) ) : '';
 		$horaFin  = isset( $_POST['hora_final'] ) ? sanitize_text_field( wp_unslash( $_POST['hora_final'] ) ) : '';
+
+		// Celular (M4): "Aprobar con otra hora" llega como decision=otra con su propia hora.
+		if ( 'otra' === $decision ) {
+			$decision = 'aprobar';
+			$horaFin  = isset( $_POST['hora_otra'] ) ? sanitize_text_field( wp_unslash( $_POST['hora_otra'] ) ) : '';
+		}
 		$propia   = array_filter( Correcciones::pendientes( PantallaHoy::alcance() ), static fn( array $c ): bool => (int) $c['id'] === $id );
 
 		if ( ! $propia ) {
