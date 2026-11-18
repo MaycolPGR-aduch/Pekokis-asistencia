@@ -54,16 +54,18 @@ final class PantallaHoy {
 		);
 	}
 
-	public static function pintar(): void {
-		if ( ! current_user_can( Capacidades::VER_EQUIPO ) ) {
-			wp_die( 'No tienes permiso para ver esta página.' );
-		}
+	/** Texto y tipo de chip de una situación de ResumenDia. @return array{0: string, 1: string} */
+	public static function situacion( string $clave ): array {
+		return self::SITUACIONES[ $clave ] ?? array( $clave, 'gris' );
+	}
 
-		if ( isset( $_GET['vista'] ) && 'dia' === $_GET['vista'] ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-			PantallaDia::pintar();
-			return;
-		}
-
+	/**
+	 * Situación de hoy de cada persona que este usuario puede ver, ordenada con
+	 * lo que requiere atención primero. La usan esta pantalla y la de celular.
+	 *
+	 * @return array{ahora: DateTimeImmutable, dia: string, alcance: ?array, filas: array<int, array{t: array, r: ResumenDia, dia: string}>, cuentas: array<string, int>}
+	 */
+	public static function datos(): array {
 		$ahora   = new DateTimeImmutable( 'now', new DateTimeZone( 'UTC' ) );
 		$zona    = Ajustes::zona();
 		$dia     = Ajustes::diaLaboral()->de( $ahora );
@@ -89,6 +91,31 @@ final class PantallaHoy {
 		$orden = array_flip( array_keys( self::SITUACIONES ) );
 		usort( $filas, static fn( $a, $b ) => array( $orden[ $a['r']->situacion ], $a['t']['apellidos'] ) <=> array( $orden[ $b['r']->situacion ], $b['t']['apellidos'] ) );
 
+		return array( 'ahora' => $ahora, 'dia' => $dia, 'alcance' => $alcance, 'filas' => $filas, 'cuentas' => $cuentas );
+	}
+
+	public static function pintar(): void {
+		if ( ! current_user_can( Capacidades::VER_EQUIPO ) ) {
+			wp_die( 'No tienes permiso para ver esta página.' );
+		}
+
+		if ( isset( $_GET['vista'] ) && 'dia' === $_GET['vista'] ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			PantallaDia::pintar();
+			return;
+		}
+
+		[ 'ahora' => $ahora, 'dia' => $dia, 'alcance' => $alcance, 'filas' => $filas, 'cuentas' => $cuentas ] = self::datos();
+
+		$zona   = Ajustes::zona();
+		$total  = count( $filas );
+		$filtro = isset( $_GET['filtro'] ) ? sanitize_key( wp_unslash( $_GET['filtro'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$filtro = isset( self::SITUACIONES[ $filtro ] ) ? $filtro : '';
+
+		if ( '' !== $filtro ) {
+			$filas = array_values( array_filter( $filas, static fn( array $f ): bool => $f['r']->situacion === $filtro ) );
+		}
+
+		$base = admin_url( 'admin.php?page=' . Menu::SLUG );
 		$hora = static fn( ?DateTimeImmutable $m ): string => $m ? $m->setTimezone( $zona )->format( 'H:i' ) : '—';
 		?>
 		<div class="wrap">
@@ -102,19 +129,20 @@ final class PantallaHoy {
 
 			<?php self::alertas(); ?>
 
-			<p class="pk-fila espacio">
+			<nav class="pk-pestanas pk-filtros" aria-label="Filtrar por situación">
+				<a href="<?php echo esc_url( $base ); ?>" class="<?php echo '' === $filtro ? 'activa' : ''; ?>" <?php echo '' === $filtro ? 'aria-current="page"' : ''; ?>>Todos <span class="pk-cuenta"><?php echo (int) $total; ?></span></a>
 				<?php foreach ( self::SITUACIONES as $clave => [ $etiqueta, $tipo ] ) : ?>
 					<?php if ( $cuentas[ $clave ] ) : ?>
-						<span class="pk-chip <?php echo esc_attr( $tipo ); ?>"><?php echo esc_html( $etiqueta . ': ' . $cuentas[ $clave ] ); ?></span>
+						<a href="<?php echo esc_url( add_query_arg( 'filtro', $clave, $base ) ); ?>" class="pk-filtro-<?php echo esc_attr( $tipo ); ?> <?php echo $clave === $filtro ? 'activa' : ''; ?>" <?php echo $clave === $filtro ? 'aria-current="page"' : ''; ?>><?php echo esc_html( $etiqueta ); ?> <span class="pk-cuenta"><?php echo (int) $cuentas[ $clave ]; ?></span></a>
 					<?php endif; ?>
 				<?php endforeach; ?>
-			</p>
+			</nav>
 
 			<table class="widefat striped">
 				<thead><tr><th>Trabajador</th><th>Situación</th><th>Llegó</th><th>Desde</th><th>Detalle</th></tr></thead>
 				<tbody>
 				<?php if ( ! $filas ) : ?>
-					<tr><td colspan="5"><?php echo is_array( $alcance ) ? 'No tienes trabajadores a tu cargo.' : 'No hay trabajadores activos.'; ?></td></tr>
+					<tr><td colspan="5"><?php echo '' !== $filtro ? 'Nadie en esta situación ahora. <a href="' . esc_url( $base ) . '">Ver a todos</a>.' : ( is_array( $alcance ) ? 'No tienes trabajadores a tu cargo.' : 'No hay trabajadores activos.' ); ?></td></tr>
 				<?php endif; ?>
 				<?php foreach ( $filas as [ 't' => $t, 'r' => $r, 'dia' => $diaT ] ) : ?>
 					<?php [ $etiqueta, $tipo ] = self::SITUACIONES[ $r->situacion ]; ?>
@@ -182,7 +210,7 @@ final class PantallaHoy {
 
 		$pendientes = Revisiones::pendientes( $alcance );
 		?>
-		<h class="pk-mt"2 id="revisar">Marcas por revisar (<?php echo count( $pendientes ); ?>)</h2>
+		<h2 class="pk-mt" id="revisar">Marcas por revisar (<?php echo count( $pendientes ); ?>)</h2>
 		<p class="description">Emergencias marcadas fuera del taller y salidas que requieren aprobación.</p>
 		<?php if ( ! $pendientes ) : ?>
 			<p>No hay nada pendiente.</p>

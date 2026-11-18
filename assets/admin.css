@@ -253,6 +253,13 @@ body.pk-pagina .pk-pestanas a.activa {
 	box-shadow: 0 2px 0 var(--pk-rosa-oscuro);
 }
 
+/* Filtros por situación (Asistencia de hoy, G2): pestañas con su cuenta. */
+body.pk-pagina .pk-filtros .pk-cuenta { display: inline-block; min-width: 18px; margin-left: 4px; padding: 0 6px; border-radius: var(--pk-pildora); background: var(--pk-fondo); font-size: 12px; text-align: center; }
+body.pk-pagina .pk-filtros a.activa .pk-cuenta { background: rgba(255, 255, 255, .25); }
+body.pk-pagina .pk-filtros a.pk-filtro-error:not(.activa) { border-color: var(--pk-error); }
+body.pk-pagina .pk-filtros a.pk-filtro-error:not(.activa) .pk-cuenta { background: var(--pk-error-suave); color: var(--pk-error); }
+body.pk-pagina .pk-filtros a.pk-filtro-aviso:not(.activa) .pk-cuenta { background: var(--pk-aviso-suave); color: var(--pk-aviso); }
+
 /* ---------- Componentes propios ---------- */
 
 .pk-dos { display: grid; grid-template-columns: 1.25fr 1fr; gap: 12px; align-items: start; }
