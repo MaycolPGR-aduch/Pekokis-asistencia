@@ -75,7 +75,7 @@ final class PantallaCalendario {
 				<p class="pk-m0"><button class="button">Agregar</button></p>
 			</form>
 
-			<h class="pk-mt"2>Días de <?php echo (int) $anio; ?> (<?php echo count( $dias ); ?>)</h2>
+			<h2 class="pk-mt">Días de <?php echo (int) $anio; ?> (<?php echo count( $dias ); ?>)</h2>
 			<table class="widefat striped pk-max-m">
 				<thead><tr><th>Fecha</th><th>Nombre</th><th>Tipo</th><th></th></tr></thead>
 				<tbody>

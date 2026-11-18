@@ -240,7 +240,7 @@ final class PantallaTrabajadores {
 
 		delete_transient( 'pka_form_sueldo_' . get_current_user_id() );
 		?>
-		<h class="pk-mt"2 id="remuneracion">Honorario y tarifas</h2>
+		<h2 class="pk-mt" id="remuneracion">Honorario y tarifas</h2>
 		<p class="description">Se paga por recibos por honorarios: el honorario mensual incluye las horas normales y cada hora adicional va con su tarifa. Solo lo ve gerencia; el trabajador nunca ve estos montos.</p>
 		<table class="widefat striped pk-max">
 			<thead><tr><th>Honorario y tarifas por hora</th><th>Desde</th><th>Hasta</th><th>Nota</th><th>Registró</th><th></th></tr></thead>

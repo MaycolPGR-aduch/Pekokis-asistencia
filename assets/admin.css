@@ -374,6 +374,9 @@ body.pk-pagina table.widefat td .pk-chip { margin: 1px 2px 1px 0; }
 .pk-soles { display: inline-flex; align-items: center; gap: 4px; color: var(--pk-muted); font-size: 12px; }
 body.pk-pagina input.pk-monto { width: 96px; text-align: right; font-variant-numeric: tabular-nums; }
 body.pk-pagina input.pk-cambiado { border-color: var(--pk-rosa); background: var(--pk-rosa-suave); }
+body.pk-pagina select.pk-cambiado,
+body.pk-pagina textarea.pk-cambiado { border-color: var(--pk-rosa); background: var(--pk-rosa-suave); }
+body.pk-pagina label.pk-cambiado { background: var(--pk-rosa-suave); border-radius: 6px; box-shadow: 0 0 0 3px var(--pk-rosa-suave); }
 .pk-chico { font-size: 12px; color: var(--pk-muted); }
 body.pk-pagina .wrap > h1 .pk-h1-der.pk-alerta { background: var(--pk-aviso-suave); color: var(--pk-aviso); }
 .pk-sueldos td:first-child { min-width: 190px; }

@@ -59,8 +59,8 @@ final class PantallaExportar {
 			</form>
 
 			<?php if ( current_user_can( Capacidades::VER_SUELDOS ) ) : ?>
-				<h class="pk-mt"2>Planilla de pagos</h2>
-				<p>El pago de cada persona por recibos por honorarios: honorario, horas extra, de sábado, de domingo y de feriado con su tarifa, total y si ya se puede pagar ("Resolver incidencia" si tiene días incompletos o marcas por revisar). Trae el detalle por día y las <a href="<?php echo esc_url( admin_url( 'admin.php?page=' . PantallaAjustes::SLUG ) . '#reglas' ); ?>">reglas</a>. Solo cuenta los días ya terminados. Tiene montos: no la compartas fuera de gerencia.</p>
+				<h2 class="pk-mt">Planilla de pagos</h2>
+				<p>El pago de cada persona por recibos por honorarios: honorario, horas extra, de sábado, de domingo y de feriado con su tarifa, total y si ya se puede pagar ("Resolver incidencia" si tiene días incompletos o marcas por revisar). Trae el detalle por día y las <a href="<?php echo esc_url( PantallaAjustes::url( 'reglas' ) ); ?>">reglas</a>. Solo cuenta los días ya terminados. Tiene montos: no la compartas fuera de gerencia.</p>
 				<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 					<input type="hidden" name="action" value="pka_descargar_preplanilla">
 					<?php wp_nonce_field( 'pka_descargar_preplanilla' ); ?>
@@ -74,7 +74,7 @@ final class PantallaExportar {
 				</form>
 			<?php endif; ?>
 
-			<h class="pk-mt"2>Respaldo por correo</h2>
+			<h2 class="pk-mt">Respaldo por correo</h2>
 			<p>Cada mes, el día 1 a las 06:00, se envía el registro del mes anterior a <strong><?php echo esc_html( Respaldo::destinatario() ); ?></strong>. La norma pide guardarlo 5 años: archívalo fuera del hosting.</p>
 
 			<?php if ( current_user_can( Capacidades::AJUSTES ) ) : ?>

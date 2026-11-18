@@ -95,7 +95,7 @@ final class PantallaCelulares {
 				</tbody>
 			</table>
 
-			<h class="pk-mt"2>Celular de cada persona</h2>
+			<h2 class="pk-mt">Celular de cada persona</h2>
 			<table class="widefat striped">
 				<thead><tr><th>Persona</th><th>Celular</th><th>Registrado</th><th>Último uso</th><th>PIN</th><th>Liberar</th></tr></thead>
 				<tbody>

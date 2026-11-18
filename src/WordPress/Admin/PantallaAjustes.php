@@ -51,9 +51,9 @@ final class PantallaAjustes {
 	private static function reglas(): void {
 		$a = Ajustes::todos();
 		?>
-		<h class="pk-mt"2 id="reglas">Reglas de horas y pagos</h2>
+		<h2 class="pk-mt" id="reglas">Reglas de horas y pagos</h2>
 		<p>Se paga por recibos por honorarios: <strong>honorario + horas extra, de sábado, de domingo y de feriado, cada una por la tarifa de la persona</strong> (se registran en la ficha de cada trabajador). De lunes a viernes es hora extra todo lo que pase de la jornada de su horario (9 h 30 min con el horario base), sin autorizar nada. El sábado, el domingo y los feriados, todas las horas van con su tarifa. Las faltas y tardanzas se señalan, pero no se descuentan.</p>
-		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="pk-sigue">
 			<input type="hidden" name="action" value="pka_guardar_reglas">
 			<?php wp_nonce_field( 'pka_guardar_reglas' ); ?>
 			<table class="form-table" role="presentation">
@@ -102,7 +102,7 @@ final class PantallaAjustes {
 		}
 
 		Avisos::agregar( 'success', 'Reglas de horas guardadas.' );
-		Menu::volverA( admin_url( 'admin.php?page=' . self::SLUG ) . '#reglas' );
+		self::volver( 'reglas' );
 	}
 
 	private const ESTADOS_AVISO = array(
@@ -121,9 +121,9 @@ final class PantallaAjustes {
 		);
 		$ultimos = Notificaciones::ultimos( 25 );
 		?>
-		<h class="pk-mt"2 id="avisos">Avisos por correo y WhatsApp</h2>
+		<h2 class="pk-mt" id="avisos">Avisos por correo y WhatsApp</h2>
 		<p>El sistema revisa cada 5 minutos y agrupa: si a las 9:15 faltan tres personas del mismo jefe, le llega un solo correo con las tres. Cada aviso sale una sola vez. Todos empiezan apagados.</p>
-		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="pk-sigue">
 			<input type="hidden" name="action" value="pka_guardar_avisos">
 			<?php wp_nonce_field( 'pka_guardar_avisos' ); ?>
 			<table class="form-table" role="presentation">
@@ -204,7 +204,7 @@ final class PantallaAjustes {
 
 		if ( '' !== $webhook && ! wp_http_validate_url( $webhook ) ) {
 			Avisos::agregar( 'error', 'La dirección del webhook no es válida (debe empezar con https://).' );
-			Menu::volverA( admin_url( 'admin.php?page=' . self::SLUG ) . '#avisos' );
+			self::volver( 'avisos' );
 		}
 
 		$ajustes['avisos_activos']          = array_values( array_intersect( array_keys( ReglasAvisos::TIPOS ), $pedidos ) );
@@ -228,7 +228,7 @@ final class PantallaAjustes {
 		}
 
 		Avisos::agregar( 'success', $ajustes['avisos_activos'] ? 'Avisos guardados. El sistema los revisa cada 5 minutos.' : 'Avisos guardados: están todos apagados.' );
-		Menu::volverA( admin_url( 'admin.php?page=' . self::SLUG ) . '#avisos' );
+		self::volver( 'avisos' );
 	}
 
 	public static function probarAvisos(): void {
@@ -238,7 +238,7 @@ final class PantallaAjustes {
 		$ok     = is_email( $correo ) && Notificaciones::prueba( $correo );
 
 		Avisos::agregar( $ok ? 'success' : 'error', $ok ? 'Correo de prueba enviado a ' . esc_html( $correo ) . '. Revisa tu bandeja (y la de spam).' : 'No se pudo enviar el correo de prueba: revisa la configuración del SMTP.' );
-		Menu::volverA( admin_url( 'admin.php?page=' . self::SLUG ) . '#avisos' );
+		self::volver( 'avisos' );
 	}
 
 	/** Recordatorio de campaña (maquetas G15), con la vista previa de lo que ve el trabajador. */
@@ -246,10 +246,10 @@ final class PantallaAjustes {
 		$c   = RecordatorioCampana::desdeAjustes( Ajustes::todos() );
 		$hoy = wp_date( 'Y-m-d', null, Ajustes::zona() );
 		?>
-		<h class="pk-mt"2 id="campana">Avisos de campaña</h2>
+		<h2 class="pk-mt" id="campana">Avisos de campaña</h2>
 		<p>Un recordatorio dentro de la app, al abrirla, para quien a esa hora todavía no marcó su entrada. Solo en días laborables y dentro de las fechas de la campaña. Desaparece al marcar. No manda correos ni WhatsApp.</p>
 		<p><strong><?php echo $c->enCampana( $hoy ) ? '✔ Hoy se está mostrando.' : ( $c->activo ? 'Activo, pero hoy está fuera de las fechas de la campaña.' : 'Apagado.' ); ?></strong></p>
-		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="pk-sigue">
 			<input type="hidden" name="action" value="pka_guardar_campana">
 			<?php wp_nonce_field( 'pka_guardar_campana' ); ?>
 			<table class="form-table" role="presentation">
@@ -298,7 +298,7 @@ final class PantallaAjustes {
 
 		if ( $c->errores() ) {
 			Avisos::agregar( 'error', esc_html( implode( ' ', $c->errores() ) ) );
-			Menu::volverA( admin_url( 'admin.php?page=' . self::SLUG ) . '#campana' );
+			self::volver( 'campana' );
 		}
 
 		$ajustes['campana_activa'] = $c->activo;
@@ -316,16 +316,16 @@ final class PantallaAjustes {
 		}
 
 		Avisos::agregar( 'success', 'Avisos de campaña guardados.' );
-		Menu::volverA( admin_url( 'admin.php?page=' . self::SLUG ) . '#campana' );
+		self::volver( 'campana' );
 	}
 
 	/** PIN de ingreso opcional (maquetas 5.3 y G14). */
 	private static function pin(): void {
 		$a = Ajustes::todos();
 		?>
-		<h class="pk-mt"2 id="pin">PIN de ingreso</h2>
+		<h2 class="pk-mt" id="pin">PIN de ingreso</h2>
 		<p>Cada persona puede crear desde su perfil un PIN para <strong>entrar</strong> si su huella no funciona. Solo sirve en su celular registrado y <strong>nunca para marcar</strong> (marcar siempre pide la huella, para que nadie marque por otro con un PIN prestado). 5 PIN equivocados bloquean 15 minutos. Si alguien lo olvida, quítaselo en Asistencia → Celulares.</p>
-		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="pk-sigue">
 			<input type="hidden" name="action" value="pka_guardar_pin">
 			<?php wp_nonce_field( 'pka_guardar_pin' ); ?>
 			<p><label><input type="checkbox" name="pin_activo" value="1" <?php checked( ! empty( $a['pin_activo'] ) ); ?>> Permitir entrar con PIN</label></p>
@@ -360,16 +360,16 @@ final class PantallaAjustes {
 		}
 
 		Avisos::agregar( 'success', 'PIN de ingreso guardado.' );
-		Menu::volverA( admin_url( 'admin.php?page=' . self::SLUG ) . '#pin' );
+		self::volver( 'pin' );
 	}
 
 	private static function empleadorYAviso(): void {
 		$a      = Ajustes::todos();
 		$conteo = Aviso::conteo();
 		?>
-		<h class="pk-mt"2>Datos del empleador</h2>
+		<h2 class="pk-mt">Datos del empleador</h2>
 		<p>Aparecen en el registro de asistencia (Excel) y en el aviso de datos personales.</p>
-		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="pk-sigue">
 			<input type="hidden" name="action" value="pka_guardar_empleador">
 			<?php wp_nonce_field( 'pka_guardar_empleador' ); ?>
 			<table class="form-table" role="presentation">
@@ -380,7 +380,7 @@ final class PantallaAjustes {
 			<?php submit_button( 'Guardar datos del empleador', 'secondary' ); ?>
 		</form>
 
-		<h class="pk-mt"2 id="aviso">Aviso de datos personales</h2>
+		<h2 class="pk-mt" id="aviso">Aviso de datos personales</h2>
 		<?php if ( Aviso::esBorrador() ) : ?>
 			<div class="notice notice-warning inline"><p><strong>Este texto es un borrador.</strong> Revísalo con el abogado antes de activar a los trabajadores. Cuando lo guardes, queda como texto oficial.</p></div>
 		<?php endif; ?>
@@ -393,7 +393,7 @@ final class PantallaAjustes {
 			Puedes usar <code>{razon_social}</code>, <code>{ruc}</code>, <code>{direccion}</code> y <code>{correo_contacto}</code> (el correo de RR.HH. de Exportar).
 			Separa los párrafos con una línea en blanco; las líneas que empiezan con "- " son viñetas.
 		</p>
-		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="pk-sigue">
 			<input type="hidden" name="action" value="pka_guardar_aviso">
 			<?php wp_nonce_field( 'pka_guardar_aviso' ); ?>
 			<label class="screen-reader-text" for="pka-aviso">Texto del aviso</label>
@@ -417,7 +417,7 @@ final class PantallaAjustes {
 
 		if ( 11 !== strlen( $ruc ) ) {
 			Avisos::agregar( 'error', 'El RUC debe tener 11 dígitos.' );
-			Menu::volver( self::SLUG );
+			self::volver( 'empresa' );
 		}
 
 		$ajustes['razon_social']        = isset( $_POST['razon_social'] ) ? sanitize_text_field( wp_unslash( $_POST['razon_social'] ) ) : $antes['razon_social'];
@@ -435,7 +435,7 @@ final class PantallaAjustes {
 		}
 
 		Avisos::agregar( 'success', 'Datos del empleador guardados.' );
-		Menu::volver( self::SLUG );
+		self::volver( 'empresa' );
 	}
 
 	public static function guardarAviso(): void {
@@ -446,12 +446,12 @@ final class PantallaAjustes {
 
 		if ( ! $borrador && mb_strlen( trim( $texto ) ) < 100 ) {
 			Avisos::agregar( 'error', 'El aviso es demasiado corto.' );
-			Menu::volver( self::SLUG );
+			self::volver( 'empresa' );
 		}
 
 		Aviso::guardar( $borrador ? '' : $texto );
 		Avisos::agregar( 'success', 'Aviso guardado (versión ' . (int) Aviso::version() . '). Cada trabajador lo aceptará la próxima vez que marque.' );
-		Menu::volver( self::SLUG );
+		self::volver( 'empresa' );
 	}
 
 	/** Sugerencias de red nueva (la IP del taller pudo cambiar). Nunca se agregan solas. */
@@ -546,7 +546,26 @@ final class PantallaAjustes {
 			}
 		}
 
-		Menu::volver( self::SLUG );
+		self::volver( 'presencia' );
+	}
+
+	/** Pestañas de la pantalla (maqueta G14): clave => título. */
+	private const PESTANAS = array(
+		'presencia' => 'Presencia en el taller',
+		'reglas'    => 'Reglas de horas',
+		'avisos'    => 'Avisos',
+		'campana'   => 'Avisos de campaña',
+		'pin'       => 'PIN de ingreso',
+		'empresa'   => 'Empresa y datos personales',
+	);
+
+	public static function url( string $pestana = 'presencia' ): string {
+		return admin_url( 'admin.php?page=' . self::SLUG . ( 'presencia' === $pestana ? '' : '&pestana=' . $pestana ) );
+	}
+
+	/** Vuelve a la pestaña donde se guardó. */
+	private static function volver( string $pestana ): never {
+		Menu::volverA( self::url( $pestana ) );
 	}
 
 	public static function pintar(): void {
@@ -554,95 +573,114 @@ final class PantallaAjustes {
 			wp_die( 'No tienes permiso para ver esta página.' );
 		}
 
-		$modo     = Ajustes::modoPresencia();
-		$ip       = Peticion::ip();
-		$redes    = Presencia::filasRedes();
-		$enLaRed  = Presencia::enRedDelTaller();
+		$pestana = isset( $_GET['pestana'] ) ? sanitize_key( wp_unslash( $_GET['pestana'] ) ) : 'presencia'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$pestana = isset( self::PESTANAS[ $pestana ] ) ? $pestana : 'presencia';
 		?>
 		<div class="wrap">
 			<?php Avisos::mostrar(); ?>
-			<h1>Ajustes de asistencia</h1>
+			<h1>Seguridad y reglas <span class="pk-h1-der" id="pk-sin-guardar" hidden>0 cambios sin guardar</span></h1>
 
 			<?php self::diagnostico(); ?>
 
-			<h2>Cómo se prueba que están en el taller</h2>
-			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
-				<input type="hidden" name="action" value="pka_guardar_modo">
-				<?php wp_nonce_field( 'pka_guardar_modo' ); ?>
-				<fieldset>
-					<?php foreach ( ModoPresencia::cases() as $opcion ) : ?>
-						<label class="pk-bloque pk-mt-s">
-							<input type="radio" name="modo" value="<?php echo esc_attr( $opcion->value ); ?>" <?php checked( $modo->value, $opcion->value ); ?>>
-							<?php echo esc_html( $opcion->etiqueta() ); ?>
-						</label>
-					<?php endforeach; ?>
-				</fieldset>
-				<p class="description">Empieza con "WiFi del taller o QR". Si detectas trampas, cambia a "WiFi del taller y QR". Si la IP del taller cambia mucho o es compartida, usa "Solo QR".</p>
-				<p>
-					<label for="pka-qr-segundos"><strong>El QR de la pantalla cambia cada</strong></label>
-					<select id="pka-qr-segundos" name="qr_segundos">
-						<?php foreach ( CodigoPantalla::PERIODOS as $segundos => $texto ) : ?>
-							<option value="<?php echo (int) $segundos; ?>" <?php selected( Ajustes::qrSegundos(), $segundos ); ?>><?php echo esc_html( $texto ); ?></option>
-						<?php endforeach; ?>
-					</select>
-				</p>
-				<p class="description">Al escanearlo, el celular queda habilitado para marcar ese mismo tiempo ("Enlace vigente · 24 min"), o al menos <?php echo (int) Ajustes::todos()['pase_minutos']; ?> min. Las maquetas piden <strong>30 minutos</strong>. Ojo: un QR que dura mucho se puede fotografiar y reenviar por WhatsApp; con 15 o 30 minutos conviene "WiFi del taller y QR".</p>
-				<?php submit_button( 'Guardar modo' ); ?>
-			</form>
-
-			<h2>Redes del WiFi del taller</h2>
-			<?php self::redesCandidatas(); ?>
-			<p>
-				Tu IP ahora: <code><?php echo esc_html( '' !== $ip ? $ip : 'desconocida' ); ?></code>
-				<?php echo $enLaRed ? '— ✔ está autorizada.' : '— no está autorizada.'; ?>
-			</p>
-			<?php if ( '' !== $ip && RedAutorizada::esCgnat( $ip ) ) : ?>
-				<div class="notice notice-warning inline"><p>Esta IP es <strong>compartida por el proveedor (CGNAT)</strong>: otros clientes de internet pueden tenerla. No sirve como prueba de presencia; usa "Solo QR" o pide una IP fija.</p></div>
-			<?php endif; ?>
-
-			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
-				<input type="hidden" name="action" value="pka_agregar_red">
-				<?php wp_nonce_field( 'pka_agregar_red' ); ?>
-				<table class="form-table" role="presentation">
-					<tr>
-						<th scope="row"><label for="pka-red">IP o rango</label></th>
-						<td>
-							<input type="text" id="pka-red" name="red" class="regular-text code" value="<?php echo esc_attr( $ip ); ?>" required>
-							<p class="description">Agrégala estando conectado al WiFi del taller. En IPv6 usa el prefijo de la red, por ejemplo <code>2800:200:e840:1a00::/56</code>.</p>
-						</td>
-					</tr>
-					<tr>
-						<th scope="row"><label for="pka-nombre-red">Nombre</label></th>
-						<td><input type="text" id="pka-nombre-red" name="nombre" class="regular-text" value="WiFi del taller"></td>
-					</tr>
-				</table>
-				<?php submit_button( 'Agregar red', 'secondary' ); ?>
-			</form>
-
-			<table class="widefat striped">
-				<thead><tr><th>Red</th><th>Nombre</th><th>Estado</th><th></th></tr></thead>
-				<tbody>
-				<?php if ( ! $redes ) : ?>
-					<tr><td colspan="4">Todavía no hay redes. Sin ellas, la presencia solo se prueba con el QR.</td></tr>
-				<?php endif; ?>
-				<?php foreach ( $redes as $red ) : ?>
-					<tr>
-						<td><code><?php echo esc_html( $red['red'] ); ?></code></td>
-						<td><?php echo esc_html( $red['nombre'] ); ?></td>
-						<td><?php echo $red['activa'] ? 'Activa' : 'Desactivada'; ?></td>
-						<td><a href="<?php echo esc_url( Menu::urlAccion( 'pka_cambiar_red', array( 'id' => $red['id'] ) ) ); ?>"><?php echo $red['activa'] ? 'Desactivar' : 'Activar'; ?></a></td>
-					</tr>
+			<nav class="pk-pestanas pk-mt-s" aria-label="Secciones de los ajustes">
+				<?php foreach ( self::PESTANAS as $clave => $titulo ) : ?>
+					<a href="<?php echo esc_url( self::url( $clave ) ); ?>" class="<?php echo $clave === $pestana ? 'activa' : ''; ?>" <?php echo $clave === $pestana ? 'aria-current="page"' : ''; ?>><?php echo esc_html( $titulo ); ?></a>
 				<?php endforeach; ?>
-				</tbody>
-			</table>
+			</nav>
 
-			<?php self::pantallas(); ?>
-			<?php self::reglas(); ?>
-			<?php self::avisos(); ?>
-			<?php self::campana(); ?>
-			<?php self::pin(); ?>
-			<?php self::empleadorYAviso(); ?>
+			<?php
+			match ( $pestana ) {
+				'reglas'  => self::reglas(),
+				'avisos'  => self::avisos(),
+				'campana' => self::campana(),
+				'pin'     => self::pin(),
+				'empresa' => self::empleadorYAviso(),
+				default   => self::presencia(),
+			};
+			?>
 		</div>
+		<?php
+	}
+
+	/** Pestaña "Presencia en el taller": modo, QR, redes del WiFi y pantallas. */
+	private static function presencia(): void {
+		$modo    = Ajustes::modoPresencia();
+		$ip      = Peticion::ip();
+		$redes   = Presencia::filasRedes();
+		$enLaRed = Presencia::enRedDelTaller();
+		?>
+		<h2>Cómo se prueba que están en el taller</h2>
+		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="pk-sigue">
+			<input type="hidden" name="action" value="pka_guardar_modo">
+			<?php wp_nonce_field( 'pka_guardar_modo' ); ?>
+			<fieldset>
+				<?php foreach ( ModoPresencia::cases() as $opcion ) : ?>
+					<label class="pk-bloque pk-mt-s">
+						<input type="radio" name="modo" value="<?php echo esc_attr( $opcion->value ); ?>" <?php checked( $modo->value, $opcion->value ); ?>>
+						<?php echo esc_html( $opcion->etiqueta() ); ?>
+					</label>
+				<?php endforeach; ?>
+			</fieldset>
+			<p class="description">Empieza con "WiFi del taller o QR". Si detectas trampas, cambia a "WiFi del taller y QR". Si la IP del taller cambia mucho o es compartida, usa "Solo QR".</p>
+			<p>
+				<label for="pka-qr-segundos"><strong>El QR de la pantalla cambia cada</strong></label>
+				<select id="pka-qr-segundos" name="qr_segundos">
+					<?php foreach ( CodigoPantalla::PERIODOS as $segundos => $texto ) : ?>
+						<option value="<?php echo (int) $segundos; ?>" <?php selected( Ajustes::qrSegundos(), $segundos ); ?>><?php echo esc_html( $texto ); ?></option>
+					<?php endforeach; ?>
+				</select>
+			</p>
+			<p class="description">Al escanearlo, el celular queda habilitado para marcar ese mismo tiempo ("Enlace vigente · 24 min"), o al menos <?php echo (int) Ajustes::todos()['pase_minutos']; ?> min. Las maquetas piden <strong>30 minutos</strong>. Ojo: un QR que dura mucho se puede fotografiar y reenviar por WhatsApp; con 15 o 30 minutos conviene "WiFi del taller y QR".</p>
+			<?php submit_button( 'Guardar modo' ); ?>
+		</form>
+
+		<h2>Redes del WiFi del taller</h2>
+		<?php self::redesCandidatas(); ?>
+		<p>
+			Tu IP ahora: <code><?php echo esc_html( '' !== $ip ? $ip : 'desconocida' ); ?></code>
+			<?php echo $enLaRed ? '— ✔ está autorizada.' : '— no está autorizada.'; ?>
+		</p>
+		<?php if ( '' !== $ip && RedAutorizada::esCgnat( $ip ) ) : ?>
+			<div class="notice notice-warning inline"><p>Esta IP es <strong>compartida por el proveedor (CGNAT)</strong>: otros clientes de internet pueden tenerla. No sirve como prueba de presencia; usa "Solo QR" o pide una IP fija.</p></div>
+		<?php endif; ?>
+
+		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+			<input type="hidden" name="action" value="pka_agregar_red">
+			<?php wp_nonce_field( 'pka_agregar_red' ); ?>
+			<table class="form-table" role="presentation">
+				<tr>
+					<th scope="row"><label for="pka-red">IP o rango</label></th>
+					<td>
+						<input type="text" id="pka-red" name="red" class="regular-text code" value="<?php echo esc_attr( $ip ); ?>" required>
+						<p class="description">Agrégala estando conectado al WiFi del taller. En IPv6 usa el prefijo de la red, por ejemplo <code>2800:200:e840:1a00::/56</code>.</p>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="pka-nombre-red">Nombre</label></th>
+					<td><input type="text" id="pka-nombre-red" name="nombre" class="regular-text" value="WiFi del taller"></td>
+				</tr>
+			</table>
+			<?php submit_button( 'Agregar red', 'secondary' ); ?>
+		</form>
+
+		<table class="widefat striped">
+			<thead><tr><th>Red</th><th>Nombre</th><th>Estado</th><th></th></tr></thead>
+			<tbody>
+			<?php if ( ! $redes ) : ?>
+				<tr><td colspan="4">Todavía no hay redes. Sin ellas, la presencia solo se prueba con el QR.</td></tr>
+			<?php endif; ?>
+			<?php foreach ( $redes as $red ) : ?>
+				<tr>
+					<td><code><?php echo esc_html( $red['red'] ); ?></code></td>
+					<td><?php echo esc_html( $red['nombre'] ); ?></td>
+					<td><?php echo $red['activa'] ? 'Activa' : 'Desactivada'; ?></td>
+					<td><a href="<?php echo esc_url( Menu::urlAccion( 'pka_cambiar_red', array( 'id' => $red['id'] ) ) ); ?>"><?php echo $red['activa'] ? 'Desactivar' : 'Activar'; ?></a></td>
+				</tr>
+			<?php endforeach; ?>
+			</tbody>
+		</table>
+
+		<?php self::pantallas(); ?>
 		<?php
 	}
 
@@ -653,7 +691,7 @@ final class PantallaAjustes {
 
 		if ( null === $modo ) {
 			Avisos::agregar( 'error', 'Modo desconocido.' );
-			Menu::volver( self::SLUG );
+			self::volver( 'presencia' );
 		}
 
 		$antes                    = Ajustes::todos();
@@ -670,7 +708,7 @@ final class PantallaAjustes {
 			Auditoria::registrar( 'ajustes.modo_presencia', 'ajustes', null, $a, $d );
 		}
 		Avisos::agregar( 'success', 'Modo guardado: ' . esc_html( $modo->etiqueta() ) . '.' );
-		Menu::volver( self::SLUG );
+		self::volver( 'presencia' );
 	}
 
 	public static function agregarRed(): void {
@@ -685,7 +723,7 @@ final class PantallaAjustes {
 			$red = RedAutorizada::desde( $texto );
 		} catch ( InvalidArgumentException $e ) {
 			Avisos::agregar( 'error', esc_html( $e->getMessage() ) );
-			Menu::volver( self::SLUG );
+			self::volver( 'presencia' );
 		}
 
 		$wpdb->insert(
@@ -701,7 +739,7 @@ final class PantallaAjustes {
 
 		Auditoria::registrar( 'red.agregar', 'red', (int) $wpdb->insert_id, null, array( 'red' => $red->texto, 'nombre' => $nombre ) );
 		Avisos::agregar( 'success', 'Red <code>' . esc_html( $red->texto ) . '</code> agregada.' . ( RedAutorizada::esCgnat( $texto ) ? ' Ojo: es una IP compartida (CGNAT).' : '' ) );
-		Menu::volver( self::SLUG );
+		self::volver( 'presencia' );
 	}
 
 	public static function cambiarRed(): void {
@@ -719,7 +757,7 @@ final class PantallaAjustes {
 			Auditoria::registrar( 'red.' . ( $nueva ? 'activar' : 'desactivar' ), 'red', $id, array( 'activa' => (int) $fila['activa'] ), array( 'activa' => $nueva ) );
 		}
 
-		Menu::volver( self::SLUG );
+		self::volver( 'presencia' );
 	}
 
 	private static function exigir( string $accion ): void {

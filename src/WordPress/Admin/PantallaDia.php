@@ -200,7 +200,7 @@ final class PantallaDia {
 		$solicitudes = current_user_can( Capacidades::APROBAR ) ? Correcciones::pendientes( $alcance ) : array();
 		$pendientes  = Seguimiento::pendientes( $alcance, $hoy );
 		?>
-		<h class="pk-mt"2>Solicitudes "olvidé marcar" (<?php echo count( $solicitudes ); ?>)</h2>
+		<h2 class="pk-mt">Solicitudes "olvidé marcar" (<?php echo count( $solicitudes ); ?>)</h2>
 		<?php if ( ! $solicitudes ) : ?>
 			<p>No hay solicitudes pendientes.</p>
 		<?php else : ?>
@@ -235,7 +235,7 @@ final class PantallaDia {
 			</table>
 		<?php endif; ?>
 
-		<h class="pk-mt"2>Días anteriores por revisar (<?php echo count( $pendientes ); ?>)</h2>
+		<h2 class="pk-mt">Días anteriores por revisar (<?php echo count( $pendientes ); ?>)</h2>
 		<p class="description">Últimos 7 días: días que quedaron sin salida y días laborables sin ninguna marca.</p>
 		<?php if ( ! $pendientes ) : ?>
 			<p>Todo en orden.</p>

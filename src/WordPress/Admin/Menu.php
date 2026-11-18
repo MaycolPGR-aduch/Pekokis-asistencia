@@ -70,7 +70,7 @@ final class Menu {
 		self::grupo( 'sistema', 'Sistema', Capacidades::VER_EQUIPO );
 		add_submenu_page( $p, 'Resumen del mes', 'Resumen del mes', Capacidades::VER_EQUIPO, PantallaResumen::SLUG, array( PantallaResumen::class, 'pintar' ) );
 		add_submenu_page( $p, 'Informes y exportación', 'Exportar', Capacidades::EXPORTAR, PantallaExportar::SLUG, array( PantallaExportar::class, 'pintar' ) );
-		add_submenu_page( $p, 'Seguridad y reglas', 'Ajustes', Capacidades::AJUSTES, PantallaAjustes::SLUG, array( PantallaAjustes::class, 'pintar' ) );
+		add_submenu_page( $p, 'Seguridad y reglas', 'Seguridad y reglas', Capacidades::AJUSTES, PantallaAjustes::SLUG, array( PantallaAjustes::class, 'pintar' ) );
 	}
 
 	/** Título de grupo del menú (no lleva a ninguna parte). */
