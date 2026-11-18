@@ -263,6 +263,10 @@ Vienen de la sección 16 del plan; se resuelven con gerencia y el contador.
 
 ## Bitácora
 
+### 18-11-2026 — por qué no corría el cron de producción
+- El cron de hPanel existe (`*/5`, ruta correcta), pero `/usr/bin/php` es **PHP 8.1.34** y el plugin pide 8.2 o más. La comprobación de plataforma de Composer corta la carga ("Ha habido un error crítico"), así que wp-cron no ejecuta ninguna tarea.
+- **Arreglo:** borrar ese cron y crear uno "Personalizado" con PHP 8.3: `/opt/alt/php83/usr/bin/php /home/u412994707/domains/asistencia.pekokis.com/public_html/wp-cron.php`, cada 5 min. Después, "Ver resultado" vacío y Estado del sistema sin el aviso de Cron.
+
 ### 17-11-2026 — datos de prueba en producción (borrarlos antes del piloto real)
 - **Red WiFi de prueba:** 187.102.208.128, "Casa de Maycol (solo pruebas, quitar)". El dominio solo tiene IPv4, así que los celulares conectados a ese WiFi salen con esa IP. Si el proveedor cambia la IP de la casa, hay que agregar la nueva.
 - **Usuarios del panel**, todos con correo `admin1+…@pekokis.com` (Google Workspace entrega las variantes con `+` en admin1). No se mandó el correo de bienvenida y las contraseñas las pone Maycol:
