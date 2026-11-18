@@ -69,10 +69,13 @@ final class Diagnostico {
 		);
 
 		$siguiente = wp_next_scheduled( Respaldo::EVENTO );
+		$viejo     = get_option( 'pka_php_viejo' );
 		$puntos[]  = self::punto(
 			$siguiente && $siguiente > time() - 2 * HOUR_IN_SECONDS,
 			'Cron',
-			'Las tareas programadas no se están ejecutando (el respaldo mensual no saldría). Configura el cron real: php wp-cron.php cada 5 minutos.',
+			is_array( $viejo ) && (int) ( $viejo['cuando'] ?? 0 ) > time() - DAY_IN_SECONDS
+				? 'El cron se ejecuta con PHP ' . $viejo['version'] . ' y el plugin necesita 8.2 o superior, así que no corre ninguna tarea. En hPanel → Cron Jobs créalo como "Personalizado" con el PHP del sitio, por ejemplo: /opt/alt/php83/usr/bin/php …/public_html/wp-cron.php'
+				: 'Las tareas programadas no se están ejecutando (el respaldo mensual no saldría). Configura el cron real: php wp-cron.php cada 5 minutos.',
 			self::AVISO
 		);
 

@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Pekokis Asistencia
  * Description: Registro de asistencia del personal del taller: marca desde el celular con passkey y presencia por WiFi del taller o QR.
- * Version: 0.15.0
+ * Version: 0.15.1
  * Requires at least: 6.5
  * Requires PHP: 8.2
  * Author: Pekokis
@@ -11,10 +11,35 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'PKA_VERSION', '0.15.0' );
+define( 'PKA_VERSION', '0.15.1' );
 define( 'PKA_FILE', __FILE__ );
 define( 'PKA_DIR', plugin_dir_path( __FILE__ ) );
 define( 'PKA_URL', plugin_dir_url( __FILE__ ) );
+
+// Freno de versión: con un PHP menor que 8.2 (por ejemplo, un cron de hPanel
+// con /usr/bin/php 8.1) las librerías cortarían la carga de todo WordPress
+// ("Ha habido un error crítico"). Así el plugin se queda quieto, el resto del
+// sitio sigue y queda anotado para mostrarlo en Ajustes → Estado del sistema.
+if ( PHP_VERSION_ID < 80200 ) {
+	if ( wp_doing_cron() ) {
+		update_option( 'pka_php_viejo', array( 'version' => PHP_VERSION, 'cuando' => time() ), false );
+	}
+
+	add_action(
+		'admin_notices',
+		static function (): void {
+			if ( current_user_can( 'activate_plugins' ) ) {
+				echo '<div class="notice notice-error"><p><strong>Pekokis Asistencia</strong> necesita PHP 8.2 o superior y este sitio usa ' . esc_html( PHP_VERSION ) . '. El plugin está detenido hasta cambiarlo en hPanel → Avanzado → Configuración de PHP.</p></div>';
+			}
+		}
+	);
+
+	return;
+}
+
+if ( wp_doing_cron() && false !== get_option( 'pka_php_viejo' ) ) {
+	delete_option( 'pka_php_viejo' );
+}
 
 if ( file_exists( PKA_DIR . 'vendor/autoload.php' ) ) {
 	require_once PKA_DIR . 'vendor/autoload.php';

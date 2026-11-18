@@ -263,6 +263,10 @@ Vienen de la sección 16 del plan; se resuelven con gerencia y el contador.
 
 ## Bitácora
 
+### 18-11-2026 — versión 0.15.1: freno de versión de PHP
+- Si el plugin carga con un PHP menor que 8.2, se detiene antes de cargar las librerías, así que WordPress ya no se cae con "error crítico". Muestra un aviso a los administradores y, si es el cron, deja anotada la versión (`pka_php_viejo`). Estado del sistema la nombra en el punto Cron ("El cron se ejecuta con PHP 8.1… créalo como Personalizado…"). Cuando el cron corre con el PHP bueno, la nota se borra.
+- **Pruebas:** en local simulé un PHP viejo (sin error fatal, el plugin no carga, la nota queda anotada); el diagnóstico muestra el mensaje nuevo; con el PHP bueno la nota se borra. Pasan las 153 pruebas unitarias y el flujo completo de punta a punta.
+
 ### 18-11-2026 — por qué no corría el cron de producción
 - El cron de hPanel existe (`*/5`, ruta correcta), pero `/usr/bin/php` es **PHP 8.1.34** y el plugin pide 8.2 o más. La comprobación de plataforma de Composer corta la carga ("Ha habido un error crítico"), así que wp-cron no ejecuta ninguna tarea.
 - **Arreglo:** borrar ese cron y crear uno "Personalizado" con PHP 8.3: `/opt/alt/php83/usr/bin/php /home/u412994707/domains/asistencia.pekokis.com/public_html/wp-cron.php`, cada 5 min. Después, "Ver resultado" vacío y Estado del sistema sin el aviso de Cron.

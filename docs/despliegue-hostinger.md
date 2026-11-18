@@ -11,7 +11,7 @@ Lo que tienes que hacer tú está marcado con ☐. Los nombres de los menús de 
 ## 0. Antes de empezar
 
 - ☐ **Recursos del plan.** En hPanel, revisa qué mide el 77 % de "Uso de recursos". Este sitio consume poco, pero suma archivos (unos 3.000 de WordPress y 200 del plugin) y un cron cada 5 minutos.
-- ☐ **El zip del plugin.** Ya está en `dist/pekokis-asistencia-0.15.0.zip`. Si cambia el código, se vuelve a generar con:
+- ☐ **El zip del plugin.** Ya está en `dist/pekokis-asistencia-0.15.1.zip`. Si cambia el código, se vuelve a generar con:
   ```bash
   php scripts/empaquetar.php
   ```
@@ -74,7 +74,7 @@ No lo compartas ni lo subas a git. Si algún día cambia, solo se invalidan los 
 
 ## 6. Instalar el plugin y el tema
 
-1. ☐ **Plugins → Añadir nuevo → Subir plugin:** sube `pekokis-asistencia-0.15.0.zip` y actívalo. Al activarse crea sus tablas, roles, motivos y el horario base.
+1. ☐ **Plugins → Añadir nuevo → Subir plugin:** sube `pekokis-asistencia-0.15.1.zip` y actívalo. Al activarse crea sus tablas, roles, motivos y el horario base.
 2. ☐ **Apariencia → Temas:** activa **"Pekokis Asistencia (vacío)"** y borra los demás temas, salvo uno por defecto como respaldo.
 3. ☐ Revisa **Asistencia → Ajustes → Estado del sistema.**
 
@@ -82,11 +82,13 @@ No lo compartas ni lo subas a git. Si algún día cambia, solo se invalidan los 
 
 ## 7. Cron real
 
-☐ hPanel → **Avanzado → Cron Jobs**: crea una tarea **cada 5 minutos** con este comando (la ruta exacta aparece en hPanel):
+☐ hPanel → **Avanzado → Cron Jobs**: crea una tarea **"Personalizado"**, **cada 5 minutos**, con este comando (la ruta exacta aparece en hPanel):
 
 ```
-/usr/bin/php /home/TU_USUARIO/domains/asistencia.pekokis.com/public_html/wp-cron.php
+/opt/alt/php83/usr/bin/php /home/TU_USUARIO/domains/asistencia.pekokis.com/public_html/wp-cron.php
 ```
+
+**Ojo:** la opción "PHP" de hPanel usa `/usr/bin/php`, que en este servidor es **PHP 8.1**, y el plugin pide 8.2 o más. Con ese PHP el cron no ejecuta nada. Desde la 0.15.1, Estado del sistema lo avisa. Para comprobarlo, "Ver resultado" debe salir vacío. Si dice "No such file", prueba con `/usr/bin/php8.3`.
 
 Es igual que en producción: **nunca** se llama a `wp-cron.php` por URL.
 
