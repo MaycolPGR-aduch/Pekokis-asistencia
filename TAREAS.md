@@ -31,7 +31,14 @@ Leyenda: `[x]` hecho · `[ ]` pendiente · `[~]` en curso
     - `http` y `www` redirigen a `https://asistencia.pekokis.com`, y WordPress ya usa ese dominio.
   - [x] Pasos 3 a 6: PHP 8.3, caché apagada, plugins de Hostinger fuera, `wp-config.php` (secreto, `DISABLE_WP_CRON`), plugin 0.5.0 y tema vacío. "Estado del sistema" en verde en 11 de 13 puntos
   - [x] Paso 7: cron de hPanel `*/5 * * * *` con `/usr/bin/php /home/u412994707/domains/asistencia.pekokis.com/public_html/wp-cron.php`. Al principio la hora estaba en `0`, lo que hacía que solo corriera entre las 00:00 y las 00:55; se corrigió a `*`
-  - [ ] Paso 8: correo SMTP y correo de RR.HH. en Exportar; probar "Enviar respaldo"
+  - [ ] Paso 8: correo SMTP y correo de RR.HH. en Exportar; probar "Enviar respaldo". **APLAZADO (18-11):** Maycol lo coordina con los encargados de los correos. Esto es lo que hay que decidir y hacer:
+    - **Quién envía.** Hay tres opciones:
+      - (a) una cuenta nueva en el cPanel de Bluehost, por ejemplo `asistencia@pekokis.com`, con `mail.pekokis.com`, 465 SSL. Funciona porque hay DKIM `default._domainkey` y el SPF incluye websitewelcome.com, pero el buzón no recibe nada porque el MX apunta a Google;
+      - (b) Mailjet, que ya está en el SPF y tiene DKIM `mailjet._domainkey`; hay que averiguar quién tiene la cuenta;
+      - (c) Google Workspace, que necesitaría agregar `include:_spf.google.com` al SPF y activar DKIM en Workspace.
+    - **Si se elige (a):** revisar en cPanel → Email Routing que pekokis.com esté en "Remote Mail Exchanger". Si está en "Local", Bluehost se queda con los correos que van a @pekokis.com.
+    - **WP Mail SMTP en producción:** hoy está en "Otro SMTP", sin terminar y sin sus tablas. La contraseña la escribe Maycol. Después hay que mandar el correo de prueba a admin1@ y a un Gmail.
+    - **Mientras tanto:** no salen los avisos por correo ni los correos para elegir contraseña. El respaldo sí puede salir por el webhook de Make si el cron funciona.
   - [ ] Paso 9: usuarios de RR.HH. y jefes, y Two Factor
   - [ ] Paso 10: en el taller, agregar la red del WiFi y activar la pantalla
 - [x] **(Maycol)** Subdominio `asistencia.pekokis.com` en Cloudflare en modo solo DNS, más SSL de Hostinger. Paso 2 de la guía
