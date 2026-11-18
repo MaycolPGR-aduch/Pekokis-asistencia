@@ -1,5 +1,5 @@
 /**
- * Perfil de WordPress → "Entrar con Face ID o huella" (G0): activa una passkey
+ * Perfil de WordPress → "Entrar con huella o rostro" (G0): activa una passkey
  * de gerencia en este equipo o quita una activada.
  */
 ( function () {
@@ -54,7 +54,7 @@
 		if ( activar ) {
 			if ( ! window.isSecureContext || ! window.PublicKeyCredential || ! navigator.credentials ) {
 				activar.disabled = true;
-				estado.textContent = 'Este navegador no permite Face ID ni huella para entrar.';
+				estado.textContent = 'Este navegador no permite entrar con huella ni rostro. En Android usa Chrome; en iPhone, Safari.';
 			}
 
 			activar.addEventListener( 'click', function () {
@@ -78,7 +78,7 @@
 						} );
 					} );
 				} ).then( function ( r ) {
-					estado.textContent = 'Listo: ' + r.nombre + ' quedó activado. La próxima vez toca "Entrar con Face ID o huella".';
+					estado.textContent = 'Listo: ' + r.nombre + ' quedó activado. La próxima vez toca "Entrar con huella o rostro".';
 					setTimeout( function () {
 						location.reload();
 					}, 1500 );

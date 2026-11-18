@@ -1066,7 +1066,7 @@ $AG     = \Pekokis\Asistencia\WordPress\AccesoGerencia::class;
 $laptop = new AutenticadorSimulado( Passkeys::rpId(), Passkeys::origen() );
 [ $s1, $op ] = $api( 'POST', 'gerencia/llave/opciones' );
 [ $s2, $ok ] = $api( 'POST', 'gerencia/llave', array( 'reto' => $op['reto'] ?? '', 'credencial' => $laptop->crear( (string) ( $op['publicKey']['challenge'] ?? '' ) ) ) );
-$comprobar( 'G0: activar Face ID o huella desde el perfil (queda una llave del usuario)', 200 === $s1 && 200 === $s2 && 1 === count( $AG::llavesDe( 1 ) ) && 'none' === ( $op['publicKey']['attestation'] ?? '' ), wp_json_encode( array( $s1, $s2, $ok ) ) );
+$comprobar( 'G0: activar huella o rostro desde el perfil (queda una llave del usuario)', 200 === $s1 && 200 === $s2 && 1 === count( $AG::llavesDe( 1 ) ) && 'none' === ( $op['publicKey']['attestation'] ?? '' ), wp_json_encode( array( $s1, $s2, $ok ) ) );
 wp_set_current_user( 0 );
 [ $s3 ]      = $api( 'POST', 'gerencia/llave/opciones' );
 [ , $oe ]    = $api( 'POST', 'gerencia/entrar/opciones' );

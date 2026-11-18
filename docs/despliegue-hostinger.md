@@ -158,7 +158,7 @@ Es igual que en producción: **nunca** se llama a `wp-cron.php` por URL.
 | 31 | Perfiles → una ficha: las 5 pestañas, "Mostrar" el DNI (queda en Auditoría); Delegar permisos a alguien con correo, que le llegue el correo y que entre solo a lo que se le dio | ☐ | — |
 | 32 | Registros y revisión: los incompletos salen primero; "Editar" un día sin salida, poner la salida con motivo y verlo en Auditoría ("Día editado") y en la app del trabajador | ☐ | ☐ |
 | 33 | Sueldos y tarifas: cambiar la tarifa de dos personas, ver "2 cambios sin guardar", guardar desde mañana y revisar el historial en la ficha | ☐ | — |
-| 34 | Cerrar sesión y abrir `/wp-login.php`: la página con la marca. Entrar, ir a Perfil → "Activar Face ID o huella en este equipo" en el iPhone o iPad de gerencia, cerrar sesión y entrar con "Entrar con Face ID o huella" | ☐ | — |
+| 34 | Cerrar sesión y abrir `/wp-login.php`: la página con la marca. Entrar, ir a Perfil → "Activar huella o rostro en este equipo" en el celular de gerencia (iPhone con Safari o Android con Chrome), cerrar sesión y entrar con "Entrar con huella o rostro" | ☐ | — |
 | 35 | En el celular de gerencia, abrir `/gerencia/`: Inicio, Hoy (filtros), Solicitudes (aprobar con otra hora), Pagos ("Cómo se calculó"), Recibos y Más | ✔ (vistas, 18-11) | Falta aprobar una solicitud real desde el celular |
 | 36 | Asistencia de hoy: los filtros por situación. Seguridad y reglas: las 6 pestañas y "N cambios sin guardar" | ✔ 18-11 | En angosto se veía "0 cambios": arreglado en 0.16.1 |
 | 29 | Ajustes: QR a 30 min y la pantalla muestra la barra; "Avisos de campaña" con una fecha de hoy y ver el aviso en la app antes de marcar (y volver a dejarlo como estaba) | ☐ | ☐ |

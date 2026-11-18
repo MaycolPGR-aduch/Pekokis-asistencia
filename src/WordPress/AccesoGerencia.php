@@ -13,7 +13,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Inicio de sesión de gerencia (maqueta G0): la página de acceso de WordPress
- * con la marca, y "Entrar con Face ID o huella" con una passkey propia de cada
+ * con la marca, y "Entrar con huella o rostro" con una passkey propia de cada
  * usuario del panel.
  *
  * La passkey se activa desde el perfil (después de entrar una vez con la
@@ -71,7 +71,7 @@ final class AccesoGerencia {
 		}
 
 		return '<div class="pk-lg-titulo" id="pk-lg-titulo"><div class="pk-lg-cab"><img src="' . esc_url( PKA_URL . 'assets/logo-pekokis.png' ) . '" alt="Pekokis" width="105" height="28"><span class="pk-lg-etq">Gerencia</span></div>'
-			. '<h2>Iniciar sesión</h2><p>Desde la laptop, el iPad o el iPhone de gerencia.</p></div>' . $mensaje;
+			. '<h2>Iniciar sesión</h2><p>Desde la computadora, la tablet o el celular de gerencia (iPhone o Android).</p></div>' . $mensaje;
 	}
 
 	/** El botón queda oculto: login.js lo muestra si el navegador sabe usar passkeys y lo pone debajo de "Acceder". */
@@ -81,9 +81,9 @@ final class AccesoGerencia {
 			<div class="pk-lg-o"><span>o</span></div>
 			<button type="button" class="button button-large pk-lg-boton" id="pk-lg-boton">
 				<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M4 9V6a2 2 0 0 1 2-2h3M15 4h3a2 2 0 0 1 2 2v3M20 15v3a2 2 0 0 1-2 2h-3M9 20H6a2 2 0 0 1-2-2v-3M9 9.5v1M15 9.5v1M12 9.5V13h-1M9.5 16c1.5 1 3.5 1 5 0"/></svg>
-				Entrar con Face ID o huella
+				Entrar con huella o rostro
 			</button>
-			<p class="pk-lg-nota">En el iPad o el iPhone de gerencia, después de entrar una vez con la contraseña y activarlo en tu perfil.</p>
+			<p class="pk-lg-nota">En el celular, la tablet o la laptop de gerencia, después de entrar una vez con la contraseña y activarlo en tu perfil.</p>
 			<p class="pk-lg-error" id="pk-lg-error" role="alert" hidden></p>
 		</div>
 		<?php
@@ -112,13 +112,13 @@ final class AccesoGerencia {
 
 		$llaves = self::llavesDe( $usuario->ID );
 		?>
-		<h2 id="pk-llaves">Entrar con Face ID o huella</h2>
+		<h2 id="pk-llaves">Entrar con huella o rostro</h2>
 		<table class="form-table" role="presentation">
 			<tr>
 				<th scope="row">Este equipo</th>
 				<td>
-					<button type="button" class="button" id="pk-llave-activar">Activar Face ID o huella en este equipo</button>
-					<p class="description">Después entras al panel de asistencia con un toque, sin escribir la contraseña. Actívalo en cada equipo que uses (iPhone, iPad, laptop con huella). Tu contraseña sigue sirviendo.</p>
+					<button type="button" class="button" id="pk-llave-activar">Activar huella o rostro en este equipo</button>
+					<p class="description">Después entras al panel de asistencia con un toque, sin escribir la contraseña. Actívalo en cada equipo que uses (celular iPhone o Android, tablet, laptop con huella). En Android usa Chrome. Tu contraseña sigue sirviendo.</p>
 					<p id="pk-llave-estado" role="status"></p>
 				</td>
 			</tr>

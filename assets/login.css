@@ -169,7 +169,7 @@ body.pk-login #wp-submit {
 body.pk-login .button-primary:hover,
 body.pk-login .button-primary:focus { background: var(--pk-rosa-oscuro); border-color: var(--pk-rosa-oscuro); color: #fff; }
 
-/* "o" + Entrar con Face ID o huella. */
+/* "o" + Entrar con huella o rostro. */
 body.pk-login .pk-lg-llave[hidden] { display: none; }
 
 body.pk-login .pk-lg-o {

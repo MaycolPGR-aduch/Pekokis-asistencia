@@ -1,7 +1,7 @@
 /**
  * Página de acceso (maqueta G0): mete el título con el logo dentro de la
  * tarjeta del formulario y, si el navegador sabe usar passkeys, muestra
- * "Entrar con Face ID o huella" debajo de "Acceder".
+ * "Entrar con huella o rostro" debajo de "Acceder".
  */
 ( function () {
 	'use strict';

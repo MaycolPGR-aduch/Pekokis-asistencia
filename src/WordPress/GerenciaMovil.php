@@ -867,7 +867,7 @@ final class GerenciaMovil {
 				array( 'Avisos de campaña', PantallaAjustes::url( 'campana' ), Capacidades::AJUSTES ),
 				array( 'Seguridad y reglas', PantallaAjustes::url(), Capacidades::AJUSTES ),
 				array( 'Informes', $a( 'pka-exportar' ), Capacidades::EXPORTAR ),
-				array( 'Entrar con Face ID o huella', admin_url( 'profile.php#pk-llaves' ), Capacidades::VER_EQUIPO ),
+				array( 'Entrar con huella o rostro', admin_url( 'profile.php#pk-llaves' ), Capacidades::VER_EQUIPO ),
 				array( 'Versión de computadora', $a( 'pka-dashboard' ), Capacidades::VER_EQUIPO ),
 			),
 		);
