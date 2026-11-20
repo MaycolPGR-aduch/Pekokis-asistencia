@@ -58,9 +58,8 @@ Debajo, **Tu día** muestra los pasos (Entrada, Inicio de comida, Fin de comida,
 
 **Cómo se comprueba que está en el taller** (lo elige gerencia en *Seguridad y reglas*):
 
-- **WiFi del taller:** conectado al WiFi del taller, marca directo.
-- **QR:** sin WiFi, toca **Escanear el QR** y apunta a la pantalla de la entrada. En iPhone se escribe el **código de 6 números** que sale debajo del QR.
-- Con datos móviles y sin QR, **no deja marcar**.
+- **WiFi del taller y QR** (lo acordado): conectado al WiFi del taller, toca **Escanear el QR** y apunta a la pantalla de la entrada. En iPhone se escribe el **código de 6 números** que sale debajo del QR. El escaneo vale 30 minutos: en ese rato se marca sin volver a escanear.
+- Con datos móviles, o sin escanear el QR, **no deja marcar**.
 
 **Motivos de salida**
 
@@ -232,7 +231,7 @@ Estas pantallas las usa RR.HH. o el administrador para preparar el sistema y man
 
 | Pestaña | Qué se configura |
 | --- | --- |
-| Presencia en el taller | Cómo se prueba que están en el taller: *WiFi del taller o QR* (recomendado), *WiFi del taller y QR*, *Solo QR* o *Solo WiFi*. Cada cuánto cambia el QR. Las redes del WiFi del taller (se agregan conectado a ese WiFi). Las pantallas del QR activas |
+| Presencia en el taller | Cómo se prueba que están en el taller: *WiFi del taller y QR* (lo acordado), *WiFi del taller o QR*, *Solo QR* o *Solo WiFi*. Cada cuánto cambia el QR. Las redes del WiFi del taller (se agregan conectado a ese WiFi). Las pantallas del QR activas |
 | Reglas de horas | Minutos de comida que se descuentan si no la marcan (60), desde cuándo cuenta la tardanza y las horas a partir de las que una jornada queda por revisar (16) |
 | Avisos | Avisos por correo (y WhatsApp, opcional): no hay entrada a cierta hora, ausencia, refrigerio largo, salida temporal larga y "No marcaste tu salida" (20:00). Empiezan apagados |
 | Avisos de campaña | Un recordatorio en la app antes de marcar, entre dos fechas y a partir de una hora (ej. temporada escolar) |
@@ -272,7 +271,7 @@ En todos los casos: enchufada, con el brillo alto y con internet. No borres los 
 
 | Qué pasa | Qué hacer |
 | --- | --- |
-| *Para marcar tienes que estar en el taller* | Conectarse al WiFi del taller y tocar **Ya me conecté: revisar otra vez**, o **Escanear el QR** de la pantalla (en iPhone, el código de 6 números) |
+| *Para marcar tienes que estar en el taller* | Conectarse al WiFi del taller y tocar **Ya me conecté: revisar otra vez**, y luego **Escanear el QR** de la pantalla (en iPhone, el código de 6 números) |
 | *Este navegador no sirve* o no pide la huella | Abrir en Chrome (Android) o Safari (iPhone) y activar el bloqueo de pantalla del celular |
 | Cambió o perdió el celular | En el celular nuevo, dentro del taller: **Cambié de celular**. Si no tiene su cumpleaños registrado, RR.HH. genera un enlace de activación nuevo |
 | El enlace de activación no funciona | Vence en 24 horas y sirve una vez. RR.HH. genera otro |

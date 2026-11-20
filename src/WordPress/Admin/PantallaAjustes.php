@@ -621,7 +621,7 @@ final class PantallaAjustes {
 					</label>
 				<?php endforeach; ?>
 			</fieldset>
-			<p class="description">Empieza con "WiFi del taller o QR". Si detectas trampas, cambia a "WiFi del taller y QR". Si la IP del taller cambia mucho o es compartida, usa "Solo QR".</p>
+			<p class="description">Lo acordado (maquetas) es "WiFi del taller y QR": hay que estar en el WiFi del taller y además escanear el QR de la pantalla. "WiFi del taller o QR" es más cómodo, pero una foto del QR reenviada sirve desde fuera mientras dure. Si la IP del taller cambia mucho o es compartida, usa "Solo QR".</p>
 			<p>
 				<label for="pka-qr-segundos"><strong>El QR de la pantalla cambia cada</strong></label>
 				<select id="pka-qr-segundos" name="qr_segundos">
@@ -630,7 +630,7 @@ final class PantallaAjustes {
 					<?php endforeach; ?>
 				</select>
 			</p>
-			<p class="description">Al escanearlo, el celular queda habilitado para marcar ese mismo tiempo ("Enlace vigente · 24 min"), o al menos <?php echo (int) Ajustes::todos()['pase_minutos']; ?> min. Las maquetas piden <strong>30 minutos</strong>. Ojo: un QR que dura mucho se puede fotografiar y reenviar por WhatsApp; con 15 o 30 minutos conviene "WiFi del taller y QR".</p>
+			<p class="description">Al escanearlo, el celular queda habilitado para marcar ese mismo tiempo ("Enlace vigente · 24 min"), o al menos <?php echo (int) Ajustes::todos()['pase_minutos']; ?> min. Lo acordado son <strong>30 minutos</strong>, con el modo "WiFi del taller y QR": un QR que dura mucho se puede fotografiar y reenviar por WhatsApp.</p>
 			<?php submit_button( 'Guardar modo' ); ?>
 		</form>
 

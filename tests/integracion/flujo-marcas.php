@@ -51,7 +51,7 @@ $wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE '\\_transient
 $_COOKIE = array();
 $ajustesPrueba = get_option( \Pekokis\Asistencia\WordPress\Ajustes::OPCION, array() );
 // Las pruebas del QR parten de 30 s (el valor de fábrica ahora es 30 min).
-update_option( \Pekokis\Asistencia\WordPress\Ajustes::OPCION, array( 'aviso_texto' => '', 'aviso_version' => 1, 'webhook_respaldo' => '', 'qr_segundos' => 30 ) + ( is_array( $ajustesPrueba ) ? $ajustesPrueba : array() ) );
+update_option( \Pekokis\Asistencia\WordPress\Ajustes::OPCION, array( 'aviso_texto' => '', 'aviso_version' => 1, 'webhook_respaldo' => '', 'qr_segundos' => 30, 'modo_presencia' => 'wifi_o_qr' ) + ( is_array( $ajustesPrueba ) ? $ajustesPrueba : array() ) );
 
 $wpdb->insert( Tablas::nombre( 'redes' ), array( 'red' => '203.0.113.10', 'nombre' => 'WiFi de prueba', 'activa' => 1, 'creada_por' => 1, 'creado_en' => gmdate( 'Y-m-d H:i:s' ) ) );
 $_SERVER['REMOTE_ADDR'] = '203.0.113.10';
@@ -161,7 +161,7 @@ $pantalla = \Pekokis\Asistencia\WordPress\Pantallas::activarEsteEquipo( 'Entrada
 [ $st, $cod ] = $api( 'GET', 'pantalla/codigo' );
 $comprobar( 'la pantalla recibe token, código de 6 dígitos y QR', 200 === $st && preg_match( '/^\d{6}$/', $cod['codigo'] ) && str_starts_with( (string) $cod['qr'], 'data:image/svg+xml' ), wp_json_encode( array_diff_key( $cod, array( 'qr' => 1 ) ) ) );
 $peticion = new WP_REST_Request( 'GET', '/asistencia/v1/pantalla/codigo' );
-$comprobar( 'la pantalla trae la fecha larga y si el modo pide WiFi (maqueta P1A); el QR de fábrica cambia cada 30 min', preg_match( '/^[A-ZÁÉÍÓÚ][a-záéíóú]+ \d{1,2} de [a-z]+$/u', (string) ( $cod['fecha'] ?? '' ) ) && is_bool( $cod['con_wifi'] ?? null ) && 1800 === \Pekokis\Asistencia\WordPress\Ajustes::porDefecto()['qr_segundos'], wp_json_encode( array( $cod['fecha'] ?? null, $cod['con_wifi'] ?? null ) ) );
+$comprobar( 'la pantalla trae la fecha larga y si el modo pide WiFi (maqueta P1A); el QR de fábrica cambia cada 30 min', preg_match( '/^[A-ZÁÉÍÓÚ][a-záéíóú]+ \d{1,2} de [a-z]+$/u', (string) ( $cod['fecha'] ?? '' ) ) && is_bool( $cod['con_wifi'] ?? null ) && 1800 === \Pekokis\Asistencia\WordPress\Ajustes::porDefecto()['qr_segundos'] && 'wifi_y_qr' === \Pekokis\Asistencia\WordPress\Ajustes::porDefecto()['modo_presencia'], wp_json_encode( array( $cod['fecha'] ?? null, $cod['con_wifi'] ?? null ) ) );
 $peticion->set_param( 'actual', $cod['token'] );
 $comprobar( 'si el token no cambió, no reenvía el QR', null === rest_do_request( $peticion )->get_data()['qr'] );
 $_COOKIE = $cookiesCelular; // Vuelve el celular.

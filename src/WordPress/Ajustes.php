@@ -20,7 +20,7 @@ final class Ajustes {
 	/** @return array<string, mixed> */
 	public static function porDefecto(): array {
 		return array(
-			'modo_presencia'  => ModoPresencia::WIFI_O_QR->value,
+			'modo_presencia'  => ModoPresencia::WIFI_Y_QR->value,
 			'zona_horaria'    => 'America/Lima',
 			'hora_corte'      => 4,
 			'antirrebote_seg' => 120,
@@ -79,7 +79,7 @@ final class Ajustes {
 	}
 
 	public static function modoPresencia(): ModoPresencia {
-		return ModoPresencia::tryFrom( (string) self::todos()['modo_presencia'] ) ?? ModoPresencia::WIFI_O_QR;
+		return ModoPresencia::tryFrom( (string) self::todos()['modo_presencia'] ) ?? ModoPresencia::WIFI_Y_QR;
 	}
 
 	public static function zona(): DateTimeZone {

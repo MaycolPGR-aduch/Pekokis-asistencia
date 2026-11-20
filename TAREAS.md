@@ -278,7 +278,7 @@ Vienen de la sección 16 del plan; se resuelven con gerencia y el contador.
 - Al cambiar de código, la pantalla se pone turquesa y dice "Actualizando…" (P1C). Sin internet dice "Sin conexión · no se puede marcar", con "El código no se está actualizando" y la hora del último código (P2). En vertical, el QR va debajo del título. Probado en local a 1280×800 y 768×1024, y cortando el servidor.
 - **QR cada 30 minutos (acordado):** el valor de fábrica pasa de 30 s a 30 min. Al actualizar (base de datos v10), si el sitio tenía 30 s, pasa solo a 30 min; si alguien eligió otro periodo, se respeta. El enlace que deja el QR dura lo mismo.
 - `pantalla/codigo` devuelve también `fecha` y `con_wifi`. 153 pruebas unitarias y todas las de punta a punta pasan, con una comprobación nueva.
-- **Ojo con el modo:** con QR de 30 min y el modo "WiFi del taller o QR" (el de producción), una foto del QR reenviada por WhatsApp sirve 30 min desde fuera. La maqueta pide WiFi **y** QR.
+- **Modo "WiFi del taller y QR" (decidido por Maycol el 20-11):** con un QR de 30 min, en el modo "o" una foto del QR reenviada serviría desde fuera. Ya está puesto en producción desde Seguridad y reglas, junto con el QR a 30 min. Es el valor de fábrica desde la 0.17.0. Para probar en casa hay que estar en el WiFi de casa (registrado como taller) **y** escanear una pantalla activada.
 
 ### 20-11-2026 — manual de uso y revisión de las maquetas
 - **Manual de uso** en `docs/manual-de-uso.md`, copia del documento "Manual de uso · Asistencia Pekokis" de Claude Docs. Tiene 12 secciones: roles, la app del trabajador, el panel y `/gerencia/`, pagos, informes, administración, la pantalla del QR y problemas frecuentes.
