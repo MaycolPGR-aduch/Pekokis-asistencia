@@ -247,7 +247,7 @@ Arriba de esta pantalla está **Estado del sistema**: si dice *✔ todo en orden
 
 ## La pantalla del QR en la entrada
 
-Una tablet o computadora en la entrada muestra un QR que cambia cada 30 segundos y un código de 6 números. Sirve para marcar a quien no está conectado al WiFi del taller.
+Una tablet o computadora en la entrada muestra un QR que cambia cada 30 minutos y un código de 6 números. Sirve para marcar a quien no está conectado al WiFi del taller.
 
 **Activarla** (una sola vez por equipo)
 

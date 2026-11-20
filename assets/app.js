@@ -48,6 +48,7 @@
 		recibo: '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/>',
 		persona: '<circle cx="12" cy="8" r="4"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/>',
 		wifi: '<path d="M2.5 9a14 14 0 0 1 19 0M5.5 12.5a9.5 9.5 0 0 1 13 0M8.8 15.8a5 5 0 0 1 6.4 0"/><path d="M12 19.2h.01"/>',
+		sinwifi: '<path d="M2 9a15 15 0 0 1 20 0"/><path d="M5 12.5a10.5 10.5 0 0 1 14 0"/><path d="M8.5 16a5.5 5.5 0 0 1 7 0"/><path d="M12 19.5h.01"/><path d="M3 3l18 18"/>',
 		alerta: '<path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17h.01"/>',
 		cubierto: '<path d="M7 3v18M4.5 3v5a2.5 2.5 0 0 0 5 0V3M17 3c-2.5 2-2.5 7 0 9v9"/>',
 	};
@@ -2003,54 +2004,144 @@
 
 	// ---------- pantalla de la entrada (tablet) ----------
 
+	/**
+	 * Pantalla del taller (maquetas P1A–P1C y P2): tablet o PC fija en la entrada,
+	 * apaisada. Título y pasos a la izquierda, QR con su barra de tiempo a la
+	 * derecha y pie con la fecha y la hora. Mientras llega el código nuevo se pone
+	 * turquesa ("Actualizando…") y, si se corta la conexión, avisa desde lejos.
+	 */
 	function vistaPantalla() {
 		var tokenActual = '';
-		var img = el( 'img', { class: 'qr', alt: 'Código QR para marcar asistencia' } );
-		var codigo = el( 'p', { class: 'codigo-pantalla', 'aria-label': 'Código' } );
-		var cuenta = el( 'p', { class: 'cuenta' } );
-		var barra = el( 'i', {} );
-		var marcoBarra = el( 'div', { class: 'barra-qr', 'aria-hidden': 'true' }, [ barra ] );
 		var total = 30;
-		var hora = el( 'p', { class: 'hora-pantalla' } );
-		var estado = el( 'p', { class: 'aviso error', hidden: 'hidden', texto: 'Sin conexión. Los trabajadores pueden marcar con el WiFi del taller.' } );
 		var restantes = 30;
+		var ultimaHora = '';
 		var pintada = false;
+		var logo = document.querySelector( '.barra .logo' );
+
+		var img = el( 'img', { class: 'tp-img', alt: 'Código QR para marcar asistencia' } );
+		var carga = el( 'p', { class: 'tp-carga', texto: 'Actualizando…', hidden: 'hidden' } );
+		var barra = el( 'i', {} );
+		var tiempo = el( 'span', {} );
+		var marcoTiempo = el( 'div', { class: 'tp-tiempo' }, [ el( 'div', { class: 'tp-bar', 'aria-hidden': 'true' }, [ barra ] ), tiempo ] );
+		var codigo = el( 'b', {} );
+		var tarjetaQr = el( 'div', { class: 'tp-qr' }, [
+			el( 'div', { class: 'tp-marco' }, [ img, carga ] ),
+			marcoTiempo,
+			el( 'p', { class: 'tp-codigo' }, [ '¿Sin cámara? Código ', codigo ] ),
+		] );
+		var tarjetaAlerta = el( 'div', { class: 'tp-qr tp-alerta', hidden: 'hidden' }, [
+			el( 'div', { class: 'tp-medallon' }, [ icono( 'sinwifi' ) ] ),
+			el( 'p', {}, [ el( 'b', { texto: 'El código no se está actualizando.' } ) ] ),
+			el( 'p', { texto: 'Revisa el Wi-Fi del taller o avisa a gerencia.' } ),
+		] );
+		var titulo1 = el( 'span', { class: 'tp-sombra', texto: 'Escanea para marcar' } );
+		var titulo2 = el( 'span', { class: 'tp-pill', texto: 'tu asistencia' } );
+		var pasos = el( 'ol', { class: 'tp-pasos' } );
+		var fecha = el( 'span', {} );
+		var hora = el( 'b', {} );
+		var raiz = el( 'div', { class: 'tp' }, [
+			el( 'span', { class: 'tp-aro a1', 'aria-hidden': 'true' } ),
+			el( 'span', { class: 'tp-aro a2', 'aria-hidden': 'true' } ),
+			el( 'span', { class: 'tp-aro a3', 'aria-hidden': 'true' } ),
+			el( 'span', { class: 'tp-estrella', 'aria-hidden': 'true' } ),
+			el( 'header', { class: 'tp-cab' }, [
+				el( 'span', { class: 'tp-logo' }, [
+					logo ? el( 'img', { src: logo.src, alt: 'Pekokis' } ) : null,
+					el( 'span', { texto: 'Registro de asistencia' } ),
+				].filter( Boolean ) ),
+			] ),
+			el( 'div', { class: 'tp-main' }, [
+				el( 'div', { class: 'tp-izq' }, [ el( 'h1', {}, [ titulo1, titulo2 ] ), pasos ] ),
+				tarjetaQr,
+				tarjetaAlerta,
+			] ),
+			el( 'footer', { class: 'tp-pie' }, [ fecha, hora ] ),
+		] );
+
+		function ponerPasos( conWifi ) {
+			var textos = conWifi
+				? [ 'Conéctate al Wi-Fi del taller', 'Escanea el QR con la cámara', 'Marca tu entrada, comida o salida' ]
+				: [ 'Abre la asistencia en tu celular', 'Escanea el QR con la cámara', 'Marca tu entrada, comida o salida' ];
+			pasos.replaceChildren.apply( pasos, textos.map( function ( t, i ) {
+				return el( 'li', {}, [ el( 'b', { texto: String( i + 1 ) } ), t ] );
+			} ) );
+		}
+
+		// P2: sin conexión. Se ve desde lejos y dice qué revisar.
+		function sinConexion( si ) {
+			raiz.classList.toggle( 'sin-conexion', si );
+			if ( si ) {
+				raiz.classList.remove( 'turq' );
+			}
+			tarjetaQr.hidden = si;
+			tarjetaAlerta.hidden = ! si;
+			pasos.hidden = si;
+			titulo1.textContent = si ? 'Sin conexión' : 'Escanea para marcar';
+			titulo2.textContent = si ? 'no se puede marcar' : 'tu asistencia';
+			if ( si && ultimaHora ) {
+				fecha.textContent = 'Último código válido a las ' + ultimaHora;
+			}
+		}
+
+		// P1C: mientras se genera el código nuevo no se muestra el anterior.
+		function actualizando( si ) {
+			raiz.classList.toggle( 'turq', si );
+			img.hidden = si;
+			carga.hidden = ! si;
+			if ( si ) {
+				barra.style.width = '100%';
+				tiempo.textContent = 'Generando un código nuevo';
+				marcoTiempo.classList.remove( 'ambar' );
+			}
+		}
+
+		function pintarTiempo() {
+			if ( restantes <= 0 ) {
+				actualizando( true );
+				return;
+			}
+			barra.style.width = Math.round( 100 * restantes / total ) + '%';
+			// QR largo (30 min): minutos, y ámbar en los últimos minutos (P1B).
+			tiempo.textContent = total >= 300
+				? 'Se actualiza en ' + Math.ceil( restantes / 60 ) + ' min'
+				: 'Se actualiza en ' + restantes + ' s';
+			marcoTiempo.classList.toggle( 'ambar', total >= 300 && restantes <= Math.min( 300, total / 5 ) );
+		}
 
 		function pedir() {
 			// Con enlaces permanentes "simples", la URL de la API ya trae "?rest_route=".
 			var separador = -1 === config.api.indexOf( '?' ) ? '?' : '&';
 			api( 'pantalla/codigo' + separador + 'actual=' + encodeURIComponent( tokenActual ), null, 'GET' ).then( function ( r ) {
-				estado.hidden = true;
 				if ( ! pintada ) {
 					// Se dibuja recién con el primer código, para no mostrar un marco vacío.
 					pintada = true;
-					pintar(
-						el( 'h1', {}, [ 'Escanea para ', el( 'em', { texto: 'marcar' } ) ] ),
-						el( 'div', { class: 'marco-qr' }, [ img ] ),
-						marcoBarra,
-						el( 'p', { class: 'ayuda', texto: 'Si tu cámara no lo lee, escribe este código:' } ),
-						codigo,
-						cuenta,
-						hora,
-						estado
-					);
+					pintar( raiz );
 				}
+				sinConexion( false );
+				ponerPasos( !! r.con_wifi );
 				if ( r.qr ) {
-					// Mientras llega el QR nuevo no se muestra el anterior.
 					img.src = r.qr;
 				}
+				actualizando( false );
 				total = r.total || 30;
 				tokenActual = r.token;
 				codigo.textContent = r.codigo.slice( 0, 3 ) + ' ' + r.codigo.slice( 3 );
 				hora.textContent = r.hora;
+				fecha.textContent = r.fecha || '';
+				ultimaHora = r.hora;
 				restantes = r.segundos;
+				pintarTiempo();
 				setTimeout( pedir, Math.min( r.segundos, 10 ) * 1000 + 300 );
 			} ).catch( function ( error ) {
 				if ( 'pka_pantalla' === error.codigo ) {
 					vistaActivarPantalla();
 					return;
 				}
-				estado.hidden = false;
+				if ( ! pintada ) {
+					pintada = true;
+					pintar( raiz );
+				}
+				sinConexion( true );
 				setTimeout( pedir, 5000 );
 			} );
 		}
@@ -2058,11 +2149,9 @@
 		// Fuera de "relojes": pintar() no debe apagar la cuenta regresiva de la pantalla.
 		setInterval( function () {
 			restantes = Math.max( 0, restantes - 1 );
-			// QR largo (maquetas: 30 min): minutos y barra, en ámbar en los últimos minutos.
-			cuenta.textContent = total >= 300 ? 'Vigente · ' + Math.ceil( restantes / 60 ) + ' min' : 'Cambia en ' + restantes + ' s';
-			barra.style.width = Math.round( 100 * restantes / total ) + '%';
-			marcoBarra.classList.toggle( 'por-vencer', total >= 300 && restantes <= Math.min( 300, total / 5 ) );
-			marcoBarra.hidden = total < 300;
+			if ( pintada && ! raiz.classList.contains( 'sin-conexion' ) ) {
+				pintarTiempo();
+			}
 		}, 1000 );
 
 		// Que la tablet no se apague.
@@ -2104,7 +2193,7 @@
 
 		pintar(
 			el( 'h1', {}, [ 'Activar ', el( 'em', { texto: 'pantalla' } ) ] ),
-			el( 'p', { texto: 'Este equipo mostrará el QR que cambia cada 30 segundos. Déjalo enchufado en la entrada del taller.' } ),
+			el( 'p', { texto: 'Este equipo mostrará el QR para marcar. Déjalo enchufado y con la pantalla encendida en la entrada del taller.' } ),
 			el( 'div', { class: 'formulario' }, [ el( 'div', {}, [ el( 'label', { for: 'nombre-pantalla', texto: 'Nombre' } ), nombre ] ) ] ),
 			activar,
 			estado

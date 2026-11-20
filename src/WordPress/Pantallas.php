@@ -90,8 +90,19 @@ final class Pantallas {
 			'segundos' => $codigos->restantes( $ahora ),
 			'total'    => $codigos->duracion(),
 			'hora'     => wp_date( 'H:i', $ahora, Ajustes::zona() ),
+			'fecha'    => self::fechaLarga( $ahora ),
+			'con_wifi' => \Pekokis\Asistencia\Nucleo\ModoPresencia::WIFI_Y_QR === Ajustes::modoPresencia(),
 			'qr'       => hash_equals( $token, $tokenQueYaTiene ) ? null : self::qr( $url ),
 		);
+	}
+
+	/** "Viernes 15 de enero" para el pie de la pantalla. */
+	private static function fechaLarga( int $ahora ): string {
+		$dias  = array( 'domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado' );
+		$meses = array( 1 => 'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre' );
+		$dia   = $dias[ (int) wp_date( 'w', $ahora, Ajustes::zona() ) ];
+
+		return mb_strtoupper( mb_substr( $dia, 0, 1 ) ) . mb_substr( $dia, 1 ) . ' ' . wp_date( 'j', $ahora, Ajustes::zona() ) . ' de ' . $meses[ (int) wp_date( 'n', $ahora, Ajustes::zona() ) ];
 	}
 
 	/** @return int[] Ids de las pantallas activas. */

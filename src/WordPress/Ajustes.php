@@ -26,7 +26,7 @@ final class Ajustes {
 			'antirrebote_seg' => 120,
 			'pase_minutos'    => 3,
 			// Cada cuánto cambia el QR de la pantalla (segundos). Las maquetas piden 30 min (1800).
-			'qr_segundos'     => 30,
+			'qr_segundos'     => 1800,
 			// Datos del empleador que exige el registro de asistencia (D.S. 004-2006-TR).
 			// Tomados del Libro de Reclamaciones; RR.HH. puede corregirlos.
 			'razon_social'    => 'FUSION ART SAC',

@@ -13,7 +13,7 @@ defined( 'ABSPATH' ) || exit;
  * lo que RR.HH. haya cambiado.
  */
 final class Instalador {
-	public const VERSION_BD = '9';
+	public const VERSION_BD = '10';
 
 	private const OPCION_VERSION = 'pka_version_bd';
 
@@ -29,8 +29,21 @@ final class Instalador {
 	}
 
 	public static function actualizarSiHaceFalta(): void {
-		if ( get_option( self::OPCION_VERSION ) !== self::VERSION_BD ) {
+		$anterior = get_option( self::OPCION_VERSION );
+
+		if ( $anterior !== self::VERSION_BD ) {
 			self::activar();
+
+			// Versión 10: se acordó que el QR de la pantalla cambie cada 30 minutos
+			// (maquetas P1A y T4B). Solo se mueve el valor de fábrica anterior (30 s);
+			// si alguien eligió otro periodo, se respeta.
+			if ( false !== $anterior && (int) $anterior < 10 ) {
+				$ajustes = get_option( Ajustes::OPCION, array() );
+				if ( is_array( $ajustes ) && 30 === (int) ( $ajustes['qr_segundos'] ?? 30 ) ) {
+					$ajustes['qr_segundos'] = 1800;
+					update_option( Ajustes::OPCION, $ajustes );
+				}
+			}
 		}
 	}
 
