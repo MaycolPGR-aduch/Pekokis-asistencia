@@ -244,7 +244,16 @@ Leyenda: `[x]` hecho · `[ ]` pendiente · `[~]` en curso
   - **Delegar permisos (G17):** a un trabajador se le encienden permisos sueltos (horarios; revisar la asistencia de todos; corregir y aprobar; sueldos y pagos; recibos). Sueldos y recibos, solo a propósito. Si no tiene acceso al panel se le crea uno (rol "Supervisor delegado") y le llega un correo para elegir su contraseña. En la auditoría figura como "(supervisor delegado)". Permisos nuevos: `pka_horarios` y `pka_recibos` (RR.HH. y el administrador los tienen).
   - [x] **Registros y revisión (G4) y editar en panel lateral (G4B)** y **Sueldos y tarifas (G8)**, en la 0.15.0 (ver la bitácora).
   - [x] **Filtros en Hoy (G2), Seguridad y reglas en pestañas (G14), inicio de sesión con la marca y Face ID (G0) y gerencia en el celular (M1–M9)**, en la 0.16.0 (ver la bitácora).
-  - [ ] Quedan fuera (por decidir): un panel propio fuera de wp-admin y la versión tablet afinada (TG1–TG8; hoy el iPad usa la de computadora).
+  - [ ] **Lo que falta de las maquetas** (revisado el 20-11 contra `PANTALLAS.md`, 116 pantallas; copia en `Downloads/asistencia_pekokis_para_programador/`):
+    - [ ] **Gerencia en tablet (TG0–TG8, "Recomendado")**: menú en barra de íconos, cifras de a dos, tablas reducidas y paneles laterales angostos. Hoy el iPad usa la versión de computadora.
+    - [ ] **G7 Horarios por persona**: la maqueta es una tabla por persona con lo cambiado resaltado y cambios por periodo aparte; hoy son horarios plantilla que se asignan desde el perfil.
+    - [ ] **G12B Nuevo trabajador con acceso inicial**: al guardar, la persona recibe su acceso; hoy RR.HH. genera el enlace a mano (o la persona se registra en el taller).
+    - [ ] **G16 Informes en Excel o PDF**: hoy el PDF solo está en el Informe por persona; Exportar y Resumen del mes solo dan Excel.
+    - [ ] **G5 Auditoría con estilo**: valores anteriores tachados y nuevos en verde; hoy dice "antes → después" en texto.
+    - [ ] **G9 Regla de pago por feriado**: la maqueta muestra la regla de la ley en cada feriado (por confirmar con el contador); hoy solo la tarifa de feriado.
+    - [ ] Propuestas sin conversar: **trabajador en tablet (TP1–TP3)** y **trabajador en computadora (C1–C4)**, con entrada escaneando un QR con el celular. Solo consulta y recibo.
+    - [x] Todo lo demás está hecho: T0–T9, P1–P2, G0–G4B, G6–G6C, G8, G10–G11B, G13–G15, G17 y M1–M9.
+  - [ ] Queda fuera (por decidir): un panel propio fuera de wp-admin.
 
 ## Decisiones pendientes
 
@@ -263,6 +272,10 @@ Vienen de la sección 16 del plan; se resuelven con gerencia y el contador.
 ---
 
 ## Bitácora
+
+### 20-11-2026 — manual de uso y revisión de las maquetas
+- **Manual de uso** en `docs/manual-de-uso.md`, copia del documento "Manual de uso · Asistencia Pekokis" de Claude Docs. Tiene 12 secciones: roles, la app del trabajador, el panel y `/gerencia/`, pagos, informes, administración, la pantalla del QR y problemas frecuentes.
+- **Maquetas contra lo hecho:** de las 116 pantallas de `PANTALLAS.md` faltan la gerencia en tablet (TG0–TG8) y algunos detalles: G7 por persona, G12B con acceso inicial, G16 en PDF, el estilo de G5 y G9. Además, las propuestas de trabajador en tablet y en computadora. La lista está en "Lo que falta de las maquetas".
 
 ### 18-11-2026 (noche) — 0.16.0 en producción y 0.16.1
 - **Maycol subió la 0.16.0 a producción.** Revisado: el plugin dice 0.16.0 y está activo, `sw.js` sirve `pka-0.16.0`, y Estado del sistema dice "✔ todo en orden". "Seguridad y reglas" tiene sus 6 pestañas. Hoy muestra los filtros ("Todos 4", "Sin marcar 4"). `wp-login.php` carga `login.css`, `login.js` y el botón de Face ID con la tarjeta "Gerencia · Iniciar sesión". `/gerencia/` dibuja Inicio, Hoy (las 4 personas de prueba), Solicitudes y Pagos con la barra de abajo.
