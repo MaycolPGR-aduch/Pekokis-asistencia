@@ -131,6 +131,30 @@
 			seguirFormularios( Array.prototype.slice.call( sigue ) );
 		}
 
+		// Menú de tablet (TG0–TG8): el logo abre el riel para ver los nombres.
+		var abrirRiel = document.getElementById( 'pk-riel-abrir' );
+		var riel = document.getElementById( 'pk-riel' );
+		if ( abrirRiel && riel ) {
+			abrirRiel.addEventListener( 'click', function () {
+				var abierto = riel.classList.toggle( 'abierto' );
+				abrirRiel.setAttribute( 'aria-expanded', abierto ? 'true' : 'false' );
+			} );
+			// Tocar fuera la cierra.
+			document.addEventListener( 'click', function ( e ) {
+				if ( riel.classList.contains( 'abierto' ) && ! riel.contains( e.target ) ) {
+					riel.classList.remove( 'abierto' );
+					abrirRiel.setAttribute( 'aria-expanded', 'false' );
+				}
+			} );
+			document.addEventListener( 'keydown', function ( e ) {
+				if ( 'Escape' === e.key && riel.classList.contains( 'abierto' ) ) {
+					riel.classList.remove( 'abierto' );
+					abrirRiel.setAttribute( 'aria-expanded', 'false' );
+					abrirRiel.focus();
+				}
+			} );
+		}
+
 		var imprimir = document.getElementById( 'pk-imprimir' );
 		if ( imprimir ) {
 			imprimir.addEventListener( 'click', function () {

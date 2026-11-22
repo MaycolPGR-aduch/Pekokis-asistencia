@@ -15,6 +15,7 @@ final class Menu {
 	public static function registrar(): void {
 		add_action( 'admin_menu', array( self::class, 'menu' ) );
 		Tema::registrar();
+		Riel::registrar();
 		PantallaSolicitudes::registrar();
 		PantallaDelegar::registrar();
 		PantallaRegistros::registrar();

@@ -83,7 +83,7 @@ final class PantallaRecibos {
 		</ul>
 		<p class="description">Cada recibo se compara con el cálculo del mes (Asistencia → Pagos). El trabajador ve su propio monto, nunca el cálculo.</p>
 
-		<table class="widefat striped">
+		<table class="pk-tabla-recibos widefat striped">
 			<thead><tr><th>Persona</th><th>Recibo</th><th>Monto</th><th>Cálculo del mes</th><th>Estado</th><th>Revisar</th><th>Enviados</th></tr></thead>
 			<tbody>
 			<?php

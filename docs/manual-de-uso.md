@@ -117,7 +117,7 @@ Mientras en producción esté la versión 0.16.0, esos botones dicen *Face ID o 
 
 **Seguridad:** después de 5 intentos fallidos en 15 minutos, el acceso desde esa conexión se bloquea 15 minutos.
 
-**Computadora o celular:** desde la computadora se abre el panel completo (menú **Asistencia** a la izquierda). Desde un celular se abre directo la **versión para celular** (`/gerencia/`). Las dos muestran los mismos datos.
+**Computadora, tablet o celular:** desde la computadora se abre el panel completo (menú **Asistencia** a la izquierda). En una tablet (iPad) el menú es una **barra de íconos** a la izquierda, con el número de pendientes encima; toca el logo de arriba para ver los nombres. Desde un celular se abre directo la **versión para celular** (`/gerencia/`). Todas muestran los mismos datos.
 
 ## Gerencia · el día a día
 

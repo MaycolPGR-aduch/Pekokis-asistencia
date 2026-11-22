@@ -3,7 +3,7 @@
 Este archivo lleva lo hecho, lo pendiente y la bitácora del proyecto. Se actualiza cada vez que avanzamos.
 El detalle técnico de cada punto está en [docs/plan-tecnico.md](docs/plan-tecnico.md).
 
-**Estado actual:** en local está la **0.18.0**: Auditoría, Horarios por persona, Feriados e Informes con el diseño de las maquetas (G5, G7, G9, G16). En producción está la **0.17.0** (subida el 22-11): la pantalla del QR con el diseño de la maqueta, el QR cada 30 minutos con el modo "WiFi del taller y QR", y los arreglos de la 0.16.1. La 0.16.0 agrega: avisos por correo (fase 4); el pago por recibos por honorarios de las maquetas (honorario y tarifas, horas extra automáticas); la **calculadora de pagos** con "Ver cálculo" y "Pagado"; los **recibos por honorarios** (el trabajador los sube desde la app y gerencia los revisa); y la **app del trabajador con el diseño de las maquetas** (entra una vez con su huella y ve las pestañas Marcar, Mis horas, Mi recibo y Perfil, con "Tu día" en 4 pasos, el detalle de cada día y "Pedir corrección"); y la **etapa B**: PIN de ingreso, registro propio y cambio de celular aprobados por gerencia (Asistencia → Celulares), liberar el celular, QR de hasta 30 min, jornadas que pasan la medianoche y el recordatorio de campaña. Y el **panel de gerencia con el diseño de las maquetas** (dentro de wp-admin): menú por grupos, Dashboard, Solicitudes con "aprobar con otra hora", ficha con pestañas y delegar permisos. La cubren 150 pruebas del núcleo y 244 de punta a punta. **Siguiente:** subir la versión y confirmar con el responsable lo marcado "por confirmar" (16 h, aprobación de gerencia, vigencia del QR). También falta el correo de RR.HH., la red o pantalla del taller, cambiar `PKA_SECRETO` y hacer el piloto.
+**Estado actual:** en local está la **0.19.0**: gerencia en tablet (TG0–TG8) y Auditoría, Horarios por persona, Feriados e Informes con el diseño de las maquetas (G5, G7, G9, G16). En producción está la **0.17.0** (subida el 22-11): la pantalla del QR con el diseño de la maqueta, el QR cada 30 minutos con el modo "WiFi del taller y QR", y los arreglos de la 0.16.1. La 0.16.0 agrega: avisos por correo (fase 4); el pago por recibos por honorarios de las maquetas (honorario y tarifas, horas extra automáticas); la **calculadora de pagos** con "Ver cálculo" y "Pagado"; los **recibos por honorarios** (el trabajador los sube desde la app y gerencia los revisa); y la **app del trabajador con el diseño de las maquetas** (entra una vez con su huella y ve las pestañas Marcar, Mis horas, Mi recibo y Perfil, con "Tu día" en 4 pasos, el detalle de cada día y "Pedir corrección"); y la **etapa B**: PIN de ingreso, registro propio y cambio de celular aprobados por gerencia (Asistencia → Celulares), liberar el celular, QR de hasta 30 min, jornadas que pasan la medianoche y el recordatorio de campaña. Y el **panel de gerencia con el diseño de las maquetas** (dentro de wp-admin): menú por grupos, Dashboard, Solicitudes con "aprobar con otra hora", ficha con pestañas y delegar permisos. La cubren 150 pruebas del núcleo y 244 de punta a punta. **Siguiente:** subir la versión y confirmar con el responsable lo marcado "por confirmar" (16 h, aprobación de gerencia, vigencia del QR). También falta el correo de RR.HH., la red o pantalla del taller, cambiar `PKA_SECRETO` y hacer el piloto.
 
 **Estrategia:** primero un MVP con las fases 0 y 1 del plan (registro de asistencia funcionando y conforme a la norma). Después, mejoras por etapas según lo que opine gerencia.
 
@@ -245,7 +245,7 @@ Leyenda: `[x]` hecho · `[ ]` pendiente · `[~]` en curso
   - [x] **Registros y revisión (G4) y editar en panel lateral (G4B)** y **Sueldos y tarifas (G8)**, en la 0.15.0 (ver la bitácora).
   - [x] **Filtros en Hoy (G2), Seguridad y reglas en pestañas (G14), inicio de sesión con la marca y Face ID (G0) y gerencia en el celular (M1–M9)**, en la 0.16.0 (ver la bitácora).
   - [ ] **Lo que falta de las maquetas** (revisado el 20-11 contra `PANTALLAS.md`, 116 pantallas; copia en `Downloads/asistencia_pekokis_para_programador/`):
-    - [ ] **Gerencia en tablet (TG0–TG8, "Recomendado")**: menú en barra de íconos, cifras de a dos, tablas reducidas y paneles laterales angostos. Hoy el iPad usa la versión de computadora.
+    - [x] **Gerencia en tablet (TG0–TG8)**, en la 0.19.0: barra de íconos con pendientes, tarjetas de a dos, Pagos apilado y tablas reducidas.
     - [x] **G7 Horarios por persona**, en la 0.18.0: tabla semanal por persona, horario base por fila y cambios por un día o un periodo.
     - [ ] **G12B Nuevo trabajador con acceso inicial**: al guardar, la persona recibe su acceso; hoy RR.HH. genera el enlace a mano (o la persona se registra en el taller).
     - [x] **G16 Informes en Excel o PDF**, en la 0.18.0: cinco informes del mes en Excel y PDF, con las descargas recientes.
@@ -272,6 +272,24 @@ Vienen de la sección 16 del plan; se resuelven con gerencia y el contador.
 ---
 
 ## Bitácora
+
+### 22-11-2026 (tarde) — versión 0.19.0: gerencia en tablet (TG0–TG8)
+- **Barra de íconos** (`Admin\Riel`): entre 600 y 1024 px de ancho (iPad en vertical) el menú de WordPress se cambia por una barra a la izquierda.
+  - Tiene un ícono por pantalla, en el orden y los grupos del menú, y la activa en rosa.
+  - Muestra el número de pendientes encima: Solicitudes y Celulares, tomado del mismo menú.
+  - Abajo están "Mi perfil y huella o rostro" y, para el administrador, WordPress.
+  - El logo de arriba la abre para ver los nombres; se cierra tocando fuera o con Esc. En la computadora sigue el menú de siempre, y en el celular está `/gerencia/`.
+- **Pantallas en tablet:**
+  - TG1: Dashboard con las cifras de a dos.
+  - TG3: el panel lateral se hace más angosto (340 px).
+  - TG4: en la Calculadora, el total y "Antes de pagar" se apilan y la tabla deja horas, total, estado y pagado; honorario y recibo siguen en "Ver cálculo".
+  - TG6: Recibos esconde la columna del cálculo.
+  - TG7: la ficha va en dos columnas (`.pk-tres` pasa a dos hasta 1180 px y a una bajo 700 px).
+  - TG8: el calendario y el detalle del día se apilan.
+  - TG0: la página de acceso ya era la misma en el iPad.
+- `admin.js` carga en todo wp-admin cuando el tema está activo, para el botón del riel.
+- **Pruebas:** 153 unitarias y todas las de punta a punta pasan, con la sección 20 nueva (el riel tiene cada pantalla con su ícono y los grupos, y toma el número de pendientes).
+- **En el navegador local:** probado a 820×1180 en Hoy, Pagos, Ficha (Resumen y Asistencia) y Solicitudes, con el riel abierto y cerrado; a 1280 px sigue el menú de WordPress. No probado en un iPad real.
 
 ### 22-11-2026 — versión 0.18.0: G5, G7, G9 y G16 con el diseño de las maquetas
 - **G5 · Auditoría de cambios:**

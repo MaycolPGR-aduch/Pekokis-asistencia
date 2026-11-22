@@ -114,7 +114,7 @@ final class PantallaPagos {
 			</div>
 
 			<div class="pk-desplaza">
-			<table class="widefat striped">
+			<table class="pk-tabla-pagos widefat striped">
 				<thead><tr><th>Persona</th><th>Honorario</th><th>Horas adicionales</th><th>Total</th><th>Recibo</th><th>Estado</th><th>Pagado</th><th></th></tr></thead>
 				<tbody>
 				<?php if ( ! $personas ) : ?>

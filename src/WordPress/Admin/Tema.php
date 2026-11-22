@@ -59,9 +59,7 @@ final class Tema {
 		wp_enqueue_style( 'pk-componentes', Rutas::asset( 'componentes.css' ), array( 'pk-tokens' ), null );
 		wp_enqueue_style( 'pk-admin', Rutas::asset( 'admin.css' ), array( 'pk-componentes' ), null );
 
-		if ( self::esPagina() ) {
-			wp_enqueue_script( 'pk-admin', Rutas::asset( 'admin.js' ), array(), null, true );
-		}
+		wp_enqueue_script( 'pk-admin', Rutas::asset( 'admin.js' ), array(), null, true );
 		// phpcs:enable
 	}
 

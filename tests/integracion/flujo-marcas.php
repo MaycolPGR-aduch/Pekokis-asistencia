@@ -1178,6 +1178,20 @@ $htmlInf = $dibujar( array( \Pekokis\Asistencia\WordPress\Admin\PantallaExportar
 $_GET    = array();
 $comprobar( 'G16: la pantalla lista los informes con Excel y PDF y las descargas recientes', str_contains( $htmlInf, 'pk-informes' ) && 5 === substr_count( $htmlInf, 'pka_reporte_pdf' ) && str_contains( $htmlInf, 'Descargas recientes' ) );
 
+// ---- 20. Gerencia en tablet (maquetas TG0–TG8): barra de íconos con todas las pantallas.
+WP_CLI::line( '20. Gerencia en tablet' );
+require_once ABSPATH . 'wp-admin/includes/plugin.php';
+wp_set_current_user( 1 );
+$GLOBALS['menu']    = array();
+$GLOBALS['submenu'] = array();
+\Pekokis\Asistencia\WordPress\Admin\Menu::menu();
+$riel     = \Pekokis\Asistencia\WordPress\Admin\Riel::entradas();
+$items    = array_values( array_filter( $riel, static fn( $e ) => ! $e['separador'] ) );
+$sinIcono = array_filter( $items, static fn( $e ) => 'dashicons-admin-page' === $e['icono'] );
+$comprobar( 'TG: el riel tiene cada pantalla con su ícono y separa los grupos', count( $items ) >= 18 && ! $sinIcono && 4 === count( array_filter( $riel, static fn( $e ) => $e['separador'] ) ), wp_json_encode( array_column( $sinIcono, 'slug' ) ) );
+$solic = array_values( array_filter( $items, static fn( $e ) => 'pka-solicitudes' === $e['slug'] ) )[0] ?? array();
+$comprobar( 'TG: el riel toma el número de pendientes del menú (Solicitudes)', is_int( $solic['cuenta'] ?? null ) && str_contains( (string) ( array_values( array_filter( $GLOBALS['submenu']['pka-dashboard'], static fn( $i ) => 'pka-solicitudes' === $i[2] ) )[0][0] ?? '' ), (string) $solic['cuenta'] ) );
+
 $comprobar( 'presencia por IP del taller', ( $_SERVER['REMOTE_ADDR'] = '203.0.113.10' ) && Presencia::enRedDelTaller() );
 
 // Deja los ajustes como estaban (la prueba cambia el aviso y el webhook).
