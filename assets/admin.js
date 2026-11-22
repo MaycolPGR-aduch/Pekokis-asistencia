@@ -155,6 +155,60 @@
 			} );
 		}
 
+		// Simulador de pagos: recalcula solo al escribir (pide la misma pantalla
+		// con parcial=1 y cambia el bloque de resultados). Al cambiar de persona
+		// o de mes vuelve a cargar con los valores reales de esa persona.
+		var sim = document.getElementById( 'pk-simulador' );
+		if ( sim && window.fetch && window.URLSearchParams ) {
+			var zona = document.getElementById( 'pk-sim-resultado' );
+			var espera = null;
+			var ultima = 0;
+			var pedir = function () {
+				var datos = new URLSearchParams( new FormData( sim ) );
+				datos.set( 'parcial', '1' );
+				var n = ++ultima;
+				zona.classList.add( 'pk-cargando' );
+				fetch( sim.getAttribute( 'action' ) + '?' + datos.toString(), { credentials: 'same-origin' } ).then( function ( r ) {
+					return r.text();
+				} ).then( function ( html ) {
+					if ( n !== ultima ) {
+						return;
+					}
+					var nuevo = new DOMParser().parseFromString( html, 'text/html' ).getElementById( 'pk-sim-resultado' );
+					if ( nuevo ) {
+						zona.innerHTML = nuevo.innerHTML;
+					}
+					zona.classList.remove( 'pk-cargando' );
+				} ).catch( function () {
+					zona.classList.remove( 'pk-cargando' );
+				} );
+			};
+			sim.addEventListener( 'input', function ( e ) {
+				if ( e.target.classList.contains( 'pk-sim-recarga' ) ) {
+					return;
+				}
+				clearTimeout( espera );
+				espera = setTimeout( pedir, 350 );
+			} );
+			sim.querySelectorAll( '.pk-sim-recarga' ).forEach( function ( sel ) {
+				sel.addEventListener( 'change', function () {
+					var datos = new URLSearchParams();
+					[ 'page', 'pestana', 'mes', 't' ].forEach( function ( k ) {
+						var campo = sim.elements[ k ];
+						if ( campo && campo.value ) {
+							datos.set( k, campo.value );
+						}
+					} );
+					window.location.href = sim.getAttribute( 'action' ) + '?' + datos.toString();
+				} );
+			} );
+			sim.addEventListener( 'submit', function ( e ) {
+				e.preventDefault();
+				clearTimeout( espera );
+				pedir();
+			} );
+		}
+
 		var imprimir = document.getElementById( 'pk-imprimir' );
 		if ( imprimir ) {
 			imprimir.addEventListener( 'click', function () {

@@ -11,7 +11,7 @@ Lo que tienes que hacer tú está marcado con ☐. Los nombres de los menús de 
 ## 0. Antes de empezar
 
 - ☐ **Recursos del plan.** En hPanel, revisa qué mide el 77 % de "Uso de recursos". Este sitio consume poco, pero suma archivos (unos 3.000 de WordPress y 200 del plugin) y un cron cada 5 minutos.
-- ☐ **El zip del plugin.** Ya está en `dist/pekokis-asistencia-0.19.0.zip`. Si cambia el código, se vuelve a generar con:
+- ☐ **El zip del plugin.** Ya está en `dist/pekokis-asistencia-0.20.0.zip`. Si cambia el código, se vuelve a generar con:
   ```bash
   php scripts/empaquetar.php
   ```
@@ -74,7 +74,7 @@ No lo compartas ni lo subas a git. Si algún día cambia, solo se invalidan los 
 
 ## 6. Instalar el plugin y el tema
 
-1. ☐ **Plugins → Añadir nuevo → Subir plugin:** sube `pekokis-asistencia-0.19.0.zip` y actívalo. Al activarse crea sus tablas, roles, motivos y el horario base.
+1. ☐ **Plugins → Añadir nuevo → Subir plugin:** sube `pekokis-asistencia-0.20.0.zip` y actívalo. Al activarse crea sus tablas, roles, motivos y el horario base.
 2. ☐ **Apariencia → Temas:** activa **"Pekokis Asistencia (vacío)"** y borra los demás temas, salvo uno por defecto como respaldo.
 3. ☐ Revisa **Asistencia → Ajustes → Estado del sistema.**
 
@@ -164,6 +164,7 @@ Es igual que en producción: **nunca** se llama a `wp-cron.php` por URL.
 | 37 | Pantalla del QR con el diseño de la maqueta: título y 3 pasos a la izquierda, QR con "Se actualiza en N min" (ámbar al final), pie con la fecha y la hora; al cambiar de código se pone turquesa ("Actualizando…"); sin internet dice "Sin conexión · no se puede marcar". En Seguridad y reglas → Presencia, el QR cambia cada 30 minutos | ☐ | — |
 | 38 | Horarios → Por persona: la semana de cada uno; cargar un sábado de refuerzo con "+ Cambio por un día o un periodo" y verlo en azul; Feriados con tipo, regla y estado; Auditoría con lo anterior tachado y lo nuevo en verde; Informes: bajar los 5 en Excel y en PDF | ☐ | — |
 | 39 | En el iPad de gerencia (vertical): la barra de íconos a la izquierda con los pendientes; tocar el logo para ver los nombres; Calculadora de pagos con el total arriba y la tabla reducida; la ficha en dos columnas | ☐ | — |
+| 40 | Simulador de pagos: en "¿Y si…?" sin cambiar nada debe dar lo mismo que la Calculadora; subir una tarifa y ver la diferencia; "Todo el equipo" y "Desde cero"; descargar el Excel. Comprobar que Sueldos y tarifas no cambió | ☐ | — |
 | 29 | Ajustes: QR a 30 min y la pantalla muestra la barra; "Avisos de campaña" con una fecha de hoy y ver el aviso en la app antes de marcar (y volver a dejarlo como estaba) | ☐ | ☐ |
 | 19 | Ajustes → Avisos: "Enviarme un correo de prueba"; encender "No llegó", pedir un "olvidé marcar" y ver que el correo llega al jefe (revisa también spam) | ☐ | — |
 

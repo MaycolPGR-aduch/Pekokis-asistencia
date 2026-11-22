@@ -19,7 +19,7 @@ final class Historial {
 	public const GRUPOS = array(
 		'trabajadores' => array( 'Trabajadores, celulares y ausencias', array( 'trabajador.', 'activacion.', 'passkey.', 'celular.', 'permiso.', 'ausencia.', 'aviso.' ) ),
 		'marcas'       => array( 'Marcas y correcciones', array( 'marca.', 'correccion.' ) ),
-		'pagos'        => array( 'Pagos, honorarios y recibos', array( 'sobretiempo.', 'sueldo.', 'preplanilla.', 'pago.', 'recibo.' ) ),
+		'pagos'        => array( 'Pagos, honorarios y recibos', array( 'sobretiempo.', 'sueldo.', 'preplanilla.', 'pago.', 'recibo.', 'simulador.' ) ),
 		'ajustes'      => array( 'Ajustes, horarios, calendario, redes y pantallas', array( 'ajustes.', 'horario.', 'calendario.', 'red.', 'pantalla.' ) ),
 		'exportes'     => array( 'Descargas y respaldos', array( 'registro.', 'respaldo.', 'historial.', 'informe.', 'reporte.' ) ),
 	);
@@ -85,6 +85,8 @@ final class Historial {
 		'preplanilla.descargar'  => 'Planilla de pagos descargada',
 		'informe.descargar'      => 'Informe por trabajador descargado',
 		'reporte.descargar'      => 'Informe del mes descargado',
+		'simulador.usar'         => 'Usó el simulador de pagos',
+		'simulador.descargar'    => 'Simulación de pagos descargada',
 		'ajustes.avisos'         => 'Cambio de los avisos',
 		'pago.marcar'            => 'Pago marcado como hecho',
 		'pago.desmarcar'         => 'Pago desmarcado',
@@ -125,6 +127,7 @@ final class Historial {
 		'historial.'   => array( 'Descarga', 'gris' ),
 		'informe.'     => array( 'Descarga', 'gris' ),
 		'reporte.'     => array( 'Descarga', 'gris' ),
+		'simulador.'   => array( 'Simulación', 'aviso' ),
 	);
 
 	private const CAMPOS = array(
@@ -278,7 +281,7 @@ final class Historial {
 
 		// Los sueldos solo los ve quien puede ver sueldos (Gerencia y jefes, no).
 		if ( ! current_user_can( Capacidades::VER_SUELDOS ) ) {
-			$c[] = $wpdb->prepare( 'accion NOT LIKE %s AND accion NOT LIKE %s AND accion NOT LIKE %s', 'sueldo.%', 'pago.%', 'recibo.%' );
+			$c[] = $wpdb->prepare( 'accion NOT LIKE %s AND accion NOT LIKE %s AND accion NOT LIKE %s AND accion NOT LIKE %s', 'sueldo.%', 'pago.%', 'recibo.%', 'simulador.%' );
 		}
 		$utc  = new DateTimeZone( 'UTC' );
 

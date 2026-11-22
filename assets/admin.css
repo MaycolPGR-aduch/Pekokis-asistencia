@@ -412,6 +412,24 @@ body.pk-pagina .wrap > h1 .pk-h1-der.pk-alerta { background: var(--pk-aviso-suav
 .pk-sueldos td:first-child { min-width: 190px; }
 
 
+/* Simulador de pagos. */
+.pk-sim-campos { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 0 12px; }
+.pk-sim-campos .pk-campo input { font-variant-numeric: tabular-nums; }
+.pk-sim-totales { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin-top: 8px; }
+.pk-sim-totales > div { background: var(--pk-gris-suave); border-radius: 14px; padding: 10px 12px; }
+.pk-sim-totales > div.sim { background: var(--pk-rosa-suave); }
+.pk-sim-totales span { display: block; font-size: 12px; color: var(--pk-muted); font-weight: 600; }
+.pk-sim-totales b { display: block; font-size: 20px; font-variant-numeric: tabular-nums; color: var(--pk-verde); }
+.pk-sim-totales > div.pk-sim-sube { background: var(--pk-aviso-suave); }
+.pk-sim-totales > div.pk-sim-baja { background: var(--pk-ok-suave); }
+td.pk-sim-sube { color: var(--pk-aviso); font-weight: 700; }
+td.pk-sim-baja { color: var(--pk-ok); font-weight: 700; }
+td.pk-sim-igual { color: var(--pk-muted); }
+.pk-sim-tabla td { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pk-sim-resultado .widefat td { white-space: nowrap; }
+.pk-sim-tabla tr.pk-sim-total td { border-top: 2px solid var(--pk-line); font-weight: 700; }
+#pk-sim-resultado.pk-cargando { opacity: .55; transition: opacity .15s; }
+
 /* ---------- Gerencia en tablet (maquetas TG0–TG8) ----------
    Entre 600 y 1024 px (iPad en vertical u horizontal angosto) el menú de
    WordPress se cambia por una barra de íconos: uno por pantalla, con los

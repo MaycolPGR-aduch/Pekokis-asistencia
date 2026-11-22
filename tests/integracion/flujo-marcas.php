@@ -1192,6 +1192,33 @@ $comprobar( 'TG: el riel tiene cada pantalla con su ícono y separa los grupos',
 $solic = array_values( array_filter( $items, static fn( $e ) => 'pka-solicitudes' === $e['slug'] ) )[0] ?? array();
 $comprobar( 'TG: el riel toma el número de pendientes del menú (Solicitudes)', is_int( $solic['cuenta'] ?? null ) && str_contains( (string) ( array_values( array_filter( $GLOBALS['submenu']['pka-dashboard'], static fn( $i ) => 'pka-solicitudes' === $i[2] ) )[0][0] ?? '' ), (string) $solic['cuenta'] ) );
 
+// ---- 21. Simulador de pagos: misma fórmula que la planilla y nada se guarda.
+WP_CLI::line( '21. Simulador de pagos' );
+wp_set_current_user( 1 );
+$SIM   = \Pekokis\Asistencia\WordPress\Admin\PantallaSimulador::class;
+$mes21 = substr( $hoy, 0, 7 );
+$sueldosAntes = $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Tablas::nombre( 'sueldos' ) );
+$auditAntes   = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Tablas::nombre( 'auditoria' ) . " WHERE accion LIKE 'sueldo.%' OR accion LIKE 'pago.%'" );
+$conSueldo    = array_values( array_filter( \Pekokis\Asistencia\WordPress\Informes::personas( $mes21, null ), static fn( $t ) => null !== \Pekokis\Asistencia\WordPress\Sueldos::vigente( (int) $t['id'] ) ) );
+if ( $conSueldo ) {
+	$t21  = $conSueldo[0];
+	$r21  = $SIM::calcular( $SIM::entrada( array( 'pestana' => 'persona', 'mes' => $mes21, 't' => (string) $t21['id'] ) ) );
+	$comprobar( '¿Y si…?: sin cambiar nada, lo simulado es igual a lo real (misma fórmula que la planilla)', null !== $r21['real'] && $r21['real']['montos'] === $r21['simulado']['montos'] );
+	$base = $r21['base'];
+	$r21b = $SIM::calcular( $SIM::entrada( array( 'pestana' => 'persona', 'mes' => $mes21, 't' => (string) $t21['id'], 'extra' => number_format( ( $base->tarifaExtra + 200 ) / 100, 2, '.', '' ), 'h_extra' => '3' ) ) );
+	$comprobar( '¿Y si…?: +S/ 2 la hora extra y +3 h suman lo esperado', $r21b['simulado']['minutos']['extra'] === $r21['real']['minutos']['extra'] + 180 && $r21b['simulado']['montos']['extra'] > $r21['real']['montos']['extra'] );
+}
+$e21 = $SIM::calcular( $SIM::entrada( array( 'pestana' => 'equipo', 'mes' => $mes21, 'honorario' => '100' ) ) );
+$conBase = array_filter( $e21['filas'], static fn( $f ) => null !== $f['real'] );
+$comprobar( 'Todo el equipo: +S/ 100 de honorario suma S/ 100 por cada persona con honorario', $e21['totalSimulado'] - $e21['totalReal'] === 10000 * count( $conBase ) );
+$l21 = $SIM::calcular( $SIM::entrada( array( 'pestana' => 'libre', 'honorario' => '1,800.00', 'extra' => '12', 'sabado' => '14', 'h_extra' => '6,5', 'h_sabado' => '4:00' ) ) );
+$comprobar( 'Desde cero: el ejemplo de las maquetas da S/ 1,934', 193400 === $l21['simulado']['montos']['total'] );
+$comprobar( 'El simulador no guarda sueldos ni pagos', $sueldosAntes === $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Tablas::nombre( 'sueldos' ) ) && $auditAntes === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Tablas::nombre( 'auditoria' ) . " WHERE accion LIKE 'sueldo.%' OR accion LIKE 'pago.%'" ) );
+$_GET    = array( 'page' => 'pka-simulador', 'pestana' => 'equipo' );
+$htmlSim = $dibujar( array( $SIM, 'pintar' ) );
+$_GET    = array();
+$comprobar( 'La pantalla tiene las tres pestañas y el Excel', str_contains( $htmlSim, '¿Y si…?' ) && str_contains( $htmlSim, 'Todo el equipo' ) && str_contains( $htmlSim, 'Desde cero' ) && str_contains( $htmlSim, 'pka_simulador_excel' ) );
+
 $comprobar( 'presencia por IP del taller', ( $_SERVER['REMOTE_ADDR'] = '203.0.113.10' ) && Presencia::enRedDelTaller() );
 
 // Deja los ajustes como estaban (la prueba cambia el aviso y el webhook).

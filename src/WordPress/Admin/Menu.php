@@ -28,6 +28,7 @@ final class Menu {
 		PantallaAusencias::registrar();
 		PantallaInforme::registrar();
 		PantallaPagos::registrar();
+		PantallaSimulador::registrar();
 		PantallaRecibos::registrar();
 		PantallaCalendario::registrar();
 		PantallaTrabajadores::registrar();
@@ -61,6 +62,7 @@ final class Menu {
 		self::grupo( 'pagos', 'Pagos', current_user_can( Capacidades::VER_SUELDOS ) ? Capacidades::VER_SUELDOS : Capacidades::RECIBOS );
 		add_submenu_page( $p, 'Sueldos y tarifas', 'Sueldos y tarifas', Capacidades::VER_SUELDOS, PantallaSueldos::SLUG, array( PantallaSueldos::class, 'pintar' ) );
 		add_submenu_page( $p, 'Calculadora de pagos', 'Calculadora de pagos', Capacidades::VER_SUELDOS, PantallaPagos::SLUG, array( PantallaPagos::class, 'pintar' ) );
+		add_submenu_page( $p, 'Simulador de pagos', 'Simulador de pagos', Capacidades::VER_SUELDOS, PantallaSimulador::SLUG, array( PantallaSimulador::class, 'pintar' ) );
 		add_submenu_page( $p, 'Recibos por honorarios', 'Recibos por honorarios', Capacidades::RECIBOS, PantallaRecibos::SLUG, array( PantallaRecibos::class, 'pintar' ) );
 
 		self::grupo( 'personas', 'Personas', Capacidades::GESTIONAR_PERSONAL );

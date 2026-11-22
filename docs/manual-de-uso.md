@@ -191,6 +191,13 @@ El pago del mes es el **honorario mensual** más las **horas adicionales × su t
 
 Si cambia una tarifa o se corrige un registro, el cálculo se actualiza solo. El recibo no frena el pago: puede llegar después.
 
+**Simulador de pagos** (Asistencia → Simulador de pagos; no guarda nada)
+
+- **¿Y si…?:** eliges a una persona y un mes. Se cargan sus horas reales, su honorario y sus tarifas. Cambia cualquier valor o suma o resta horas (por ejemplo, -2), y ves lo real, lo simulado y la diferencia por concepto.
+- **Todo el equipo:** sube (o baja, con signo menos) el honorario o una tarifa a todos, o suma horas a cada uno, y ves el total del mes real contra el simulado, persona por persona.
+- **Desde cero:** escribe un honorario, las tarifas y las horas, y obtienes el total con su desglose. No usa datos reales.
+- Se recalcula solo al escribir, con la misma fórmula de la Calculadora. **Descargar simulación (Excel)** la baja para compartirla. En la Auditoría solo queda que alguien usó el simulador.
+
 **Recibos por honorarios** (Asistencia → Recibos por honorarios)
 
 - Por mes, con filtros por estado: por revisar, recibidos, observados y faltan.
