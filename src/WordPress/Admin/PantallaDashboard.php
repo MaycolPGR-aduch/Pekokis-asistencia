@@ -148,7 +148,7 @@ final class PantallaDashboard {
 		foreach ( $personas as $t ) {
 			$id  = (int) $t['id'];
 			$dia = Jornadas::diaActual( $id, $ahora );
-			$r   = ResumenDia::calcular( Marcas::delDia( $id, $dia ), Horarios::delDia( (int) $t['horario_id'], $dia ), $dia, $zona, $ahora, $dia === $hoy ? ( $ausencias[ $id ][ $hoy ] ?? null ) : null );
+			$r   = ResumenDia::calcular( Marcas::delDia( $id, $dia ), Horarios::deTrabajador( $t, $dia ), $dia, $zona, $ahora, $dia === $hoy ? ( $ausencias[ $id ][ $hoy ] ?? null ) : null );
 
 			if ( in_array( $r->situacion, array( ResumenDia::LIBRE, ResumenDia::JUSTIFICADO ), true ) && Estado::FUERA === $r->estado ) {
 				continue;
@@ -160,7 +160,7 @@ final class PantallaDashboard {
 			$datos['salieron']  += ResumenDia::SALIO === $r->situacion ? 1 : 0;
 
 			if ( ResumenDia::AUSENTE === $r->situacion ) {
-				$h                   = Horarios::delDia( (int) $t['horario_id'], $dia );
+				$h                   = Horarios::deTrabajador( $t, $dia );
 				$datos['ausentes'][] = $t + array( 'desde' => $h->entrada ? substr( (string) $h->entrada, 0, 5 ) : '' );
 			}
 		}

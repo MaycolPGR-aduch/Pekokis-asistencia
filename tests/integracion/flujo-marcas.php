@@ -44,7 +44,7 @@ $api = static function ( string $metodo, string $ruta, array $cuerpo = array() )
 };
 
 // ---- Preparación: tablas vacías, una red autorizada y la IP del "WiFi del taller".
-foreach ( array( 'trabajadores', 'marcas', 'auditoria', 'credenciales', 'dispositivos', 'activaciones', 'redes', 'correcciones', 'pantallas', 'revisiones', 'calendario', 'ausencias', 'sueldos', 'avisos', 'pagos', 'recibos', 'solicitudes_celular', 'llaves_gerencia' ) as $tabla ) {
+foreach ( array( 'trabajadores', 'marcas', 'auditoria', 'credenciales', 'dispositivos', 'activaciones', 'redes', 'correcciones', 'pantallas', 'revisiones', 'calendario', 'ausencias', 'sueldos', 'avisos', 'pagos', 'recibos', 'solicitudes_celular', 'llaves_gerencia', 'horario_cambios' ) as $tabla ) {
 	$wpdb->query( 'TRUNCATE TABLE ' . Tablas::nombre( $tabla ) ); // phpcs:ignore
 }
 $wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE '\\_transient\\_pka\\_%' OR option_name LIKE '\\_transient\\_timeout\\_pka\\_%'" ); // phpcs:ignore
@@ -418,7 +418,8 @@ $comprobar( 'enlaza la marca con el día del trabajador', str_contains( $porAcci
 
 [ , $deAjustes ] = $H::buscar( array( 'grupo' => 'ajustes' ) );
 $comprobar( 'filtro por tipo (pantallas y redes)', $deAjustes >= 2, (string) $deAjustes );
-$manana = ( new DateTimeImmutable( $hoy ) )->modify( '+1 day' )->format( 'Y-m-d' );
+// Día calendario de Lima (no el día laboral: de madrugada todavía es "ayer").
+$manana = ( new DateTimeImmutable( 'now', \Pekokis\Asistencia\WordPress\Ajustes::zona() ) )->modify( '+1 day' )->format( 'Y-m-d' );
 [ , $futuro ] = $H::buscar( array( 'desde' => $manana ) );
 $comprobar( 'filtro por fecha', 0 === $futuro );
 [ $conTexto ] = $H::buscar( array( 'texto' => 'Hora equivocada' ) );
@@ -1116,6 +1117,66 @@ if ( $pend ) {
 	$comprobar( 'M4: Resolver una solicitud con las tres opciones y vuelta al celular', str_contains( $hM4, 'Aprobar tal como se pidió' ) && str_contains( $hM4, 'value="otra"' ) && str_contains( $hM4, 'name="pk_volver"' ) );
 }
 $comprobar( 'El celular tiene su propia URL (/gerencia/?v=…)', str_ends_with( $GM::url(), '/gerencia/' ) && str_contains( $GM::url( 'hoy', array( 'f' => 'ausente' ) ), 'v=hoy' ) );
+
+// ---- 19. Maquetas G5 (auditoría), G7 (horarios por persona), G9 (feriados) y G16 (informes).
+WP_CLI::line( '19. Auditoría, horarios por persona, feriados e informes' );
+wp_set_current_user( 1 );
+$H5 = \Pekokis\Asistencia\WordPress\Historial::class;
+$HO = \Pekokis\Asistencia\WordPress\Horarios::class;
+$p19 = Trabajadores::listar()[0];
+$d19 = ( new DateTimeImmutable( 'now', \Pekokis\Asistencia\WordPress\Ajustes::zona() ) )->modify( 'next saturday' )->format( 'Y-m-d' );
+
+// G7: cambio por un día.
+$sinMotivo = $HO::crearCambio( array( 'trabajador_id' => (int) $p19['id'], 'desde' => $d19, 'entrada' => '09:00', 'salida' => '14:00', 'motivo' => '' ) );
+$malHora   = $HO::crearCambio( array( 'trabajador_id' => (int) $p19['id'], 'desde' => $d19, 'entrada' => '14:00', 'salida' => '09:00', 'motivo' => 'x' ) );
+$comprobar( 'G7: un cambio de horario pide motivo y una salida después de la entrada', $sinMotivo instanceof WP_Error && isset( $sinMotivo->get_error_data()['errores']['motivo'] ) && $malHora instanceof WP_Error && isset( $malHora->get_error_data()['errores']['entrada'] ) );
+$idCambio = $HO::crearCambio( array( 'trabajador_id' => (int) $p19['id'], 'desde' => $d19, 'entrada' => '09:00', 'salida' => '14:00', 'motivo' => 'Refuerzo de campaña' ) );
+$h19      = $HO::deTrabajador( Trabajadores::buscar( (int) $p19['id'] ), $d19 );
+$comprobar( 'G7: el cambio manda sobre el horario base ese día (y queda en la auditoría)', is_int( $idCambio ) && $h19->laborable && '09:00' === substr( (string) $h19->entrada, 0, 5 ) && '14:00' === substr( (string) $h19->salida, 0, 5 ) && null !== $HO::cambioDe( (int) $p19['id'], $d19 ) && null === $HO::cambioDe( (int) $p19['id'], ( new DateTimeImmutable( $d19 ) )->modify( '+1 day' )->format( 'Y-m-d' ) ) );
+$libre = $HO::crearCambio( array( 'trabajador_id' => (int) $p19['id'], 'desde' => ( new DateTimeImmutable( $d19 ) )->modify( '+2 days' )->format( 'Y-m-d' ), 'libre' => '1', 'motivo' => 'Compensa el sábado' ) );
+$comprobar( 'G7: un día libre por cambio no es laborable', is_int( $libre ) && ! $HO::deTrabajador( Trabajadores::buscar( (int) $p19['id'] ), ( new DateTimeImmutable( $d19 ) )->modify( '+2 days' )->format( 'Y-m-d' ) )->laborable );
+$_GET     = array( 'page' => 'pka-horarios', 'semana' => $d19 );
+$htmlHor  = $dibujar( array( \Pekokis\Asistencia\WordPress\Admin\PantallaHorarios::class, 'pintar' ) );
+$_GET     = array();
+$comprobar( 'G7: la tabla por persona muestra el cambio en azul y la pestaña de horarios base', str_contains( $htmlHor, 'pk-horario-semana' ) && str_contains( $htmlHor, 'pk-hora nuevo' ) && str_contains( $htmlHor, 'Horarios base' ) && str_contains( $htmlHor, 'Cambios cargados' ) );
+$comprobar( 'G7: anular un cambio pide motivo y devuelve el horario base', $HO::anularCambio( $idCambio, '' ) instanceof WP_Error && true === $HO::anularCambio( $idCambio, 'Ya no hace falta' ) && null === $HO::cambioDe( (int) $p19['id'], $d19 ) );
+$HO::anularCambio( (int) $libre, 'Fin de la prueba' );
+$otroHorario = (int) array_keys( Trabajadores::horarios() )[0];
+$comprobar( 'G7: cambiar el horario base de una persona queda en la auditoría', true === $HO::asignar( (int) $p19['id'], $otroHorario, 'Prueba' ) && (int) Trabajadores::buscar( (int) $p19['id'] )['horario_id'] === $otroHorario );
+
+// G5: auditoría con tipo, antes tachado y después en verde.
+[ $f5 ] = $H5::buscar( array( 'trabajador' => (int) $p19['id'] ), 1, 10 );
+$i5     = $H5::describir( $f5 );
+$conCambio = array_values( array_filter( $i5, static fn( $x ) => 'Cambio de horario por un día o un periodo' === $x['accion'] ) );
+$comprobar( 'G5: cada cambio trae su tipo y cada campo su valor anterior y el nuevo', $conCambio && 'Horario' === $conCambio[0]['tipo'][0] && (bool) array_filter( $conCambio, static fn( $x ) => in_array( '09:00–14:00', array_column( $x['detalle'], 'despues' ), true ) && in_array( 'Horario', array_column( $x['detalle'], 'campo' ), true ) ) );
+$_GET    = array( 'page' => 'pka-historial' );
+$htmlAud = $dibujar( array( \Pekokis\Asistencia\WordPress\Admin\PantallaHistorial::class, 'pintar' ) );
+$_GET    = array();
+$comprobar( 'G5: la pantalla tiene Tipo, Antes y Después', str_contains( $htmlAud, '<th>Antes</th>' ) && str_contains( $htmlAud, 'pk-despues-t' ) && str_contains( $htmlAud, 'pk-chip' ) );
+
+// G9: feriados con tipo, regla de pago y estado; editar.
+$f9 = ( new DateTimeImmutable( $d19 ) )->modify( '+20 days' )->format( 'Y-m-d' );
+\Pekokis\Asistencia\WordPress\Calendario::agregar( $f9, 'Cierre de prueba', 'no_laborable' );
+$comprobar( 'G9: editar un día cambia su nombre y tipo', true === \Pekokis\Asistencia\WordPress\Calendario::editar( $f9, 'Cierre del taller', 'feriado' ) && 'Cierre del taller' === \Pekokis\Asistencia\WordPress\Calendario::delDia( $f9 )['nombre'] );
+$_GET    = array( 'page' => 'pka-calendario', 'anio' => (int) substr( $f9, 0, 4 ) );
+$htmlCal = $dibujar( array( \Pekokis\Asistencia\WordPress\Admin\PantallaCalendario::class, 'pintar' ) );
+$_GET    = array();
+$comprobar( 'G9: la tabla muestra tipo, regla de pago y estado', str_contains( $htmlCal, 'Regla de pago' ) && str_contains( $htmlCal, 'Según ley' ) && str_contains( $htmlCal, 'Próximo' ) );
+\Pekokis\Asistencia\WordPress\Calendario::quitar( $f9 );
+
+// G16: los cinco informes en tabla (Excel y PDF salen de lo mismo).
+$mes16 = substr( $hoy, 0, 7 );
+$ok16  = true;
+foreach ( array_keys( \Pekokis\Asistencia\WordPress\Reportes::TIPOS ) as $tipo ) {
+	$d16  = \Pekokis\Asistencia\WordPress\Reportes::datos( $tipo, $mes16, null );
+	$x16  = \Pekokis\Asistencia\WordPress\Reportes::excel( $tipo, $mes16, null, 'Prueba' );
+	$ok16 = $ok16 && $d16['columnas'] && str_starts_with( $x16['contenido'], 'PK' );
+}
+$comprobar( 'G16: resumen, detalle diario, horas extra, incidencias y recibos salen en Excel', $ok16 );
+$_GET    = array( 'page' => 'pka-exportar' );
+$htmlInf = $dibujar( array( \Pekokis\Asistencia\WordPress\Admin\PantallaExportar::class, 'pintar' ) );
+$_GET    = array();
+$comprobar( 'G16: la pantalla lista los informes con Excel y PDF y las descargas recientes', str_contains( $htmlInf, 'pk-informes' ) && 5 === substr_count( $htmlInf, 'pka_reporte_pdf' ) && str_contains( $htmlInf, 'Descargas recientes' ) );
 
 $comprobar( 'presencia por IP del taller', ( $_SERVER['REMOTE_ADDR'] = '203.0.113.10' ) && Presencia::enRedDelTaller() );
 

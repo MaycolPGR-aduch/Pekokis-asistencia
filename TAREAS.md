@@ -3,7 +3,7 @@
 Este archivo lleva lo hecho, lo pendiente y la bitácora del proyecto. Se actualiza cada vez que avanzamos.
 El detalle técnico de cada punto está en [docs/plan-tecnico.md](docs/plan-tecnico.md).
 
-**Estado actual:** en producción está la **0.17.0** (subida el 22-11): la pantalla del QR con el diseño de la maqueta, el QR cada 30 minutos con el modo "WiFi del taller y QR", y los arreglos de la 0.16.1. La 0.16.0 agrega: avisos por correo (fase 4); el pago por recibos por honorarios de las maquetas (honorario y tarifas, horas extra automáticas); la **calculadora de pagos** con "Ver cálculo" y "Pagado"; los **recibos por honorarios** (el trabajador los sube desde la app y gerencia los revisa); y la **app del trabajador con el diseño de las maquetas** (entra una vez con su huella y ve las pestañas Marcar, Mis horas, Mi recibo y Perfil, con "Tu día" en 4 pasos, el detalle de cada día y "Pedir corrección"); y la **etapa B**: PIN de ingreso, registro propio y cambio de celular aprobados por gerencia (Asistencia → Celulares), liberar el celular, QR de hasta 30 min, jornadas que pasan la medianoche y el recordatorio de campaña. Y el **panel de gerencia con el diseño de las maquetas** (dentro de wp-admin): menú por grupos, Dashboard, Solicitudes con "aprobar con otra hora", ficha con pestañas y delegar permisos. La cubren 150 pruebas del núcleo y 244 de punta a punta. **Siguiente:** subir la versión y confirmar con el responsable lo marcado "por confirmar" (16 h, aprobación de gerencia, vigencia del QR). También falta el correo de RR.HH., la red o pantalla del taller, cambiar `PKA_SECRETO` y hacer el piloto.
+**Estado actual:** en local está la **0.18.0**: Auditoría, Horarios por persona, Feriados e Informes con el diseño de las maquetas (G5, G7, G9, G16). En producción está la **0.17.0** (subida el 22-11): la pantalla del QR con el diseño de la maqueta, el QR cada 30 minutos con el modo "WiFi del taller y QR", y los arreglos de la 0.16.1. La 0.16.0 agrega: avisos por correo (fase 4); el pago por recibos por honorarios de las maquetas (honorario y tarifas, horas extra automáticas); la **calculadora de pagos** con "Ver cálculo" y "Pagado"; los **recibos por honorarios** (el trabajador los sube desde la app y gerencia los revisa); y la **app del trabajador con el diseño de las maquetas** (entra una vez con su huella y ve las pestañas Marcar, Mis horas, Mi recibo y Perfil, con "Tu día" en 4 pasos, el detalle de cada día y "Pedir corrección"); y la **etapa B**: PIN de ingreso, registro propio y cambio de celular aprobados por gerencia (Asistencia → Celulares), liberar el celular, QR de hasta 30 min, jornadas que pasan la medianoche y el recordatorio de campaña. Y el **panel de gerencia con el diseño de las maquetas** (dentro de wp-admin): menú por grupos, Dashboard, Solicitudes con "aprobar con otra hora", ficha con pestañas y delegar permisos. La cubren 150 pruebas del núcleo y 244 de punta a punta. **Siguiente:** subir la versión y confirmar con el responsable lo marcado "por confirmar" (16 h, aprobación de gerencia, vigencia del QR). También falta el correo de RR.HH., la red o pantalla del taller, cambiar `PKA_SECRETO` y hacer el piloto.
 
 **Estrategia:** primero un MVP con las fases 0 y 1 del plan (registro de asistencia funcionando y conforme a la norma). Después, mejoras por etapas según lo que opine gerencia.
 
@@ -246,11 +246,11 @@ Leyenda: `[x]` hecho · `[ ]` pendiente · `[~]` en curso
   - [x] **Filtros en Hoy (G2), Seguridad y reglas en pestañas (G14), inicio de sesión con la marca y Face ID (G0) y gerencia en el celular (M1–M9)**, en la 0.16.0 (ver la bitácora).
   - [ ] **Lo que falta de las maquetas** (revisado el 20-11 contra `PANTALLAS.md`, 116 pantallas; copia en `Downloads/asistencia_pekokis_para_programador/`):
     - [ ] **Gerencia en tablet (TG0–TG8, "Recomendado")**: menú en barra de íconos, cifras de a dos, tablas reducidas y paneles laterales angostos. Hoy el iPad usa la versión de computadora.
-    - [ ] **G7 Horarios por persona**: la maqueta es una tabla por persona con lo cambiado resaltado y cambios por periodo aparte; hoy son horarios plantilla que se asignan desde el perfil.
+    - [x] **G7 Horarios por persona**, en la 0.18.0: tabla semanal por persona, horario base por fila y cambios por un día o un periodo.
     - [ ] **G12B Nuevo trabajador con acceso inicial**: al guardar, la persona recibe su acceso; hoy RR.HH. genera el enlace a mano (o la persona se registra en el taller).
-    - [ ] **G16 Informes en Excel o PDF**: hoy el PDF solo está en el Informe por persona; Exportar y Resumen del mes solo dan Excel.
-    - [ ] **G5 Auditoría con estilo**: valores anteriores tachados y nuevos en verde; hoy dice "antes → después" en texto.
-    - [ ] **G9 Regla de pago por feriado**: la maqueta muestra la regla de la ley en cada feriado (por confirmar con el contador); hoy solo la tarifa de feriado.
+    - [x] **G16 Informes en Excel o PDF**, en la 0.18.0: cinco informes del mes en Excel y PDF, con las descargas recientes.
+    - [x] **G5 Auditoría como la maqueta**, en la 0.18.0: tipo en chip, lo anterior tachado y lo nuevo en verde.
+    - [x] **G9 Feriados como la maqueta**, en la 0.18.0: tipo, regla de pago y estado de cada día, y "Editar". La regla en sí (cómo paga la ley un feriado) sigue por confirmar con el contador; hoy se paga con la tarifa de feriado de cada persona.
     - [ ] Propuestas sin conversar: **trabajador en tablet (TP1–TP3)** y **trabajador en computadora (C1–C4)**, con entrada escaneando un QR con el celular. Solo consulta y recibo.
     - [x] Todo lo demás está hecho: T0–T9, P1–P2, G0–G4B, G6–G6C, G8, G10–G11B, G13–G15, G17 y M1–M9.
   - [ ] Queda fuera (por decidir): un panel propio fuera de wp-admin.
@@ -272,6 +272,27 @@ Vienen de la sección 16 del plan; se resuelven con gerencia y el contador.
 ---
 
 ## Bitácora
+
+### 22-11-2026 — versión 0.18.0: G5, G7, G9 y G16 con el diseño de las maquetas
+- **G5 · Auditoría de cambios:**
+  - Columnas Cuándo, Quién, Tipo (chip: Perfil, Registro, Solicitud, Tarifa, Pago, Recibo, Horario, Feriado, Permisos, Acceso, Celular, Reglas, Descarga), Qué cambió, Antes (tachado), Después (en verde) y Motivo.
+  - Filtros Quién, Tipo de cambio, Persona, fechas y búsqueda, más "Exportar" (CSV).
+  - Aviso al pie: nadie puede borrarla ni editarla.
+  - `Historial::describir()` trae ahora `tipo` y `detalle` (campo, antes, después); las acciones de huella o rostro de gerencia ya tienen nombre.
+- **G7 · Horarios:**
+  - Pestaña nueva **Por persona**: una tabla de la semana (‹ › cambia de semana), con el horario base de cada persona en un desplegable (lo cambiado se resalta y se cuenta; al guardar pide motivo).
+  - **+ Cambio por un día o un periodo**: un horario distinto o un día libre para una persona entre dos fechas, con motivo. Sale en azul y se anula con motivo.
+  - Tabla nueva `horario_cambios` (base de datos v11).
+  - `Horarios::deTrabajador()` aplica el cambio en todo: Hoy, Dashboard, la app, avisos, seguimiento, jornadas y pagos. En un feriado el día sigue siendo feriado para el pago.
+  - Los horarios tipo pasan a la pestaña **Horarios base**.
+- **G9 · Feriados y calendario:** cada día lleva Tipo (*Nacional* / *Del taller*), Regla de pago (*Según ley* / *No se trabaja*), Estado (*Pasado* / *Hoy* / *Próximo*) y **Editar** (nombre y tipo, o quitarlo; `Calendario::editar`). El aviso del pie explica que, si alguien trabaja ese día, se le paga con su tarifa de feriado.
+- **G16 · Informes y exportación** (el menú pasa de "Exportar" a "Informes"):
+  - Selector de mes.
+  - **Descargar un informe**: Resumen mensual por persona, Detalle diario, Horas extra, Incidencias (faltas, incompletos, por revisar, tardanzas, salidas anticipadas y correcciones) y Recibos por honorarios (solo con permiso de recibos), cada uno en **Excel** y **PDF** (página lista para imprimir). Clase nueva `Reportes`; cada jefe baja solo a su equipo.
+  - **Descargas recientes**, desde la auditoría (`reporte.descargar`).
+  - Debajo siguen el registro oficial, la planilla de pagos y el respaldo.
+- **Pruebas:** 153 unitarias y todas las de punta a punta pasan, con una sección 19 nueva de 12 comprobaciones. Corregí la prueba "filtro por fecha": de madrugada fallaba porque tomaba el día laboral y no el día calendario de Lima.
+- **En el navegador local:** las cuatro pantallas a 1280 px; un cambio de sábado 9:00–14:00 sale en azul en la semana. Los 5 informes bajan en Excel y en PDF con datos de demostración.
 
 ### 22-11-2026 — 0.17.0 en producción
 - Maycol subió la 0.17.0. Revisado en producción: el plugin dice 0.17.0 y está activo, `sw.js` sirve `pka-0.17.0` y Estado del sistema dice "✔ todo en orden". La presencia está en modo "WiFi del taller y QR" con el QR cada 30 min. El contador "0 cambios" ya no se ve. Los archivos nuevos de la pantalla cargan, `/pantalla/` responde y la API de la pantalla pide un equipo activado (401, lo esperado). La página de acceso dice "Entrar con huella o rostro" y `/gerencia/` responde.

@@ -21,7 +21,7 @@ final class Historial {
 		'marcas'       => array( 'Marcas y correcciones', array( 'marca.', 'correccion.' ) ),
 		'pagos'        => array( 'Pagos, honorarios y recibos', array( 'sobretiempo.', 'sueldo.', 'preplanilla.', 'pago.', 'recibo.' ) ),
 		'ajustes'      => array( 'Ajustes, horarios, calendario, redes y pantallas', array( 'ajustes.', 'horario.', 'calendario.', 'red.', 'pantalla.' ) ),
-		'exportes'     => array( 'Descargas y respaldos', array( 'registro.', 'respaldo.', 'historial.', 'informe.' ) ),
+		'exportes'     => array( 'Descargas y respaldos', array( 'registro.', 'respaldo.', 'historial.', 'informe.', 'reporte.' ) ),
 	);
 
 	private const ACCIONES = array(
@@ -57,6 +57,7 @@ final class Historial {
 		'aviso.aceptar'          => 'Aviso de datos aceptado',
 		'calendario.agregar'     => 'Día agregado al calendario',
 		'calendario.quitar'      => 'Día quitado del calendario',
+		'calendario.editar'      => 'Día del calendario modificado',
 		'ajustes.aviso'          => 'Aviso de datos modificado',
 		'ajustes.empleador'      => 'Cambio de los datos del empleador',
 		'ajustes.webhook'        => 'Cambio del respaldo en la nube',
@@ -64,6 +65,8 @@ final class Historial {
 		'horario.editar'         => 'Horario modificado',
 		'horario.activar'        => 'Horario activado',
 		'horario.desactivar'     => 'Horario desactivado',
+		'horario.cambio'         => 'Cambio de horario por un día o un periodo',
+		'horario.cambio_anular'  => 'Cambio de horario anulado',
 		'ajustes.modo_presencia' => 'Cambio del modo de presencia',
 		'ajustes.campana'        => 'Cambio de los avisos de campaña',
 		'ajustes.pin'            => 'Cambio del PIN de ingreso',
@@ -81,6 +84,7 @@ final class Historial {
 		'ajustes.reglas'         => 'Cambio de las reglas de horas',
 		'preplanilla.descargar'  => 'Planilla de pagos descargada',
 		'informe.descargar'      => 'Informe por trabajador descargado',
+		'reporte.descargar'      => 'Informe del mes descargado',
 		'ajustes.avisos'         => 'Cambio de los avisos',
 		'pago.marcar'            => 'Pago marcado como hecho',
 		'pago.desmarcar'         => 'Pago desmarcado',
@@ -90,6 +94,37 @@ final class Historial {
 		'recibo.observar'        => 'Recibo observado',
 		'recibo.recordar'        => 'Recordatorio de recibo',
 		'recibo.ver'             => 'PDF de recibo abierto',
+		'gerencia.llave_activada' => 'Huella o rostro activado para entrar al panel',
+		'gerencia.llave_quitada'  => 'Huella o rostro quitado del panel',
+	);
+
+	/** Tipo de cambio (maqueta G5): prefijo de acción => etiqueta y color del chip. */
+	public const TIPOS = array(
+		'correccion.'  => array( 'Solicitud', 'info' ),
+		'marca.'       => array( 'Registro', 'info' ),
+		'sueldo.'      => array( 'Tarifa', 'aviso' ),
+		'sobretiempo.' => array( 'Tarifa', 'aviso' ),
+		'pago.'        => array( 'Pago', 'aviso' ),
+		'preplanilla.' => array( 'Pago', 'aviso' ),
+		'recibo.'      => array( 'Recibo', 'aviso' ),
+		'horario.'     => array( 'Horario', 'ok' ),
+		'calendario.'  => array( 'Feriado', 'ok' ),
+		'ausencia.'    => array( 'Ausencia', 'ok' ),
+		'permiso.'     => array( 'Permisos', 'error' ),
+		'gerencia.'    => array( 'Acceso', 'error' ),
+		'celular.'     => array( 'Celular', 'gris' ),
+		'passkey.'     => array( 'Celular', 'gris' ),
+		'activacion.'  => array( 'Celular', 'gris' ),
+		'trabajador.'  => array( 'Perfil', 'gris' ),
+		'aviso.'       => array( 'Perfil', 'gris' ),
+		'ajustes.'     => array( 'Reglas', 'gris' ),
+		'red.'         => array( 'Reglas', 'gris' ),
+		'pantalla.'    => array( 'Reglas', 'gris' ),
+		'registro.'    => array( 'Descarga', 'gris' ),
+		'respaldo.'    => array( 'Descarga', 'gris' ),
+		'historial.'   => array( 'Descarga', 'gris' ),
+		'informe.'     => array( 'Descarga', 'gris' ),
+		'reporte.'     => array( 'Descarga', 'gris' ),
 	);
 
 	private const CAMPOS = array(
@@ -157,6 +192,10 @@ final class Historial {
 		'total'                       => 'Total',
 		'avisos'                      => 'Avisos encendidos',
 		'horario'                     => 'Horas y márgenes',
+		'equipo'                      => 'Equipo',
+		'horario_dia'                 => 'Horario',
+		'honorario'                   => 'Honorario y tarifas',
+		'llave_id'                    => 'Llave',
 	);
 
 	/**
@@ -180,7 +219,7 @@ final class Historial {
 	 * Convierte filas crudas en texto para personas.
 	 *
 	 * @param array<int, array<string, mixed>> $filas
-	 * @return array<int, array{id: int, fecha: string, quien: string, accion: string, sobre: string, url: string, cambios: string[], motivo: string, ip: string}>
+	 * @return array<int, array{id: int, fecha: string, cuando: string, quien: string, accion: string, tipo: array{0: string, 1: string}, sobre: string, url: string, cambios: string[], detalle: array<int, array{campo: string, antes: ?string, despues: ?string}>, motivo: string, ip: string}>
 	 */
 	public static function describir( array $filas ): array {
 		$contexto = self::contexto( $filas );
@@ -189,15 +228,20 @@ final class Historial {
 
 		foreach ( $filas as $f ) {
 			[ $sobre, $url ] = self::sobre( $f, $contexto );
+			$cuando          = ( new DateTimeImmutable( $f['creado_utc'], new DateTimeZone( 'UTC' ) ) )->setTimezone( $zona );
+			$detalle         = self::detalle( $f, $contexto );
 
 			$salida[] = array(
 				'id'      => (int) $f['id'],
-				'fecha'   => ( new DateTimeImmutable( $f['creado_utc'], new DateTimeZone( 'UTC' ) ) )->setTimezone( $zona )->format( 'd/m/Y H:i:s' ),
+				'fecha'   => $cuando->format( 'd/m/Y H:i:s' ),
+				'cuando'  => wp_date( 'j M H:i', $cuando->getTimestamp(), $zona ),
 				'quien'   => self::quien( $f, $contexto ),
 				'accion'  => self::ACCIONES[ $f['accion'] ] ?? $f['accion'],
+				'tipo'    => self::tipo( (string) $f['accion'] ),
 				'sobre'   => $sobre,
 				'url'     => $url,
-				'cambios' => self::cambios( $f, $contexto ),
+				'cambios' => self::lineas( $detalle ),
+				'detalle' => $detalle,
 				'motivo'  => (string) $f['motivo'],
 				'ip'      => (string) $f['ip'],
 			);
@@ -416,39 +460,61 @@ final class Historial {
 		}
 	}
 
+	/** Chip del tipo de cambio (maqueta G5). @return array{0: string, 1: string} */
+	public static function tipo( string $accion ): array {
+		foreach ( self::TIPOS as $prefijo => $tipo ) {
+			if ( str_starts_with( $accion, $prefijo ) ) {
+				return $tipo;
+			}
+		}
+
+		return array( 'Otro', 'gris' );
+	}
+
 	/**
-	 * "Campo: antes → después" en texto legible.
+	 * Cada campo con su valor anterior y el nuevo, en texto legible. Un campo que
+	 * solo existía antes queda con "despues" en null, y al revés.
 	 *
 	 * @param array<string, mixed> $f
-	 * @return string[]
+	 * @return array<int, array{campo: string, antes: ?string, despues: ?string}>
 	 */
-	private static function cambios( array $f, array $contexto ): array {
+	private static function detalle( array $f, array $contexto ): array {
 		$antes   = json_decode( (string) $f['antes'], true );
 		$despues = json_decode( (string) $f['despues'], true );
 		$antes   = is_array( $antes ) ? $antes : array();
 		$despues = is_array( $despues ) ? $despues : array();
-		$lineas  = array();
+		$salida  = array();
 
 		foreach ( array_unique( array_merge( array_keys( $antes ), array_keys( $despues ) ) ) as $campo ) {
-			$etiqueta = self::CAMPOS[ $campo ] ?? $campo;
-			$a        = array_key_exists( $campo, $antes ) ? self::valor( $campo, $antes[ $campo ], $contexto ) : null;
-			$d        = array_key_exists( $campo, $despues ) ? self::valor( $campo, $despues[ $campo ], $contexto ) : null;
+			$a = array_key_exists( $campo, $antes ) ? self::valor( $campo, $antes[ $campo ], $contexto ) : null;
+			$d = array_key_exists( $campo, $despues ) ? self::valor( $campo, $despues[ $campo ], $contexto ) : null;
 
 			// Un campo vacío que no cambió nada (por ejemplo, "Motivo" en una entrada) no aporta.
 			if ( ( null === $a || '—' === $a ) && '—' === $d ) {
 				continue;
 			}
 
-			if ( null !== $a && null !== $d ) {
-				$lineas[] = $etiqueta . ': ' . $a . ' → ' . $d;
-			} elseif ( null !== $d ) {
-				$lineas[] = $etiqueta . ': ' . $d;
-			} else {
-				$lineas[] = $etiqueta . ': ' . $a . ' (antes)';
-			}
+			$salida[] = array( 'campo' => self::CAMPOS[ $campo ] ?? $campo, 'antes' => $a, 'despues' => $d );
 		}
 
-		return $lineas;
+		return $salida;
+	}
+
+	/**
+	 * "Campo: antes → después" en una línea (CSV y ficha).
+	 *
+	 * @param array<int, array{campo: string, antes: ?string, despues: ?string}> $detalle
+	 * @return string[]
+	 */
+	private static function lineas( array $detalle ): array {
+		return array_map(
+			static fn( array $c ): string => match ( true ) {
+				null !== $c['antes'] && null !== $c['despues'] => $c['campo'] . ': ' . $c['antes'] . ' → ' . $c['despues'],
+				null !== $c['despues'] => $c['campo'] . ': ' . $c['despues'],
+				default => $c['campo'] . ': ' . $c['antes'] . ' (antes)',
+			},
+			$detalle
+		);
 	}
 
 	private static function valor( string $campo, mixed $valor, array $contexto ): string {

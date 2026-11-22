@@ -295,6 +295,12 @@ Decidido el 14-11-2026, siguiendo las maquetas entregadas por Pekokis (`CONTEXTO
 - **Mis horas (T5/T6):** horas, extra y días completos (sin dinero), "Te falta marcar", calendario con cada día tocable y el detalle con sus pasos, otras salidas y correcciones pedidas. "Pedir corrección" manda la hora, qué pasó y un comentario a `POST /correcciones`.
 - **Perfil (T7):** DNI oculto; "Ver" lo trae con `POST /yo/dni` y queda en el historial.
 
+### 6.14 Auditoría, horarios por persona, feriados e informes (versión 0.18.0)
+
+- `Horarios::deTrabajador( $t, $dia )` reemplaza a `delDia( horario_id, dia )` en todos los cálculos: primero mira `horario_cambios` (trabajador, desde, hasta, laborable, entrada, salida, motivo, estado vigente/anulado), después el horario base. En un feriado devuelve el horario del cambio con `feriado = true`, para que se pague como feriado.
+- `Reportes` arma cada informe de G16 como columnas y filas; `PantallaExportar::reporteExcel()` lo baja con SimpleXLSXGen y `reportePdf()` lo pinta en una página con `imprimir.css`.
+- `Historial::describir()` devuelve `tipo` (chip) y `detalle` (campo, antes, después) para la Auditoría (G5).
+
 ### 6.13 Acceso de gerencia y gerencia en el celular (versión 0.16.0)
 
 - `AccesoGerencia` (G0): estilos de `wp-login.php` (`assets/login.css` y `login.js`); passkeys de gerencia en `llaves_gerencia` (user_id, credential_hash único, public_key, sign_count, revocada_en), con `userHandle` = HMAC('gerencia|id'), distinto del de los trabajadores. Rutas: `POST gerencia/entrar/opciones` y `gerencia/entrar` (públicas, con bloqueo por IP compartido con el login), y `gerencia/llave/opciones`, `gerencia/llave` y `gerencia/llave/quitar` (con sesión y nonce). `destino()` lleva al celular cuando se entra desde un celular sin un destino pedido.

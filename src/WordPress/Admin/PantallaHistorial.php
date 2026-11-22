@@ -11,7 +11,8 @@ use Pekokis\Asistencia\WordPress\Trabajadores;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Asistencia → Historial: quién hizo qué, cuándo y por qué.
+ * Asistencia → Auditoría (maqueta G5): quién cambió qué, cuándo, con el valor
+ * anterior tachado, el nuevo en verde y el motivo. Solo lectura.
  */
 final class PantallaHistorial {
 	public const SLUG = 'pka-historial';
@@ -45,74 +46,87 @@ final class PantallaHistorial {
 		?>
 		<div class="wrap">
 			<?php Avisos::mostrar(); ?>
-			<h1>Historial de cambios</h1>
+			<h1>Auditoría de cambios <span class="pk-h1-der"><?php echo esc_html( number_format_i18n( $total ) . ( 1 === $total ? ' cambio' : ' cambios' ) ); ?></span></h1>
 
 			<?php if ( null !== $rota ) : ?>
-				<div class="notice notice-error inline"><p><strong>El historial fue alterado desde el registro <?php echo (int) $rota; ?>.</strong> Alguien lo editó o borró directamente en la base de datos.</p></div>
-			<?php else : ?>
-				<p>✔ El historial está íntegro: nadie lo alteró fuera del sistema. Los registros no se pueden editar ni borrar.</p>
+				<div class="notice notice-error inline"><p><strong>La auditoría fue alterada desde el registro <?php echo (int) $rota; ?>.</strong> Alguien la editó o borró directamente en la base de datos.</p></div>
 			<?php endif; ?>
 
-			<form class="pk-fila abajo espacio" method="get">
+			<form class="pk-fila espacio" method="get">
 				<input type="hidden" name="page" value="<?php echo esc_attr( self::SLUG ); ?>">
-				<p class="pk-m0"><label for="pka-h-desde">Desde</label><br><input type="date" id="pka-h-desde" name="desde" value="<?php echo esc_attr( $filtros['desde'] ); ?>"></p>
-				<p class="pk-m0"><label for="pka-h-hasta">Hasta</label><br><input type="date" id="pka-h-hasta" name="hasta" value="<?php echo esc_attr( $filtros['hasta'] ); ?>"></p>
-				<p class="pk-m0">
-					<label for="pka-h-grupo">Tipo</label><br>
-					<select id="pka-h-grupo" name="grupo">
-						<option value="">Todo</option>
-						<?php foreach ( Historial::GRUPOS as $clave => [ $etiqueta ] ) : ?>
-							<option value="<?php echo esc_attr( $clave ); ?>" <?php selected( $filtros['grupo'], $clave ); ?>><?php echo esc_html( $etiqueta ); ?></option>
-						<?php endforeach; ?>
-					</select>
-				</p>
-				<p class="pk-m0">
-					<label for="pka-h-trabajador">Trabajador</label><br>
-					<select id="pka-h-trabajador" name="trabajador">
-						<option value="0">Todos</option>
-						<?php foreach ( $trabajadores as $t ) : ?>
-							<option value="<?php echo esc_attr( $t['id'] ); ?>" <?php selected( $filtros['trabajador'], (int) $t['id'] ); ?>><?php echo esc_html( $t['apellidos'] . ', ' . $t['nombres'] ); ?></option>
-						<?php endforeach; ?>
-					</select>
-				</p>
-				<p class="pk-m0">
-					<label for="pka-h-usuario">Hecho por</label><br>
-					<select id="pka-h-usuario" name="usuario">
-						<option value="0">Cualquiera</option>
-						<?php foreach ( $usuarios as $uid => $nombre ) : ?>
-							<option value="<?php echo esc_attr( (string) $uid ); ?>" <?php selected( $filtros['usuario'], $uid ); ?>><?php echo esc_html( $nombre ); ?></option>
-						<?php endforeach; ?>
-					</select>
-				</p>
-				<p class="pk-m0"><label for="pka-h-texto">Buscar en motivos y datos</label><br><input type="search" id="pka-h-texto" name="texto" value="<?php echo esc_attr( $filtros['texto'] ); ?>"></p>
-				<p class="pk-m0"><button class="button button-primary">Filtrar</button> <a class="button" href="<?php echo esc_url( self::url() ); ?>">Limpiar</a></p>
+				<label class="screen-reader-text" for="pka-h-usuario">Quién</label>
+				<select id="pka-h-usuario" name="usuario">
+					<option value="0">Quién: todos</option>
+					<?php foreach ( $usuarios as $uid => $nombre ) : ?>
+						<option value="<?php echo esc_attr( (string) $uid ); ?>" <?php selected( $filtros['usuario'], $uid ); ?>><?php echo esc_html( $nombre ); ?></option>
+					<?php endforeach; ?>
+				</select>
+				<label class="screen-reader-text" for="pka-h-grupo">Tipo de cambio</label>
+				<select id="pka-h-grupo" name="grupo">
+					<option value="">Tipo de cambio: todos</option>
+					<?php foreach ( Historial::GRUPOS as $clave => [ $etiqueta ] ) : ?>
+						<option value="<?php echo esc_attr( $clave ); ?>" <?php selected( $filtros['grupo'], $clave ); ?>><?php echo esc_html( $etiqueta ); ?></option>
+					<?php endforeach; ?>
+				</select>
+				<label class="screen-reader-text" for="pka-h-trabajador">Persona</label>
+				<select id="pka-h-trabajador" name="trabajador">
+					<option value="0">Persona: todas</option>
+					<?php foreach ( $trabajadores as $t ) : ?>
+						<option value="<?php echo esc_attr( $t['id'] ); ?>" <?php selected( $filtros['trabajador'], (int) $t['id'] ); ?>><?php echo esc_html( $t['apellidos'] . ', ' . $t['nombres'] ); ?></option>
+					<?php endforeach; ?>
+				</select>
+				<label for="pka-h-desde">Del</label>
+				<input type="date" id="pka-h-desde" name="desde" value="<?php echo esc_attr( $filtros['desde'] ); ?>">
+				<label for="pka-h-hasta">al</label>
+				<input type="date" id="pka-h-hasta" name="hasta" value="<?php echo esc_attr( $filtros['hasta'] ); ?>">
+				<label class="screen-reader-text" for="pka-h-texto">Buscar en motivos y datos</label>
+				<input type="search" id="pka-h-texto" name="texto" placeholder="Buscar en motivos y datos" value="<?php echo esc_attr( $filtros['texto'] ); ?>">
+				<button class="button">Filtrar</button>
+				<?php if ( array_filter( $filtros ) ) : ?>
+					<a class="button-link" href="<?php echo esc_url( self::url() ); ?>">Limpiar</a>
+				<?php endif; ?>
+				<?php if ( $total ) : ?>
+					<a class="button" href="<?php echo esc_url( wp_nonce_url( add_query_arg( array( 'action' => 'pka_exportar_historial' ) + array_filter( $filtros ), admin_url( 'admin-post.php' ) ), 'pka_exportar_historial' ) ); ?>">Exportar</a>
+				<?php endif; ?>
 			</form>
 
-			<p>
-				<?php echo esc_html( number_format_i18n( $total ) . ( 1 === $total ? ' registro' : ' registros' ) ); ?>
-				<?php if ( $total ) : ?>
-					· <a href="<?php echo esc_url( wp_nonce_url( add_query_arg( array( 'action' => 'pka_exportar_historial' ) + array_filter( $filtros ), admin_url( 'admin-post.php' ) ), 'pka_exportar_historial' ) ); ?>">Descargar CSV</a>
-				<?php endif; ?>
-			</p>
-
-			<table class="widefat striped">
-				<thead><tr><th>Fecha</th><th>Quién</th><th>Qué</th><th>Sobre</th><th>Cambios</th><th>Motivo</th></tr></thead>
-				<tbody>
-				<?php if ( ! $items ) : ?>
-					<tr><td colspan="6">No hay registros con estos filtros.</td></tr>
-				<?php endif; ?>
-				<?php foreach ( $items as $i ) : ?>
-					<tr>
-						<td><?php echo esc_html( $i['fecha'] ); ?><br><span class="description" title="IP"><?php echo esc_html( $i['ip'] ); ?></span></td>
-						<td><?php echo esc_html( $i['quien'] ); ?></td>
-						<td><strong><?php echo esc_html( $i['accion'] ); ?></strong></td>
-						<td><?php echo '' !== $i['url'] ? '<a href="' . esc_url( $i['url'] ) . '">' . esc_html( $i['sobre'] ) . '</a>' : esc_html( $i['sobre'] ); ?></td>
-						<td><?php echo $i['cambios'] ? implode( '<br>', array_map( 'esc_html', $i['cambios'] ) ) : '—'; ?></td>
-						<td><?php echo esc_html( $i['motivo'] ); ?></td>
-					</tr>
-				<?php endforeach; ?>
-				</tbody>
-			</table>
+			<div class="pk-desplaza">
+				<table class="widefat striped pk-auditoria">
+					<thead><tr><th>Cuándo</th><th>Quién</th><th>Tipo</th><th>Qué cambió</th><th>Antes</th><th>Después</th><th>Motivo</th></tr></thead>
+					<tbody>
+					<?php if ( ! $items ) : ?>
+						<tr><td colspan="7">No hay cambios con estos filtros.</td></tr>
+					<?php endif; ?>
+					<?php foreach ( $items as $i ) : ?>
+						<tr>
+							<td class="pk-nowrap" title="<?php echo esc_attr( $i['fecha'] . ' · IP ' . $i['ip'] ); ?>"><?php echo esc_html( $i['cuando'] ); ?></td>
+							<td><?php echo esc_html( $i['quien'] ); ?></td>
+							<td><span class="pk-chip <?php echo esc_attr( $i['tipo'][1] ); ?>"><?php echo esc_html( $i['tipo'][0] ); ?></span></td>
+							<td class="pk-ancho">
+								<?php echo esc_html( $i['accion'] ); ?>
+								<?php if ( '' !== $i['sobre'] ) : ?>
+									· <?php echo '' !== $i['url'] ? '<a href="' . esc_url( $i['url'] ) . '">' . esc_html( $i['sobre'] ) . '</a>' : esc_html( $i['sobre'] ); ?>
+								<?php endif; ?>
+							</td>
+							<td>
+								<?php $conAntes = array_filter( $i['detalle'], static fn( $c ) => null !== $c['antes'] && '—' !== $c['antes'] ); ?>
+								<?php foreach ( $conAntes as $c ) : ?>
+									<span class="pk-cambio"><span class="pk-campo-de"><?php echo esc_html( $c['campo'] ); ?></span> <s class="pk-antes-t"><?php echo esc_html( $c['antes'] ); ?></s></span>
+								<?php endforeach; ?>
+								<?php echo $conAntes ? '' : '<span class="description">—</span>'; ?>
+							</td>
+							<td>
+								<?php foreach ( $i['detalle'] as $c ) : ?>
+									<span class="pk-cambio"><span class="pk-campo-de"><?php echo esc_html( $c['campo'] ); ?></span> <?php echo null !== $c['despues'] ? '<span class="pk-despues-t">' . esc_html( $c['despues'] ) . '</span>' : '<span class="description">quitado</span>'; ?></span>
+								<?php endforeach; ?>
+								<?php echo $i['detalle'] ? '' : '<span class="description">—</span>'; ?>
+							</td>
+							<td class="pk-ancho"><?php echo '' !== $i['motivo'] ? esc_html( $i['motivo'] ) : '<span class="description">—</span>'; ?></td>
+						</tr>
+					<?php endforeach; ?>
+					</tbody>
+				</table>
+			</div>
 
 			<?php if ( $paginas > 1 ) : ?>
 				<div class="tablenav"><div class="tablenav-pages">
@@ -132,6 +146,10 @@ final class PantallaHistorial {
 					?>
 				</div></div>
 			<?php endif; ?>
+
+			<p class="description pk-mt-s">
+				<?php echo null === $rota ? '✔ Íntegra. ' : ''; ?>Nadie puede borrar ni editar esta lista. Cada cambio guarda quién, cuándo, el valor anterior y el nuevo, y el motivo.
+			</p>
 		</div>
 		<?php
 	}

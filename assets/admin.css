@@ -348,6 +348,32 @@ body.pk-pagina table.widefat tr.pk-fila-alerta > td { background: #FFF5F4; }
 body.pk-pagina table.widefat tr.pk-fila-elegida > td { background: var(--pk-rosa-suave); }
 body.pk-pagina table.widefat td .pk-chip { margin: 1px 2px 1px 0; }
 
+/* Auditoría (maqueta G5): lo anterior tachado y lo nuevo en verde. */
+.pk-auditoria td { vertical-align: top; }
+.pk-auditoria .pk-ancho { min-width: 180px; }
+.pk-cambio { display: block; margin: 0 0 3px; }
+.pk-campo-de { display: block; font-size: 11px; color: var(--pk-muted); }
+.pk-antes-t { color: var(--pk-muted); text-decoration: line-through; }
+.pk-despues-t { color: var(--pk-ok); font-weight: 600; }
+.pk-nowrap { white-space: nowrap; }
+
+/* Horarios por persona (maqueta G7). */
+.pk-horario-semana td { vertical-align: middle; }
+.pk-horario-semana th .pk-dia-num { color: var(--pk-muted); font-weight: 500; }
+.pk-hora { display: inline-block; padding: 2px 9px; border-radius: var(--pk-pildora); background: var(--pk-rosa-suave); color: var(--pk-rosa-oscuro); font-size: 12px; font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.pk-hora.nuevo { background: var(--pk-info-suave); color: var(--pk-info); }
+.pk-libre { color: var(--pk-muted); }
+.pk-max-m { max-width: 980px; }
+
+/* Informes y exportación (maqueta G16). */
+.pk-informes, .pk-recientes { list-style: none; margin: 0; padding: 0; }
+.pk-informes li { display: flex; align-items: center; gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--pk-line); }
+.pk-informes li:last-child { border-bottom: 0; }
+.pk-informes li > div, .pk-recientes li > div { flex: 1; min-width: 0; }
+.pk-informes span, .pk-recientes span:not(.dashicons) { display: block; color: var(--pk-muted); font-size: 12.5px; }
+.pk-recientes li { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; }
+.pk-recientes .dashicons { color: var(--pk-rosa); }
+
 /* Panel lateral para editar (se abre a la derecha, encima de la lista). */
 .pk-panel {
 	position: fixed;

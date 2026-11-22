@@ -8,18 +8,22 @@ use Pekokis\Asistencia\WordPress\Capacidades;
 use Pekokis\Asistencia\WordPress\Exportes;
 use Pekokis\Asistencia\WordPress\InsercionEncadenada;
 use Pekokis\Asistencia\WordPress\PrePlanillas;
+use Pekokis\Asistencia\WordPress\Reportes;
 use Pekokis\Asistencia\WordPress\Respaldo;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Asistencia → Exportar: descargar el registro mensual y el respaldo por correo.
+ * Asistencia → Informes y exportación (maqueta G16): cada informe del mes en
+ * Excel o PDF, las descargas recientes, el registro oficial y el respaldo.
  */
 final class PantallaExportar {
 	public const SLUG = 'pka-exportar';
 
 	public static function registrar(): void {
 		add_action( 'admin_post_pka_descargar_registro', array( self::class, 'descargar' ) );
+		add_action( 'admin_post_pka_reporte_excel', array( self::class, 'reporteExcel' ) );
+		add_action( 'admin_post_pka_reporte_pdf', array( self::class, 'reportePdf' ) );
 		add_action( 'admin_post_pka_descargar_preplanilla', array( self::class, 'descargarPrePlanilla' ) );
 		add_action( 'admin_post_pka_enviar_respaldo', array( self::class, 'enviar' ) );
 		add_action( 'admin_post_pka_correo_respaldo', array( self::class, 'guardarCorreo' ) );
@@ -31,21 +35,62 @@ final class PantallaExportar {
 			wp_die( 'No tienes permiso para ver esta página.' );
 		}
 
-		$meses = Exportes::meses();
-		$rota  = InsercionEncadenada::verificar( 'marcas' );
+		$meses   = Exportes::meses();
+		$rota    = InsercionEncadenada::verificar( 'marcas' );
+		$pedido  = isset( $_GET['mes'] ) ? sanitize_text_field( wp_unslash( $_GET['mes'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$mesSel  = in_array( $pedido, $meses, true ) ? $pedido : ( $meses[0] ?? wp_date( 'Y-m' ) );
+		$recient = Reportes::recientes();
 		?>
 		<div class="wrap">
 			<?php Avisos::mostrar(); ?>
-			<h1>Exportar registro de asistencia</h1>
+			<h1>Informes y exportación <span class="pk-h1-der"><?php echo esc_html( ucfirst( Reportes::mesLargo( $mesSel ) ) ); ?></span></h1>
 
 			<?php if ( null !== $rota ) : ?>
 				<div class="notice notice-error inline"><p><strong>La cadena de marcas está rota desde la marca <?php echo (int) $rota; ?>.</strong> Alguien editó o borró marcas directamente en la base de datos. Avisa al administrador.</p></div>
-			<?php else : ?>
-				<p>✔ La cadena de marcas está íntegra: nadie las alteró fuera del sistema.</p>
 			<?php endif; ?>
 
-			<h2>Descargar</h2>
-			<p>El Excel trae el registro diario (ingreso y salida por trabajador), todas las marcas (incluidas las anuladas) y una hoja de integridad.</p>
+			<form method="get" class="pk-fila espacio pk-mt-s">
+				<input type="hidden" name="page" value="<?php echo esc_attr( self::SLUG ); ?>">
+				<label for="pka-inf-mes">Mes</label>
+				<select id="pka-inf-mes" name="mes">
+					<?php foreach ( $meses as $mes ) : ?>
+						<option value="<?php echo esc_attr( $mes ); ?>" <?php selected( $mesSel, $mes ); ?>><?php echo esc_html( ucfirst( Reportes::mesLargo( $mes ) ) ); ?></option>
+					<?php endforeach; ?>
+				</select>
+				<button class="button">Ver</button>
+			</form>
+
+			<div class="pk-dos">
+				<div class="pk-caja">
+					<h2>Descargar un informe</h2>
+					<ul class="pk-informes">
+						<?php foreach ( Reportes::permitidos() as $tipo ) : ?>
+							<li>
+								<div><strong><?php echo esc_html( Reportes::TIPOS[ $tipo ][0] ); ?></strong><span><?php echo esc_html( Reportes::TIPOS[ $tipo ][1] ); ?></span></div>
+								<a class="button" href="<?php echo esc_url( Menu::urlAccion( 'pka_reporte_excel', array( 'tipo' => $tipo, 'mes' => $mesSel ) ) ); ?>">Excel</a>
+								<a class="button" target="_blank" rel="noopener" href="<?php echo esc_url( Menu::urlAccion( 'pka_reporte_pdf', array( 'tipo' => $tipo, 'mes' => $mesSel ) ) ); ?>">PDF</a>
+							</li>
+						<?php endforeach; ?>
+					</ul>
+					<p class="description">Cada jefe baja solo a su equipo. El PDF se abre listo para imprimir o guardar como PDF.</p>
+				</div>
+				<div class="pk-caja">
+					<h2>Descargas recientes</h2>
+					<?php if ( ! $recient ) : ?>
+						<p class="description">Todavía no se ha descargado ningún informe.</p>
+					<?php else : ?>
+						<ul class="pk-recientes">
+							<?php foreach ( $recient as $r ) : ?>
+								<li><span class="dashicons dashicons-media-spreadsheet" aria-hidden="true"></span><div><strong><?php echo esc_html( $r['titulo'] ); ?></strong><span><?php echo esc_html( $r['detalle'] ); ?></span></div></li>
+							<?php endforeach; ?>
+						</ul>
+					<?php endif; ?>
+					<p class="description"><?php echo null === $rota ? '✔ La cadena de marcas está íntegra: nadie las alteró fuera del sistema.' : ''; ?></p>
+				</div>
+			</div>
+
+			<h2 class="pk-mt">Registro oficial de asistencia</h2>
+			<p>El Excel trae el registro diario (ingreso y salida por trabajador), todas las marcas (incluidas las anuladas) y una hoja de integridad. Es el que se guarda 5 años.</p>
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 				<input type="hidden" name="action" value="pka_descargar_registro">
 				<?php wp_nonce_field( 'pka_descargar_registro' ); ?>
@@ -128,6 +173,83 @@ final class PantallaExportar {
 		header( 'X-Content-SHA256: ' . $xls['hash'] );
 		echo $xls['contenido']; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- archivo binario.
 		exit;
+	}
+
+	/** Un informe de la maqueta G16 en Excel. */
+	public static function reporteExcel(): void {
+		[ $tipo, $mes ] = self::reportePedido( 'pka_reporte_excel' );
+		$xls            = Reportes::excel( $tipo, $mes, PantallaHoy::alcance(), wp_get_current_user()->display_name );
+
+		Auditoria::registrar( 'reporte.descargar', 'registro', null, null, array( 'reporte' => Reportes::TIPOS[ $tipo ][0], 'mes' => $mes, 'formato' => 'Excel', 'hash' => $xls['hash'] ) );
+
+		nocache_headers();
+		header( 'Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' );
+		header( 'Content-Disposition: attachment; filename="' . $xls['nombre'] . '"' );
+		header( 'Content-Length: ' . strlen( $xls['contenido'] ) );
+		echo $xls['contenido']; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- archivo binario.
+		exit;
+	}
+
+	/** Un informe de la maqueta G16 en una página lista para imprimir o guardar como PDF. */
+	public static function reportePdf(): void {
+		[ $tipo, $mes ] = self::reportePedido( 'pka_reporte_pdf' );
+		$d              = Reportes::datos( $tipo, $mes, PantallaHoy::alcance() );
+		$aj             = Ajustes::todos();
+		$numero         = static fn( mixed $v ): string => is_float( $v ) ? number_format_i18n( $v, 2 ) : (string) $v;
+
+		Auditoria::registrar( 'reporte.descargar', 'registro', null, null, array( 'reporte' => Reportes::TIPOS[ $tipo ][0], 'mes' => $mes, 'formato' => 'PDF' ) );
+
+		nocache_headers();
+		?>
+		<!doctype html>
+		<html lang="es">
+		<head>
+			<meta charset="utf-8">
+			<meta name="viewport" content="width=device-width, initial-scale=1">
+			<title><?php echo esc_html( $d['titulo'] ); ?></title>
+			<link rel="stylesheet" href="<?php echo esc_url( \Pekokis\Asistencia\WordPress\Rutas::asset( 'tokens.css' ) ); ?>">
+			<link rel="stylesheet" href="<?php echo esc_url( \Pekokis\Asistencia\WordPress\Rutas::asset( 'componentes.css' ) ); ?>">
+			<link rel="stylesheet" href="<?php echo esc_url( \Pekokis\Asistencia\WordPress\Rutas::asset( 'imprimir.css' ) ); ?>">
+		</head>
+		<body>
+			<div class="pk-barra-imprimir"><button type="button" id="pk-imprimir">Imprimir o guardar como PDF</button></div>
+			<script src="<?php echo esc_url( \Pekokis\Asistencia\WordPress\Rutas::asset( 'admin.js' ) ); ?>"></script>
+			<h1><?php echo esc_html( (string) $aj['razon_social'] ); ?> · RUC <?php echo esc_html( (string) $aj['ruc'] ); ?></h1>
+			<h2><?php echo esc_html( ucfirst( $d['titulo'] ) ); ?></h2>
+			<p class="description">Generado el <?php echo esc_html( wp_date( 'Y-m-d H:i', null, Ajustes::zona() ) ); ?> por <?php echo esc_html( wp_get_current_user()->display_name ); ?>.</p>
+			<table class="widefat">
+				<thead><tr><?php foreach ( $d['columnas'] as $c ) : ?><th><?php echo esc_html( $c ); ?></th><?php endforeach; ?></tr></thead>
+				<tbody>
+				<?php if ( ! $d['filas'] ) : ?>
+					<tr><td colspan="<?php echo count( $d['columnas'] ); ?>">No hay nada que mostrar en este mes.</td></tr>
+				<?php endif; ?>
+				<?php foreach ( $d['filas'] as $f ) : ?>
+					<tr><?php foreach ( $f as $v ) : ?><td><?php echo esc_html( $numero( $v ) ); ?></td><?php endforeach; ?></tr>
+				<?php endforeach; ?>
+				</tbody>
+			</table>
+		</body>
+		</html>
+		<?php
+		exit;
+	}
+
+	/** @return array{0: string, 1: string} Tipo y mes, verificados. */
+	private static function reportePedido( string $accion ): array {
+		if ( ! current_user_can( Capacidades::EXPORTAR ) ) {
+			wp_die( 'No tienes permiso para hacer esto.', 403 );
+		}
+
+		check_admin_referer( $accion );
+
+		$tipo = isset( $_GET['tipo'] ) ? sanitize_key( wp_unslash( $_GET['tipo'] ) ) : '';
+		$mes  = isset( $_GET['mes'] ) ? sanitize_text_field( wp_unslash( $_GET['mes'] ) ) : '';
+
+		if ( ! in_array( $tipo, Reportes::permitidos(), true ) || ! in_array( $mes, Exportes::meses(), true ) ) {
+			wp_die( 'Informe o mes no válido.', 400 );
+		}
+
+		return array( $tipo, $mes );
 	}
 
 	public static function descargarPrePlanilla(): void {

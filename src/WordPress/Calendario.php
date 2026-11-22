@@ -73,6 +73,38 @@ final class Calendario {
 		return true;
 	}
 
+	/** Cambia el nombre o el tipo de un día ya cargado (maqueta G9, "Editar"). */
+	public static function editar( string $fecha, string $nombre, string $tipo ): true|WP_Error {
+		global $wpdb;
+
+		$antes  = self::delDia( $fecha );
+		$nombre = mb_substr( trim( $nombre ), 0, 120 );
+
+		if ( null === $antes ) {
+			return new WP_Error( 'pka_no_existe', 'Esa fecha no está en el calendario.' );
+		}
+
+		if ( '' === $nombre ) {
+			return new WP_Error( 'pka_nombre', 'Escribe el nombre del feriado.' );
+		}
+
+		if ( ! isset( self::TIPOS[ $tipo ] ) ) {
+			return new WP_Error( 'pka_tipo', 'Tipo de día desconocido.' );
+		}
+
+		if ( $antes['nombre'] === $nombre && $antes['tipo'] === $tipo ) {
+			return true;
+		}
+
+		$wpdb->update( Tablas::nombre( 'calendario' ), array( 'nombre' => $nombre, 'tipo' => $tipo ), array( 'fecha' => $fecha ) );
+
+		self::$cache = null;
+		Horarios::limpiarCache();
+		Auditoria::registrar( 'calendario.editar', 'calendario', null, array( 'fecha' => $fecha ) + $antes, array( 'fecha' => $fecha, 'nombre' => $nombre, 'tipo' => $tipo ) );
+
+		return true;
+	}
+
 	public static function quitar( string $fecha ): true|WP_Error {
 		global $wpdb;
 

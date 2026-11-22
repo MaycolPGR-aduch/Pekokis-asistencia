@@ -82,7 +82,7 @@ final class PantallaHoy {
 
 			// Quien sigue en la jornada de ayer (pasó la medianoche) se muestra con esa jornada.
 			$diaT    = \Pekokis\Asistencia\WordPress\Jornadas::diaActual( (int) $t['id'], $ahora );
-			$resumen = ResumenDia::calcular( Marcas::delDia( (int) $t['id'], $diaT ), Horarios::delDia( (int) $t['horario_id'], $diaT ), $diaT, $zona, $ahora, $diaT === $dia ? ( $ausencias[ (int) $t['id'] ][ $dia ] ?? null ) : null );
+			$resumen = ResumenDia::calcular( Marcas::delDia( (int) $t['id'], $diaT ), Horarios::deTrabajador( $t, $diaT ), $diaT, $zona, $ahora, $diaT === $dia ? ( $ausencias[ (int) $t['id'] ][ $dia ] ?? null ) : null );
 			$cuentas[ $resumen->situacion ]++;
 			$filas[] = array( 't' => $t, 'r' => $resumen, 'dia' => $diaT );
 		}

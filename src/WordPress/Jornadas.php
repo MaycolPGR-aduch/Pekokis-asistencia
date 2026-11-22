@@ -43,7 +43,7 @@ final class Jornadas {
 
 				$resultado[ $id ][ $dia ] = CalculoJornada::calcular(
 					$marcas[ $id ][ $dia ] ?? array(),
-					Horarios::delDia( (int) $t['horario_id'], $dia ),
+					Horarios::deTrabajador( $t, $dia ),
 					$dia,
 					$zona,
 					$reglas,

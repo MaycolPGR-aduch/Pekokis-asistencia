@@ -51,7 +51,7 @@ final class Seguimiento {
 
 				if ( $delDia && TotalesDia::calcular( $delDia )->incompleto ) {
 					$pendientes[] = array( 'trabajador' => $t, 'dia' => $dia, 'tipo' => self::INCOMPLETO );
-				} elseif ( ! $delDia && ! isset( $ausencias[ $id ][ $dia ] ) && Horarios::delDia( (int) $t['horario_id'], $dia )->laborable ) {
+				} elseif ( ! $delDia && ! isset( $ausencias[ $id ][ $dia ] ) && Horarios::deTrabajador( $t, $dia )->laborable ) {
 					$pendientes[] = array( 'trabajador' => $t, 'dia' => $dia, 'tipo' => self::FALTA );
 				}
 			}

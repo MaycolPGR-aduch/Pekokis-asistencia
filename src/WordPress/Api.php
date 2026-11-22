@@ -412,7 +412,7 @@ final class Api {
 		}
 
 		$zona    = Ajustes::zona();
-		$horario = $trabajador ? Horarios::delDia( (int) $trabajador['horario_id'], $dia ) : \Pekokis\Asistencia\Nucleo\HorarioDelDia::libre();
+		$horario = $trabajador ? Horarios::deTrabajador( $trabajador, $dia ) : \Pekokis\Asistencia\Nucleo\HorarioDelDia::libre();
 		$vista   = VistaDia::de( $marcas, $horario, $dia, $zona, new DateTimeImmutable( 'now', new DateTimeZone( 'UTC' ) ) );
 
 		if ( $vista['terminado'] ) {
@@ -487,7 +487,7 @@ final class Api {
 
 		foreach ( $marcas as $dia => $delDia ) {
 			$tot      = TotalesDia::calcular( $delDia );
-			$tardanza = $trabajador ? ResumenDia::minutosTardanza( $tot->primeraEntrada, Horarios::delDia( (int) $trabajador['horario_id'], $dia ), $dia, $zona ) : 0;
+			$tardanza = $trabajador ? ResumenDia::minutosTardanza( $tot->primeraEntrada, Horarios::deTrabajador( $trabajador, $dia ), $dia, $zona ) : 0;
 
 			$dias[] = array(
 				'fecha'      => $dia,
@@ -870,7 +870,7 @@ final class Api {
 			}
 
 			$delDia  = $marcas[ $dia ] ?? array();
-			$horario = Horarios::delDia( (int) $t['horario_id'], $dia );
+			$horario = Horarios::deTrabajador( $t, $dia );
 			$vista   = VistaDia::de( $delDia, $horario, $dia, $zona, new DateTimeImmutable( 'now', new DateTimeZone( 'UTC' ) ) );
 			$abierto = $delDia && TotalesDia::calcular( $delDia )->incompleto && $dia < $hoy;
 			$extras  = array();

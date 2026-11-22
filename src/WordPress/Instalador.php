@@ -13,7 +13,7 @@ defined( 'ABSPATH' ) || exit;
  * lo que RR.HH. haya cambiado.
  */
 final class Instalador {
-	public const VERSION_BD = '10';
+	public const VERSION_BD = '11';
 
 	private const OPCION_VERSION = 'pka_version_bd';
 
@@ -69,7 +69,7 @@ final class Instalador {
 		$c = $wpdb->get_charset_collate();
 		$t = array();
 
-		foreach ( array( 'trabajadores', 'horarios', 'horario_dias', 'motivos', 'marcas', 'revisiones', 'correcciones', 'credenciales', 'dispositivos', 'activaciones', 'redes', 'pantallas', 'auditoria', 'calendario', 'ausencias', 'sueldos', 'sobretiempo', 'avisos', 'pagos', 'recibos', 'solicitudes_celular', 'llaves_gerencia' ) as $tabla ) {
+		foreach ( array( 'trabajadores', 'horarios', 'horario_dias', 'motivos', 'marcas', 'revisiones', 'correcciones', 'credenciales', 'dispositivos', 'activaciones', 'redes', 'pantallas', 'auditoria', 'calendario', 'ausencias', 'sueldos', 'sobretiempo', 'avisos', 'pagos', 'recibos', 'solicitudes_celular', 'llaves_gerencia', 'horario_cambios' ) as $tabla ) {
 			$t[ $tabla ] = Tablas::nombre( $tabla );
 		}
 
@@ -324,6 +324,27 @@ final class Instalador {
 				PRIMARY KEY  (id),
 				KEY trabajador_periodo (trabajador_id,estado,desde,hasta),
 				KEY periodo (desde,hasta)
+			) {$c};",
+
+			// Cambios de horario de una persona por un día o un periodo (maqueta G7, versión 11).
+			// Mandan sobre su horario base esos días. No se editan: se anulan con motivo.
+			"CREATE TABLE {$t['horario_cambios']} (
+				id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+				trabajador_id bigint(20) unsigned NOT NULL,
+				desde date NOT NULL,
+				hasta date NOT NULL,
+				laborable tinyint(1) NOT NULL DEFAULT 1,
+				entrada time NULL,
+				salida time NULL,
+				motivo varchar(255) NOT NULL DEFAULT '',
+				estado varchar(12) NOT NULL DEFAULT 'vigente',
+				creado_por bigint(20) unsigned NOT NULL,
+				creado_en datetime NOT NULL,
+				anulado_por bigint(20) unsigned NULL,
+				anulado_en datetime NULL,
+				motivo_anulacion varchar(255) NOT NULL DEFAULT '',
+				PRIMARY KEY  (id),
+				KEY trabajador_periodo (trabajador_id,estado,desde,hasta)
 			) {$c};",
 
 			// Honorario y tarifas por persona, con historial (versión 3; tarifas desde la 5).

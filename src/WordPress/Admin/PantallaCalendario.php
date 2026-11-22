@@ -12,13 +12,15 @@ use WP_Error;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Asistencia → Calendario: feriados y días no laborables de la empresa.
+ * Asistencia → Feriados y calendario (maqueta G9): feriados nacionales y días
+ * no laborables de la empresa, con su tipo, la regla de pago y si ya pasaron.
  */
 final class PantallaCalendario {
 	public const SLUG = 'pka-calendario';
 
 	public static function registrar(): void {
 		add_action( 'admin_post_pka_calendario_agregar', array( self::class, 'agregar' ) );
+		add_action( 'admin_post_pka_calendario_editar', array( self::class, 'editar' ) );
 		add_action( 'admin_post_pka_calendario_quitar', array( self::class, 'quitar' ) );
 		add_action( 'admin_post_pka_calendario_cargar', array( self::class, 'cargar' ) );
 	}
@@ -28,26 +30,30 @@ final class PantallaCalendario {
 			wp_die( 'No tienes permiso para ver esta página.' );
 		}
 
-		$actual = (int) wp_date( 'Y', null, Ajustes::zona() );
-		$anio   = isset( $_GET['anio'] ) ? max( $actual - 5, min( $actual + 2, absint( $_GET['anio'] ) ) ) : $actual; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		$dias   = Calendario::delAnio( $anio );
-		$faltan = array_diff_key( FeriadosPeru::del( $anio ), $dias );
-		$base   = admin_url( 'admin.php?page=' . self::SLUG );
-		$zona   = Ajustes::zona();
+		$zona    = Ajustes::zona();
+		$hoy     = wp_date( 'Y-m-d', null, $zona );
+		$actual  = (int) substr( $hoy, 0, 4 );
+		$anio    = isset( $_GET['anio'] ) ? max( $actual - 5, min( $actual + 2, absint( $_GET['anio'] ) ) ) : $actual; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$editar  = isset( $_GET['editar'] ) ? sanitize_text_field( wp_unslash( $_GET['editar'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$dias    = Calendario::delAnio( $anio );
+		$faltan  = array_diff_key( FeriadosPeru::del( $anio ), $dias );
+		$base    = admin_url( 'admin.php?page=' . self::SLUG );
+		$fechaTx = static fn( string $f, string $formato ): string => wp_date( $formato, ( new DateTimeImmutable( $f . ' 12:00', $zona ) )->getTimestamp(), $zona );
 		?>
 		<div class="wrap">
 			<?php Avisos::mostrar(); ?>
-			<h1>Calendario <?php echo (int) $anio; ?></h1>
-			<p>
-				<a href="<?php echo esc_url( add_query_arg( 'anio', $anio - 1, $base ) ); ?>">← <?php echo (int) ( $anio - 1 ); ?></a> ·
-				<a href="<?php echo esc_url( add_query_arg( 'anio', $anio + 1, $base ) ); ?>"><?php echo (int) ( $anio + 1 ); ?> →</a>
+			<h1>Feriados y calendario <span class="pk-h1-der"><?php echo (int) $anio; ?></span></h1>
+
+			<p class="pk-fila espacio pk-mt-s">
+				<a class="button" href="<?php echo esc_url( add_query_arg( 'anio', $anio - 1, $base ) ); ?>" aria-label="Año anterior">‹ <?php echo (int) ( $anio - 1 ); ?></a>
+				<a class="button" href="<?php echo esc_url( add_query_arg( 'anio', $anio + 1, $base ) ); ?>" aria-label="Año siguiente"><?php echo (int) ( $anio + 1 ); ?> ›</a>
+				<a class="button button-primary" href="#pka-agregar">+ Agregar feriado</a>
 			</p>
-			<p>En los feriados y días no laborables nadie aparece como ausente ni con falta. Si alguien trabaja ese día, sus marcas se registran igual.</p>
 
 			<?php if ( $faltan ) : ?>
 				<div class="notice notice-warning inline">
 					<p><strong>Faltan <?php echo count( $faltan ); ?> feriados nacionales de <?php echo (int) $anio; ?></strong> según la lista sugerida:
-						<?php echo esc_html( implode( ', ', array_map( static fn( $f, $n ) => wp_date( 'j M', strtotime( $f . ' 12:00' ), $zona ) . ' (' . $n . ')', array_keys( $faltan ), $faltan ) ) ); ?>.</p>
+						<?php echo esc_html( implode( ', ', array_map( static fn( $f, $n ) => $fechaTx( $f, 'j M' ) . ' (' . $n . ')', array_keys( $faltan ), $faltan ) ) ); ?>.</p>
 					<p>Revísala contra el calendario oficial antes de cargarla: los feriados cambian por ley.</p>
 					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 						<input type="hidden" name="action" value="pka_calendario_cargar">
@@ -58,12 +64,60 @@ final class PantallaCalendario {
 				</div>
 			<?php endif; ?>
 
-			<h2>Agregar un día</h2>
+			<div class="pk-desplaza">
+				<table class="widefat striped pk-max-m">
+					<thead><tr><th>Fecha</th><th>Nombre</th><th>Tipo</th><th>Regla de pago</th><th>Estado</th><th></th></tr></thead>
+					<tbody>
+					<?php if ( ! $dias ) : ?>
+						<tr><td colspan="6">No hay días cargados para <?php echo (int) $anio; ?>.</td></tr>
+					<?php endif; ?>
+					<?php foreach ( $dias as $fecha => $dia ) : ?>
+						<?php
+						$nacional = 'feriado' === $dia['tipo'];
+						$estado   = $fecha < $hoy ? array( 'Pasado', 'gris' ) : ( $fecha === $hoy ? array( 'Hoy', 'ok' ) : array( 'Próximo', 'aviso' ) );
+						?>
+						<tr>
+							<td class="pk-nowrap" title="<?php echo esc_attr( $fechaTx( $fecha, 'l j \d\e F' ) ); ?>"><?php echo esc_html( $fechaTx( $fecha, 'j M' ) ); ?></td>
+							<?php if ( $editar === $fecha ) : ?>
+								<td colspan="5">
+									<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="pk-fila">
+										<input type="hidden" name="action" value="pka_calendario_editar">
+										<input type="hidden" name="fecha" value="<?php echo esc_attr( $fecha ); ?>">
+										<?php wp_nonce_field( 'pka_calendario_editar' ); ?>
+										<label class="screen-reader-text" for="pka-cal-nombre">Nombre</label>
+										<input type="text" id="pka-cal-nombre" name="nombre" class="regular-text" required value="<?php echo esc_attr( $dia['nombre'] ); ?>">
+										<label class="screen-reader-text" for="pka-cal-tipo">Tipo</label>
+										<select id="pka-cal-tipo" name="tipo">
+											<?php foreach ( Calendario::TIPOS as $clave => $etiqueta ) : ?>
+												<option value="<?php echo esc_attr( $clave ); ?>" <?php selected( $dia['tipo'], $clave ); ?>><?php echo esc_html( $etiqueta ); ?></option>
+											<?php endforeach; ?>
+										</select>
+										<button class="button button-primary">Guardar</button>
+										<a class="button-link" href="<?php echo esc_url( add_query_arg( 'anio', $anio, $base ) ); ?>">Cancelar</a>
+										<a class="button-link pk-txt-error" href="<?php echo esc_url( Menu::urlAccion( 'pka_calendario_quitar', array( 'fecha' => $fecha ) ) ); ?>" onclick="return confirm('¿Quitar este día del calendario?')">Quitar del calendario</a>
+									</form>
+								</td>
+							<?php else : ?>
+								<td class="pk-ancho"><strong><?php echo esc_html( $dia['nombre'] ); ?></strong></td>
+								<td><span class="pk-chip <?php echo $nacional ? 'info' : 'gris'; ?>"><?php echo $nacional ? 'Nacional' : 'Del taller'; ?></span></td>
+								<td><span class="pk-chip <?php echo $nacional ? 'ok' : 'gris'; ?>" title="Si alguien trabaja ese día, se le paga con su tarifa de feriado (Sueldos y tarifas)."><?php echo $nacional ? 'Según ley' : 'No se trabaja'; ?></span></td>
+								<td><span class="pk-chip <?php echo esc_attr( $estado[1] ); ?>"><?php echo esc_html( $estado[0] ); ?></span></td>
+								<td><a class="button" href="<?php echo esc_url( add_query_arg( array( 'anio' => $anio, 'editar' => $fecha ), $base ) ); ?>">Editar</a></td>
+							<?php endif; ?>
+						</tr>
+					<?php endforeach; ?>
+					</tbody>
+				</table>
+			</div>
+
+			<p class="description pk-mt-s">En los feriados y días no laborables nadie aparece como ausente ni con falta. Si alguien trabaja ese día, sus marcas se registran igual y la calculadora le paga esas horas con su tarifa de feriado (se define en Sueldos y tarifas). Conviene confirmar la regla con el contador.</p>
+
+			<h2 class="pk-mt" id="pka-agregar">Agregar un feriado o un día del taller</h2>
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="pk-fila abajo">
 				<input type="hidden" name="action" value="pka_calendario_agregar">
 				<?php wp_nonce_field( 'pka_calendario_agregar' ); ?>
 				<p class="pk-m0"><label for="pka-c-fecha">Fecha</label><br><input type="date" id="pka-c-fecha" name="fecha" required></p>
-				<p class="pk-m0"><label for="pka-c-nombre">Nombre</label><br><input type="text" id="pka-c-nombre" name="nombre" class="regular-text" required placeholder="Por ejemplo: Aniversario de Pekokis"></p>
+				<p class="pk-m0"><label for="pka-c-nombre">Nombre</label><br><input type="text" id="pka-c-nombre" name="nombre" class="regular-text" required placeholder="Por ejemplo: Cierre del taller"></p>
 				<p class="pk-m0">
 					<label for="pka-c-tipo">Tipo</label><br>
 					<select id="pka-c-tipo" name="tipo">
@@ -74,24 +128,6 @@ final class PantallaCalendario {
 				</p>
 				<p class="pk-m0"><button class="button">Agregar</button></p>
 			</form>
-
-			<h2 class="pk-mt">Días de <?php echo (int) $anio; ?> (<?php echo count( $dias ); ?>)</h2>
-			<table class="widefat striped pk-max-m">
-				<thead><tr><th>Fecha</th><th>Nombre</th><th>Tipo</th><th></th></tr></thead>
-				<tbody>
-				<?php if ( ! $dias ) : ?>
-					<tr><td colspan="4">No hay días cargados para este año.</td></tr>
-				<?php endif; ?>
-				<?php foreach ( $dias as $fecha => $dia ) : ?>
-					<tr>
-						<td><?php echo esc_html( wp_date( 'D j \d\e F', ( new DateTimeImmutable( $fecha . ' 12:00', $zona ) )->getTimestamp(), $zona ) ); ?></td>
-						<td><?php echo esc_html( $dia['nombre'] ); ?></td>
-						<td><?php echo esc_html( Calendario::TIPOS[ $dia['tipo'] ] ?? $dia['tipo'] ); ?></td>
-						<td><a href="<?php echo esc_url( Menu::urlAccion( 'pka_calendario_quitar', array( 'fecha' => $fecha ) ) ); ?>" onclick="return confirm('¿Quitar este día del calendario?')">Quitar</a></td>
-					</tr>
-				<?php endforeach; ?>
-				</tbody>
-			</table>
 		</div>
 		<?php
 	}
@@ -107,6 +143,20 @@ final class PantallaCalendario {
 		);
 
 		self::avisar( $result, 'Día agregado al calendario.' );
+		Menu::volver( self::SLUG, array( 'anio' => (int) substr( $fecha, 0, 4 ) ) );
+	}
+
+	public static function editar(): void {
+		self::exigir( 'pka_calendario_editar' );
+
+		$fecha  = isset( $_POST['fecha'] ) ? sanitize_text_field( wp_unslash( $_POST['fecha'] ) ) : '';
+		$result = Calendario::editar(
+			$fecha,
+			isset( $_POST['nombre'] ) ? sanitize_text_field( wp_unslash( $_POST['nombre'] ) ) : '',
+			isset( $_POST['tipo'] ) ? sanitize_key( wp_unslash( $_POST['tipo'] ) ) : ''
+		);
+
+		self::avisar( $result, 'Día actualizado.' );
 		Menu::volver( self::SLUG, array( 'anio' => (int) substr( $fecha, 0, 4 ) ) );
 	}
 

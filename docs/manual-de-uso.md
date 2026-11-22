@@ -203,10 +203,11 @@ Si cambia una tarifa o se corrige un registro, el cálculo se actualiza solo. El
 | --- | --- |
 | Resumen del mes | Cómo va el mes, los totales por trabajador (días, tardanzas, horas, extras) y la comparación con los meses anteriores. Cada jefe ve solo a su equipo |
 | Informe por persona | Elige trabajador y mes → **Ver informe**: su calendario y el detalle de cada día. **Descargar Excel** o **Imprimir o guardar PDF** |
-| Exportar → Exportar registro | **Descargar Excel** del registro de asistencia de un rango de fechas |
-| Exportar → Planilla de pagos | **Descargar planilla de pagos** del mes (la misma de la Calculadora) |
-| Exportar → Respaldo por correo | Cada mes se envía solo el Excel al correo indicado; **Enviar respaldo** lo manda ahora. Necesita el correo del sitio configurado (pendiente) |
-| Exportar → Copia en la nube | Guarda cada Excel en Google Drive por medio de Make. La dirección del webhook es secreta |
+| Informes → Descargar un informe | Elige el mes y baja en **Excel** o **PDF**: Resumen mensual por persona, Detalle diario, Horas extra, Incidencias (faltas, días incompletos, tardanzas y correcciones) y Recibos por honorarios. Al lado, las **Descargas recientes** |
+| Informes → Registro oficial | **Descargar Excel** del registro de asistencia del mes, con todas las marcas y la hoja de integridad. Es el que se guarda 5 años |
+| Informes → Planilla de pagos | **Descargar planilla de pagos** del mes (la misma de la Calculadora) |
+| Informes → Respaldo por correo | Cada mes se envía solo el Excel al correo indicado; **Enviar respaldo** lo manda ahora. Necesita el correo del sitio configurado (pendiente) |
+| Informes → Copia en la nube | Guarda cada Excel en Google Drive por medio de Make. La dirección del webhook es secreta |
 
 La planilla oficial (PLAME y demás) la sigue haciendo el contador; el sistema le entrega la pre-planilla con las horas.
 
@@ -221,9 +222,9 @@ Estas pantallas las usa RR.HH. o el administrador para preparar el sistema y man
 - Si un jefe o alguien de RR.HH. también marca, se enlaza su perfil con su usuario del panel, para que no pueda aprobar sus propias marcas.
 - **Cesar** a una persona desactiva su celular y su llave; su historial se conserva.
 
-**Horarios:** nombre, días, hora de entrada y salida de cada día, minutos de refrigerio y tolerancia de llegada. El horario base es 9:00–19:30. Cada cambio pide un motivo.
+**Horarios:** la pestaña **Por persona** muestra el horario de cada persona en la semana (‹ › cambia de semana). Ahí se cambia el **horario base** de cada uno (pide motivo). Con **+ Cambio por un día o un periodo** se carga un horario distinto (por ejemplo, un sábado de refuerzo de 9:00 a 14:00) o un día libre: sale en azul, cuenta para tardanzas y horas, y se anula con motivo. En **Horarios base** se editan los horarios tipo: días, entrada y salida, refrigerio y tolerancia. El horario base es 9:00–19:30.
 
-**Feriados:** **Cargar los feriados** del año (revisarlos contra el calendario oficial) y **Agregar** los días no laborables propios de la empresa.
+**Feriados:** la tabla del año muestra cada día con su tipo (*Nacional* o *Del taller*), la regla de pago y si ya pasó o es próximo. **Cargar los feriados** trae los nacionales (revisarlos contra el calendario oficial), **+ Agregar feriado** suma un día del taller y **Editar** cambia el nombre o el tipo, o lo quita. Si alguien trabaja ese día, se le paga con su tarifa de feriado.
 
 **Ausencias:** registrar vacaciones, descanso médico, licencia, permiso u otra ausencia justificada, desde y hasta qué día, con una nota. Esos días salen como *Ausencia justificada* en Hoy y en la app de la persona. Se pueden **Anular** con un motivo.
 
@@ -242,7 +243,7 @@ Arriba de esta pantalla está **Estado del sistema**: si dice *✔ todo en orden
 
 **Delegar permisos:** **+ Delegar a un trabajador** le da a una persona (con correo) acceso solo a lo que se elija, por ejemplo aprobar a su equipo. Le llega un correo para crear su contraseña. **Quitar todos** se lo retira.
 
-**Auditoría:** el historial de todo lo que se hizo en el sistema (aprobaciones, días editados, cambios de tarifas, llaves activadas, DNI mostrados), con filtros por fechas, persona, tipo y quién lo hizo. Se descarga en CSV.
+**Auditoría:** todo lo que se hizo en el sistema (aprobaciones, días editados, cambios de tarifas y horarios, llaves activadas, DNI mostrados). Cada fila dice cuándo, quién, el tipo de cambio, qué cambió, el valor **anterior tachado** y el **nuevo en verde**, y el motivo. Se filtra por quién, tipo, persona y fechas, y se baja con **Exportar** (CSV). Nadie puede borrarla ni editarla.
 
 ## La pantalla del QR en la entrada
 

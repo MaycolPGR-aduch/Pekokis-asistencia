@@ -101,7 +101,7 @@ final class Notificaciones {
 
 		foreach ( $personas as $t ) {
 			$id      = (int) $t['id'];
-			$horario = Horarios::delDia( (int) $t['horario_id'], $dia );
+			$horario = Horarios::deTrabajador( $t, $dia );
 			$r       = ResumenDia::calcular( $marcas[ $id ][ $dia ] ?? array(), $horario, $dia, $zona, $ahora, $ausencias[ $id ][ $dia ] ?? null );
 
 			// Alguien que se dio de alta hoy no "faltó" esta mañana.
