@@ -252,7 +252,7 @@ final class PantallaFicha {
 				</dl>
 				<?php if ( Trabajadores::ACTIVO === $t['estado'] ) : ?>
 					<p class="description pk-mt-s">Si no puede registrarse solo en el taller (por ejemplo, porque no tiene su cumpleaños registrado), genera un enlace de activación y entrégaselo.</p>
-					<a class="button" href="<?php echo esc_url( Menu::urlAccion( 'pka_enlace_activacion', array( 'id' => (int) $t['id'] ) ) ); ?>" <?php echo $celular ? 'onclick="return confirm(\'Ya tiene un celular registrado. Un enlace nuevo sirve para cambiar de celular: el anterior dejará de funcionar cuando active el nuevo. ¿Continuar?\')"' : ''; ?>>Enlace de activación</a>
+					<a class="button" href="<?php echo esc_url( Menu::urlAccion( 'pka_enlace_activacion', array( 'id' => (int) $t['id'], 'volver' => 'ficha' ) ) ); ?>" <?php echo $celular ? 'onclick="return confirm(\'Ya tiene un celular registrado. Un enlace nuevo sirve para cambiar de celular: el anterior dejará de funcionar cuando active el nuevo. ¿Continuar?\')"' : ''; ?>>Enlace de activación</a>
 				<?php endif; ?>
 			</div>
 		</div>

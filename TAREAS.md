@@ -273,6 +273,32 @@ Vienen de la sección 16 del plan; se resuelven con gerencia y el contador.
 
 ## Bitácora
 
+### 24-11-2026 — revisión general antes de la presentación
+- **Pruebas automáticas:** pasan las 159 unitarias y las 290 comprobaciones de punta a punta, en 27 áreas (perfil, activación, marcas, QR, revisión, aviso de datos, correcciones, sesión, exportes, cese, integridad, historial, IP nueva, horarios, feriados y ausencias, permisos, horas y pagos, dashboard, avisos, recibos, medianoche, registro propio y PIN, panel, registros y sueldos, acceso de gerencia y celular, G5/G7/G9/G16, tablet y simulador).
+- **Producción (0.20.0), revisada sin tocar datos:**
+  - Estado del sistema: 13 de 13 puntos en verde (PHP 8.3, HTTPS, secreto, cron real, errores ocultos, presencia…).
+  - Las 29 pantallas del panel y las 30 pestañas de las 6 fichas cargan sin errores, en menos de 0,6 s.
+  - La app, `/activar/`, `/privacidad/`, las 7 vistas de `/gerencia/` y los servicios (manifest, sw, API) responden, con la CSP activa.
+- **Seguridad (sin sesión):**
+  - El panel, `/gerencia/` y la API de la app piden sesión.
+  - Las carpetas del plugin, `vendor/`, `src/`, `.git`, `debug.log` y la lista de usuarios de WordPress están bloqueadas.
+  - Por mejorar (menor): `xmlrpc.php` sigue activo y `readme.html` muestra la versión.
+- **Formularios probados en el navegador local:**
+  - Alta de trabajador → enlace de activación → pantalla "Activa tu celular" con el aviso de datos.
+  - Editar un día (salida con motivo, queda en la auditoría).
+  - Marcar pagado.
+  - Aprobar una marca de emergencia.
+  - Aprobar un "olvidé marcar" de una salida que ya existía: el sistema lo impide ("Ya hay una marca exactamente a esa hora").
+- **Arreglo (0.20.1):** al generar el enlace de activación desde la ficha, vuelve a la ficha (pestaña Celular) y no a la lista de perfiles.
+- **Falta para el piloto (configuración, no código):**
+  - Red del WiFi del taller (hoy solo está la de la casa de Maycol) y la tablet del taller activada como pantalla (la de prueba está sin conexión desde el 20/11). Con "WiFi del taller y QR", sin pantalla nadie puede marcar.
+  - Borrar o cesar los 4 trabajadores de prueba y los 4 usuarios de prueba.
+  - Honorario y tarifas de cada persona (Brigitte no tiene).
+  - Correo (WP Mail SMTP sin configurar).
+  - Cambiar `PKA_SECRETO`.
+  - Confirmar las reglas con el responsable y el aviso de datos con el abogado.
+  - Revisar las 22 actualizaciones de WordPress y los plugins de Hostinger.
+
 ### 22-11-2026 (noche, 2) — 0.20.0 en producción
 - **Maycol subió la 0.20.0. Revisado en producción, sin tocar datos:**
   - El plugin dice 0.20.0 y está activo; `sw.js` sirve `pka-0.20.0`, y Estado del sistema dice "✔ todo en orden". Siguen "WiFi del taller y QR" y el QR cada 30 min.

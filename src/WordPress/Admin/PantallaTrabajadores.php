@@ -416,6 +416,12 @@ final class PantallaTrabajadores {
 			. '<input type="text" readonly class="large-text code" value="' . esc_attr( $url ) . '"><br>'
 			. 'Entrégaselo en persona o por WhatsApp; debe abrirlo en su propio celular. Este enlace no se vuelve a mostrar.'
 		);
+
+		// Desde la ficha, vuelve a la ficha (pestaña Celular), donde se pidió.
+		if ( isset( $_GET['volver'] ) && 'ficha' === $_GET['volver'] ) {
+			Menu::volverA( PantallaFicha::url( $id, 'celular' ) );
+		}
+
 		Menu::volver( self::SLUG );
 	}
 
