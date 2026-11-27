@@ -178,18 +178,8 @@ final class PantallaTrabajadores {
 						<?php self::error( $errores, 'horario_id' ); ?>
 					</td>
 				</tr>
-				<tr>
-					<th scope="row"><label for="pka-jefe">Jefe que aprueba</label></th>
-					<td>
-						<select id="pka-jefe" name="jefe_user_id">
-							<option value="0">— Sin asignar —</option>
-							<?php foreach ( $jefes as $jefe ) : ?>
-								<option value="<?php echo esc_attr( (string) $jefe->ID ); ?>" <?php selected( (int) ( $valores['jefe_user_id'] ?? 0 ), $jefe->ID ); ?>><?php echo esc_html( $jefe->display_name ); ?></option>
-							<?php endforeach; ?>
-						</select>
-						<?php self::error( $errores, 'jefe_user_id' ); ?>
-					</td>
-				</tr>
+				<?php /* Sin "jefe que aprueba": en Pekokis todo lo aprueba gerencia. Se conserva el valor guardado. */ ?>
+				<input type="hidden" name="jefe_user_id" value="<?php echo (int) ( $valores['jefe_user_id'] ?? 0 ); ?>">
 				<tr>
 					<th scope="row"><label for="pka-usuario">Usuario de wp-admin</label></th>
 					<td>

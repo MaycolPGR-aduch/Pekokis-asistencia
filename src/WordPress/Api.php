@@ -352,6 +352,10 @@ final class Api {
 
 		$texto = ( $motivo ? $motivo->nombre : $accion->etiqueta() ) . ' · ' . Marcas::horaLocal( $ahora ) . ' · ' . Marcas::etiquetaPrueba( $resultado->prueba );
 
+		// Llegó tarde con esta entrada: aviso según cuántas tardanzas lleva.
+		$tarde = TipoMarca::ENTRADA === $accion->tipo() ? Tardanzas::delDia( $trabajadorId, $dia ) : null;
+		$tarde = $tarde && Tardanzas::VIGENTE === $tarde['estado'] && (int) $tarde['marca_id'] === (int) $id ? Tardanzas::aviso( $tarde ) : null;
+
 		return self::respuesta(
 			array(
 				'resultado' => 'aceptada',
@@ -360,6 +364,7 @@ final class Api {
 				'revision'  => $resultado->requiereRevision,
 				// T3F: la jornada pasó el límite; T3E: a qué jornada pertenece una salida de madrugada.
 				'larga'     => $larga ? VistaDia::duracion( $minutosJornada ) : '',
+				'tardanza'  => $tarde,
 				'jornada'   => self::jornadaDe( $dia, $ahora ),
 			) + self::estadoDe( $trabajadorId, $dia )
 		);
@@ -434,6 +439,12 @@ final class Api {
 			),
 			'vista'    => $vista,
 			'recordatorio' => $recordatorio,
+			// Aviso de la tardanza de hoy, mientras dure la jornada.
+			'tardanza'     => ( static function () use ( $trabajadorId, $dia ) {
+				$f = Tardanzas::delDia( $trabajadorId, $dia );
+
+				return $f && Tardanzas::VIGENTE === $f['estado'] ? Tardanzas::aviso( $f ) : null;
+			} )(),
 			'jornada'  => self::jornadaDe( $dia, $ahoraUtc ),
 			'estado'   => array(
 				'clave'    => $estado->value,

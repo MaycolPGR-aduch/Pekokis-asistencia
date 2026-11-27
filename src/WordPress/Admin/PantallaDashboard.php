@@ -277,6 +277,15 @@ final class PantallaDashboard {
 			$items[] = array( 'error', 'warning', 'Y ' . ( count( $ausentes ) - self::MAX_ALERTAS_POR_TIPO ) . ' personas más sin marcar', 'Todas en Asistencia de hoy', 'Ver', $movil ? \Pekokis\Asistencia\WordPress\GerenciaMovil::url( 'hoy', array( 'f' => 'ausente' ) ) : admin_url( 'admin.php?page=' . Menu::SLUG ) );
 		}
 
+		// Desde la 4.ª tardanza la persona tiene que conversar con gerencia.
+		$conteosT = \Pekokis\Asistencia\WordPress\Tardanzas::conteos( $personas );
+		foreach ( $personas as $t ) {
+			$n = $conteosT[ (int) $t['id'] ] ?? 0;
+			if ( $n >= \Pekokis\Asistencia\WordPress\Tardanzas::CONVERSAR ) {
+				$items[] = array( 'error', 'clock', Trabajadores::nombreCompleto( $t ) . ' lleva ' . $n . ' tardanzas', 'Debe conversar con gerencia; luego reinicia el conteo', 'Ver', $movil ? \Pekokis\Asistencia\WordPress\GerenciaMovil::url( 'persona', array( 't' => (int) $t['id'] ) ) : PantallaFicha::url( (int) $t['id'], 'tardanzas' ) );
+			}
+		}
+
 		$pendientesDias = array_values( array_filter( Seguimiento::pendientes( $alcance, $hoy ), static fn( array $p ): bool => Seguimiento::INCOMPLETO === $p['tipo'] ) );
 
 		foreach ( array_slice( $pendientesDias, 0, self::MAX_ALERTAS_POR_TIPO ) as $p ) {

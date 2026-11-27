@@ -118,6 +118,7 @@ final class Correcciones {
 		);
 
 		Auditoria::registrar( 'marca.anular', 'marca', $marcaId, array( 'tipo' => $fila['tipo'], 'marcado_utc' => $fila['marcado_utc'] ), array( 'correccion_id' => $id ), $justificacion );
+		Tardanzas::sincronizar( (int) $fila['trabajador_id'], (string) $fila['dia_laboral'] );
 
 		return true;
 	}
@@ -222,6 +223,7 @@ final class Correcciones {
 		}
 
 		Auditoria::registrar( 'marca.editar_dia', 'trabajador', $trabajadorId, array( 'dia' => $dia ) + $antes, array( 'dia' => $dia ) + $despues, $justificacion );
+		Tardanzas::sincronizar( $trabajadorId, $dia );
 
 		return true;
 	}

@@ -73,7 +73,9 @@ Debajo, **Tu día** muestra los pasos (Entrada, Inicio de comida, Fin de comida,
 | Emergencia | No | Sí (es la única que se puede marcar fuera del taller) |
 | Fin de jornada | — | No |
 
-**Si se olvidó de marcar**, toca **¿Olvidaste marcar algo?**, elige la marca que falta y la hora → **Enviar a mi jefe**. La marca cuenta recién cuando la aprueban. Si ayer no marcó la salida, la app lo avisa al día siguiente (**Salí ayer y olvidé marcar**). Si la jornada pasa la medianoche, la app sigue en el día en que entró.
+**Si se olvidó de marcar**, toca **¿Olvidaste marcar algo?**, elige la marca que falta y la hora → **Enviar a gerencia**. La marca cuenta recién cuando la aprueban. Si ayer no marcó la salida, la app lo avisa al día siguiente (**Salí ayer y olvidé marcar**). Si la jornada pasa la medianoche, la app sigue en el día en que entró.
+
+**Si llega tarde** (más de 5 minutos después de su hora de entrada), al marcar la app le muestra un aviso con los minutos de tardanza. Las tardanzas se acumulan: en la 2.ª y la 3.ª se registra una amonestación, y desde la 4.ª debe acercarse a conversar con gerencia. El conteo solo lo reinicia gerencia.
 
 ## Trabajador · Mis horas, Mi recibo y Perfil
 
@@ -150,6 +152,13 @@ Todo está en el menú **Asistencia**, agrupado en Control, Pagos, Personas y Si
 
 - **Esperando aprobación:** registros nuevos, cambios de celular y pedidos de liberar. Se resuelven con **Aprobar** o **Rechazar**.
 - **Celular de cada persona:** qué equipo usa (ej. *Android · Chrome*) y desde cuándo. **Liberar celular** lo deja sin acceso; la persona tendrá que registrar otro en el taller. Sus datos y horas no se pierden.
+
+**Tardanzas** (ficha de la persona → pestaña *Tardanzas*)
+
+- El **conteo** de tardanzas que cuentan, las **amonestaciones** y el **historial** completo (fecha, hora de llegada y minutos tarde). Es tardanza si la entrada pasa la tolerancia de 5 min; los minutos se cuentan desde la hora de entrada.
+- En la 2.ª y la 3.ª tardanza se registra sola una amonestación. Desde la 4.ª, el Dashboard avisa que la persona debe conversar con gerencia. En **Asistencia de hoy** se ve, junto a la hora de llegada, qué número de tardanza es.
+- **Justificar** una tardanza (con motivo): deja de contar. **Reiniciar conteo** (con motivo, por ejemplo después de conversar): vuelve a cero, pero el historial se conserva. Las dos cosas son **solo de gerencia** y quedan en la Auditoría.
+- Los textos que ve el trabajador se cambian en Seguridad y reglas → Reglas de horas → *Avisos de tardanza*.
 
 ## Gerencia en el celular
 
@@ -233,7 +242,7 @@ Estas pantallas las usa RR.HH. o el administrador para preparar el sistema y man
 
 **Feriados:** la tabla del año muestra cada día con su tipo (*Nacional* o *Del taller*), la regla de pago y si ya pasó o es próximo. **Cargar los feriados** trae los nacionales (revisarlos contra el calendario oficial), **+ Agregar feriado** suma un día del taller y **Editar** cambia el nombre o el tipo, o lo quita. Si alguien trabaja ese día, se le paga con su tarifa de feriado.
 
-**Ausencias:** registrar vacaciones, descanso médico, licencia, permiso u otra ausencia justificada, desde y hasta qué día, con una nota. Esos días salen como *Ausencia justificada* en Hoy y en la app de la persona. Se pueden **Anular** con un motivo.
+**Ausencias (solo gerencia):** registrar una **falta justificada**, vacaciones, descanso médico, licencia, permiso u otra ausencia justificada, desde y hasta qué día, con una nota. Esos días salen como *Ausencia justificada* en Hoy y en la app de la persona. Se pueden **Anular** con un motivo. En **Registros y revisión**, los días con falta tienen el botón **Justificar falta**, que abre este formulario con la persona y el día ya elegidos.
 
 **Seguridad y reglas** (6 pestañas; lo cambiado se resalta y avisa si sales sin guardar)
 

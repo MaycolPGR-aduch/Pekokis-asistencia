@@ -26,7 +26,7 @@ final class PantallaAusencias {
 	}
 
 	public static function pintar(): void {
-		if ( ! current_user_can( Capacidades::GESTIONAR_PERSONAL ) ) {
+		if ( ! current_user_can( Capacidades::JUSTIFICAR ) ) {
 			wp_die( 'No tienes permiso para ver esta página.' );
 		}
 
@@ -36,7 +36,7 @@ final class PantallaAusencias {
 		$personas   = Trabajadores::listar();
 		$previo     = get_transient( 'pka_form_ausencia_' . get_current_user_id() );
 		$errores    = is_array( $previo ) ? $previo['errores'] : array();
-		$valores    = is_array( $previo ) ? $previo['valores'] : array( 'trabajador_id' => $trabajador );
+		$valores    = is_array( $previo ) ? $previo['valores'] : array( 'trabajador_id' => $trabajador, 'tipo' => isset( $_GET['tipo'] ) ? sanitize_key( wp_unslash( $_GET['tipo'] ) ) : '', 'desde' => isset( $_GET['desde'] ) ? sanitize_text_field( wp_unslash( $_GET['desde'] ) ) : '', 'hasta' => isset( $_GET['desde'] ) ? sanitize_text_field( wp_unslash( $_GET['desde'] ) ) : '' ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
 		delete_transient( 'pka_form_ausencia_' . get_current_user_id() );
 
@@ -92,7 +92,7 @@ final class PantallaAusencias {
 						<th scope="row"><label for="pka-a-nota">Nota o sustento</label></th>
 						<td>
 							<input type="text" id="pka-a-nota" name="nota" class="regular-text" maxlength="255" value="<?php echo esc_attr( (string) ( $valores['nota'] ?? '' ) ); ?>">
-							<p class="description">Por ejemplo, el número del certificado (CITT) o de la papeleta. El documento lo guarda RR.HH. fuera del sistema: es un dato de salud y no debe subirse al sitio.</p>
+							<p class="description">Por ejemplo, el número del certificado (CITT) o de la papeleta. El documento lo guarda gerencia fuera del sistema: es un dato de salud y no debe subirse al sitio.</p>
 						</td>
 					</tr>
 				</table>
@@ -176,7 +176,7 @@ final class PantallaAusencias {
 	}
 
 	private static function exigir( string $accion ): void {
-		if ( ! current_user_can( Capacidades::GESTIONAR_PERSONAL ) ) {
+		if ( ! current_user_can( Capacidades::JUSTIFICAR ) ) {
 			wp_die( 'No tienes permiso para hacer esto.', 403 );
 		}
 

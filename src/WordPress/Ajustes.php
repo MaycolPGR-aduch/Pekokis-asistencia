@@ -61,6 +61,13 @@ final class Ajustes {
 			'campana_hasta'           => '2027-03-31',
 			'campana_hora'            => '09:15',
 			'campana_texto'           => '',
+			// Aviso al trabajador al llegar tarde, según su número de tardanza (1, 2, 3 y desde la 4).
+			'tardanza_textos'         => array(
+				1 => 'Llegaste {minutos} min tarde. Procura llegar a tu hora la próxima vez.',
+				2 => 'Llegaste {minutos} min tarde. Es tu {numero}.ª tardanza: quedó registrada una amonestación.',
+				3 => 'Llegaste {minutos} min tarde. Es tu {numero}.ª tardanza: quedó registrada otra amonestación.',
+				4 => 'Llegaste {minutos} min tarde. Ya llevas {numero} tardanzas: acércate a conversar con gerencia.',
+			),
 		);
 	}
 

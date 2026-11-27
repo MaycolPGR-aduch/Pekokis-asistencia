@@ -140,13 +140,14 @@ final class Marcas {
 	 */
 	public static function registrar( array $datos ): int {
 		$utc = $datos['marcado']->setTimezone( new DateTimeZone( 'UTC' ) );
+		$dia = $datos['dia_laboral'] ?? Ajustes::diaLaboral()->de( $utc );
 
-		return InsercionEncadenada::insertar(
+		$id = InsercionEncadenada::insertar(
 			'marcas',
 			array(
 				'trabajador_id'     => $datos['trabajador_id'],
 				// La jornada que pasó la medianoche sigue en su día (Jornadas::diaActual).
-				'dia_laboral'       => $datos['dia_laboral'] ?? Ajustes::diaLaboral()->de( $utc ),
+				'dia_laboral'       => $dia,
 				'tipo'              => $datos['tipo']->value,
 				'motivo_clave'      => $datos['motivo_clave'],
 				'nota'              => mb_substr( $datos['nota'], 0, 255 ),
@@ -162,6 +163,13 @@ final class Marcas {
 				'registrado_por'    => $datos['registrado_por'] ?? null,
 			)
 		);
+
+		// La primera entrada del día decide si hubo tardanza (contador de gerencia).
+		if ( \Pekokis\Asistencia\Nucleo\TipoMarca::ENTRADA === $datos['tipo'] ) {
+			Tardanzas::sincronizar( (int) $datos['trabajador_id'], $dia );
+		}
+
+		return $id;
 	}
 
 	/** Hora de Lima para mostrar ("08:58"). */

@@ -273,6 +273,42 @@ Vienen de la sección 16 del plan; se resuelven con gerencia y el contador.
 
 ## Bitácora
 
+### 27-11-2026 — versión 0.21.0: tardanzas y justificaciones (bloque 1 de los cambios de gerencia)
+- **Pedido de gerencia, 26-11. Son 16 cambios en 4 bloques**; ver "Cambios pedidos por gerencia" en Pendientes. Este es el **bloque 1**.
+- **Registro de tardanzas** (tabla nueva `tardanzas`, base de datos v12):
+  - Cuándo es tardanza: si la primera entrada pasa la tolerancia (5 min). Se guardan los minutos desde la hora de entrada.
+  - Se recalcula sola al marcar, al aprobar una corrección, al anular una marca y al editar un día (`Tardanzas::sincronizar`). Si la entrada se corrige y ya no fue tarde, queda como "Ya no fue tarde"; el historial no se borra.
+- **Contador acumulativo:**
+  - En la 2.ª y la 3.ª se registra sola una amonestación (solo un registro, en la ficha y la auditoría).
+  - Desde la 4.ª, el Dashboard (y el celular) avisa "lleva N tardanzas, debe conversar con gerencia".
+  - Gerencia **reinicia el conteo** con motivo (`trabajadores.tardanzas_desde_id`); el historial se conserva.
+- **Aviso al trabajador:** al marcar una entrada tarde, la app muestra un mensaje según el número de tardanza (1.ª, 2.ª, 3.ª y desde la 4.ª), y lo repite en la pantalla de marcar ese día. Los textos se editan en Seguridad y reglas → Reglas de horas, con {minutos} y {numero}.
+- **Justificar:**
+  - Permiso nuevo `pka_justificar`, **solo para el administrador** (gerencia). RR.HH., jefes y delegados no lo tienen.
+  - Una tardanza justificada no cuenta.
+  - Ausencias pasó a este permiso y tiene el tipo nuevo **"Falta justificada"**. En Registros, los días con falta tienen el botón "Justificar falta".
+- **Panel:**
+  - Ficha → pestaña **Tardanzas**: conteo, amonestaciones, historial, Justificar y Reiniciar conteo; y el chip "N tardanzas" en la cabecera.
+  - En Hoy, junto a la hora de llegada, el número de tardanza.
+- **Sin jefes:** se quitó "Jefe que aprueba" del perfil (se conserva el valor guardado). Los textos de la app dicen "gerencia" en vez de "tu jefe".
+- **Pruebas:** pasan 159 unitarias y todas las de punta a punta, con la sección 22 nueva de 11 comprobaciones.
+- **Siguiente:** bloque 2 (pagos). Quedan 2 dudas: hasta qué hora es "madrugada" y si quedarse después de la salida cuenta por minutos.
+
+## Cambios pedidos por gerencia (26-11)
+- [x] **Bloque 1**, en la 0.21.0: avisos de tardanza 1.ª–4.ª, contador acumulativo con reinicio, amonestaciones registradas, justificar tardanzas y faltas solo gerencia, sin RR.HH. ni jefes.
+- [ ] **Bloque 2 · Pagos:**
+  - Valor hora informativo = honorario ÷ 192.
+  - Sábado: hora extra si completó las horas de L–V de la semana (total semanal; los feriados y las faltas justificadas cuentan como cumplidos), y si no, hora normal. Se quita la tarifa de sábado.
+  - Madrugada = hora normal × multiplicador (también en domingo y feriado).
+  - Extra antes de la entrada: solo horas completas y solo si completa el horario.
+  - La comida corta no suma a extra (cuenta mínimo 60 min).
+  - Contabilidad de horas del mes (solo gerencia) y ajuste de horas de un día (puede sumar extra).
+  - Descuentos de monto libre.
+  - Historial de pagos por persona.
+  - Modo opcional "pago por horas" (horas × honorario ÷ 192, con extra, madrugada y domingo o feriado opcionales).
+- [ ] **Bloque 3:** varias áreas por persona (sin jefe); documento de retención de 4.ª o 5.ª que sube el trabajador, aprobado como los recibos y con aviso de vencimiento.
+- [x] **Bloque 4:** la comida flexible ya funciona así; no hay cambios.
+
 ### 24-11-2026 — revisión general antes de la presentación
 - **Pruebas automáticas:** pasan las 159 unitarias y las 290 comprobaciones de punta a punta, en 27 áreas (perfil, activación, marcas, QR, revisión, aviso de datos, correcciones, sesión, exportes, cese, integridad, historial, IP nueva, horarios, feriados y ausencias, permisos, horas y pagos, dashboard, avisos, recibos, medianoche, registro propio y PIN, panel, registros y sueldos, acceso de gerencia y celular, G5/G7/G9/G16, tablet y simulador).
 - **Producción (0.20.0), revisada sin tocar datos:**

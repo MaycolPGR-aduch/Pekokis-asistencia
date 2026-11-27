@@ -67,6 +67,17 @@ final class PantallaAjustes {
 					</tr>
 				<?php endforeach; ?>
 				<tr>
+					<th scope="row">Avisos de tardanza</th>
+					<td>
+						<p class="description">Lo que ve el trabajador en la app al marcar una entrada tarde. Puedes usar {minutos} y {numero}.</p>
+						<?php $tt = (array) $a['tardanza_textos']; ?>
+						<?php foreach ( array( 1 => '1.ª tardanza', 2 => '2.ª tardanza (amonestación)', 3 => '3.ª tardanza (amonestación)', 4 => 'Desde la 4.ª (conversar con gerencia)' ) as $n => $titulo ) : ?>
+							<p class="pk-campo"><label for="pka-tt-<?php echo (int) $n; ?>"><?php echo esc_html( $titulo ); ?></label>
+							<textarea id="pka-tt-<?php echo (int) $n; ?>" name="tardanza_textos[<?php echo (int) $n; ?>]" rows="2" class="large-text" maxlength="300"><?php echo esc_textarea( (string) ( $tt[ $n ] ?? '' ) ); ?></textarea></p>
+						<?php endforeach; ?>
+					</td>
+				</tr>
+				<tr>
 					<th scope="row">La tardanza se cuenta</th>
 					<td>
 						<label><input type="radio" name="tardanza_desde" value="<?php echo esc_attr( ReglasPago::TARDANZA_DESDE_ENTRADA ); ?>" <?php checked( (string) $a['tardanza_desde'], ReglasPago::TARDANZA_DESDE_ENTRADA ); ?>> Desde la hora de entrada (llegó 9:14 → 14 min)</label><br>
@@ -91,8 +102,21 @@ final class PantallaAjustes {
 			}
 		}
 
+		if ( isset( $_POST['tardanza_textos'] ) && is_array( $_POST['tardanza_textos'] ) ) {
+			$textos = array();
+			foreach ( array( 1, 2, 3, 4 ) as $n ) {
+				$v            = isset( $_POST['tardanza_textos'][ $n ] ) ? sanitize_textarea_field( wp_unslash( (string) $_POST['tardanza_textos'][ $n ] ) ) : '';
+				$textos[ $n ] = '' !== trim( $v ) ? mb_substr( $v, 0, 300 ) : Ajustes::porDefecto()['tardanza_textos'][ $n ];
+			}
+			$ajustes['tardanza_textos'] = $textos;
+		}
+
 		$ajustes['tardanza_desde'] = isset( $_POST['tardanza_desde'] ) && ReglasPago::TARDANZA_DESDE_TOLERANCIA === $_POST['tardanza_desde'] ? ReglasPago::TARDANZA_DESDE_TOLERANCIA : ReglasPago::TARDANZA_DESDE_ENTRADA;
 		update_option( Ajustes::OPCION, $ajustes );
+
+		if ( ( $antes['tardanza_textos'] ?? array() ) !== ( $ajustes['tardanza_textos'] ?? array() ) ) {
+			Auditoria::registrar( 'ajustes.reglas', 'ajustes', null, null, array( 'textos' => 'Avisos de tardanza modificados' ) );
+		}
 
 		$claves    = array_merge( array_keys( self::REGLAS ), array( 'tardanza_desde' ) );
 		[ $a, $d ] = Auditoria::diferencias( array_intersect_key( $antes, array_flip( $claves ) ), array_intersect_key( $ajustes, array_flip( $claves ) ) );

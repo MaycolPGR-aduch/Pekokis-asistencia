@@ -140,6 +140,9 @@ final class PantallaRegistros {
 								<?php if ( current_user_can( Capacidades::MARCA_MANUAL ) && ! Trabajadores::esPropio( $r['id'] ) ) : ?>
 									<a class="button" href="<?php echo esc_url( self::url( $f + array( 'editar' => $r['id'], 'dia' => $r['dia'] ) ) ); ?>">Editar</a>
 								<?php endif; ?>
+								<?php if ( in_array( 'falta', $r['estados'], true ) && current_user_can( Capacidades::JUSTIFICAR ) ) : ?>
+									<a class="button" href="<?php echo esc_url( add_query_arg( array( 'page' => PantallaAusencias::SLUG, 'trabajador' => $r['id'], 'tipo' => 'falta', 'desde' => $r['dia'] ), admin_url( 'admin.php' ) ) ); ?>">Justificar falta</a>
+								<?php endif; ?>
 							</td>
 						</tr>
 					<?php endforeach; ?>

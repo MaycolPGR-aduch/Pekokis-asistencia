@@ -29,6 +29,7 @@ final class Menu {
 		PantallaInforme::registrar();
 		PantallaPagos::registrar();
 		PantallaSimulador::registrar();
+		PantallaTardanzas::registrar();
 		PantallaRecibos::registrar();
 		PantallaCalendario::registrar();
 		PantallaTrabajadores::registrar();
@@ -56,7 +57,7 @@ final class Menu {
 		add_submenu_page( $p, 'Informe por persona', 'Informe por persona', Capacidades::VER_EQUIPO, PantallaInforme::SLUG, array( PantallaInforme::class, 'pintar' ) );
 		add_submenu_page( $p, 'Horarios', 'Horarios', Capacidades::HORARIOS, PantallaHorarios::SLUG, array( PantallaHorarios::class, 'pintar' ) );
 		add_submenu_page( $p, 'Feriados y calendario', 'Feriados', Capacidades::HORARIOS, PantallaCalendario::SLUG, array( PantallaCalendario::class, 'pintar' ) );
-		add_submenu_page( $p, 'Ausencias justificadas', 'Ausencias', Capacidades::GESTIONAR_PERSONAL, PantallaAusencias::SLUG, array( PantallaAusencias::class, 'pintar' ) );
+		add_submenu_page( $p, 'Ausencias justificadas', 'Ausencias', Capacidades::JUSTIFICAR, PantallaAusencias::SLUG, array( PantallaAusencias::class, 'pintar' ) );
 		add_submenu_page( $p, 'Auditoría de cambios', 'Auditoría', Capacidades::AUDITORIA, PantallaHistorial::SLUG, array( PantallaHistorial::class, 'pintar' ) );
 
 		self::grupo( 'pagos', 'Pagos', current_user_can( Capacidades::VER_SUELDOS ) ? Capacidades::VER_SUELDOS : Capacidades::RECIBOS );

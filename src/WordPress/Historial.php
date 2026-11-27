@@ -17,7 +17,7 @@ final class Historial {
 
 	/** Grupos para el filtro: etiqueta => prefijos de acción. */
 	public const GRUPOS = array(
-		'trabajadores' => array( 'Trabajadores, celulares y ausencias', array( 'trabajador.', 'activacion.', 'passkey.', 'celular.', 'permiso.', 'ausencia.', 'aviso.' ) ),
+		'trabajadores' => array( 'Trabajadores, celulares, ausencias y tardanzas', array( 'trabajador.', 'activacion.', 'passkey.', 'celular.', 'permiso.', 'ausencia.', 'aviso.', 'tardanza.' ) ),
 		'marcas'       => array( 'Marcas y correcciones', array( 'marca.', 'correccion.' ) ),
 		'pagos'        => array( 'Pagos, honorarios y recibos', array( 'sobretiempo.', 'sueldo.', 'preplanilla.', 'pago.', 'recibo.', 'simulador.' ) ),
 		'ajustes'      => array( 'Ajustes, horarios, calendario, redes y pantallas', array( 'ajustes.', 'horario.', 'calendario.', 'red.', 'pantalla.' ) ),
@@ -96,12 +96,17 @@ final class Historial {
 		'recibo.observar'        => 'Recibo observado',
 		'recibo.recordar'        => 'Recordatorio de recibo',
 		'recibo.ver'             => 'PDF de recibo abierto',
+		'tardanza.registrar'     => 'Tardanza registrada',
+		'tardanza.amonestacion'  => 'Amonestación por tardanza',
+		'tardanza.justificar'    => 'Tardanza justificada',
+		'tardanza.reiniciar'     => 'Conteo de tardanzas reiniciado',
 		'gerencia.llave_activada' => 'Huella o rostro activado para entrar al panel',
 		'gerencia.llave_quitada'  => 'Huella o rostro quitado del panel',
 	);
 
 	/** Tipo de cambio (maqueta G5): prefijo de acción => etiqueta y color del chip. */
 	public const TIPOS = array(
+		'tardanza.'    => array( 'Tardanza', 'aviso' ),
 		'correccion.'  => array( 'Solicitud', 'info' ),
 		'marca.'       => array( 'Registro', 'info' ),
 		'sueldo.'      => array( 'Tarifa', 'aviso' ),
@@ -197,6 +202,9 @@ final class Historial {
 		'horario'                     => 'Horas y márgenes',
 		'equipo'                      => 'Equipo',
 		'horario_dia'                 => 'Horario',
+		'numero'                      => 'N.º de tardanza',
+		'minutos'                     => 'Minutos',
+		'conteo'                      => 'Conteo',
 		'honorario'                   => 'Honorario y tarifas',
 		'llave_id'                    => 'Llave',
 	);

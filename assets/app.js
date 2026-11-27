@@ -1032,6 +1032,7 @@
 			el( 'h1', {}, [ 'Hola, ', el( 'em', { texto: yo.nombre } ) ] ),
 			mensaje || null,
 			yo.recordatorio ? aviso( 'espera', yo.recordatorio ) : null,
+			yo.tardanza ? aviso( yo.tardanza.nivel > 1 ? 'error' : 'espera', yo.tardanza.texto ) : null,
 			j.de_ayer ? aviso( 'espera', 'Tu jornada del ' + j.texto + ' sigue abierta: no marcaste la salida.', boton( 'simple', 'Salí ayer y olvidé marcar', function () {
 				vistaHoras( '', j.dia );
 			} ) ) : null,
@@ -1290,7 +1291,8 @@
 				el( 'p', { class: 'hora', texto: horaAhora() } ),
 				el( 'p', { class: 'ayuda', texto: r.mensaje } ),
 			] ),
-			r.larga ? aviso( 'espera', 'Tu jornada duró ' + r.larga + ' desde tu entrada. Se registró igual y gerencia la revisará.' ) : ( r.revision ? aviso( 'espera', 'Tu jefe revisará esta marca porque no se pudo comprobar que estabas en el taller.' ) : null ),
+			r.tardanza ? aviso( r.tardanza.nivel > 1 ? 'error' : 'espera', r.tardanza.texto ) : null,
+			r.larga ? aviso( 'espera', 'Tu jornada duró ' + r.larga + ' desde tu entrada. Se registró igual y gerencia la revisará.' ) : ( r.revision ? aviso( 'espera', 'Gerencia revisará esta marca porque no se pudo comprobar que estabas en el taller.' ) : null ),
 			'fin_jornada' === accion && r.jornada && r.jornada.otro_dia ? aviso( 'info', 'Es la salida de tu jornada del ' + r.jornada.texto + '. Las horas de madrugada cuentan en ese día.' ) : null,
 			resumen,
 			v.pasos ? lineaDelDia( v.pasos, false ) : null,
@@ -1483,7 +1485,7 @@
 		tipo.addEventListener( 'change', actualizarMotivos );
 		actualizarMotivos();
 
-		var enviar = boton( 'principal', 'Enviar a mi jefe' );
+		var enviar = boton( 'principal', 'Enviar a gerencia' );
 		enviar.addEventListener( 'click', function () {
 			enviar.disabled = true;
 			enviarCorreccion( {
@@ -1725,7 +1727,7 @@
 		var comentario = el( 'textarea', { id: 'pedir-comentario', rows: '2', maxlength: '300', placeholder: 'Opcional' } );
 		var quePaso = '';
 		var estado = el( 'div', {} );
-		var enviar = boton( 'principal', 'Enviar a mi jefe' );
+		var enviar = boton( 'principal', 'Enviar a gerencia' );
 
 		enviar.addEventListener( 'click', function () {
 			if ( p.despues_de && hora.value && hora.value <= p.despues_de ) {

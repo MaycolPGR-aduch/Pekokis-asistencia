@@ -44,7 +44,7 @@ $api = static function ( string $metodo, string $ruta, array $cuerpo = array() )
 };
 
 // ---- Preparación: tablas vacías, una red autorizada y la IP del "WiFi del taller".
-foreach ( array( 'trabajadores', 'marcas', 'auditoria', 'credenciales', 'dispositivos', 'activaciones', 'redes', 'correcciones', 'pantallas', 'revisiones', 'calendario', 'ausencias', 'sueldos', 'avisos', 'pagos', 'recibos', 'solicitudes_celular', 'llaves_gerencia', 'horario_cambios' ) as $tabla ) {
+foreach ( array( 'trabajadores', 'marcas', 'auditoria', 'credenciales', 'dispositivos', 'activaciones', 'redes', 'correcciones', 'pantallas', 'revisiones', 'calendario', 'ausencias', 'sueldos', 'avisos', 'pagos', 'recibos', 'solicitudes_celular', 'llaves_gerencia', 'horario_cambios', 'tardanzas' ) as $tabla ) {
 	$wpdb->query( 'TRUNCATE TABLE ' . Tablas::nombre( $tabla ) ); // phpcs:ignore
 }
 $wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE '\\_transient\\_pka\\_%' OR option_name LIKE '\\_transient\\_timeout\\_pka\\_%'" ); // phpcs:ignore
@@ -1218,6 +1218,68 @@ $_GET    = array( 'page' => 'pka-simulador', 'pestana' => 'equipo' );
 $htmlSim = $dibujar( array( $SIM, 'pintar' ) );
 $_GET    = array();
 $comprobar( 'La pantalla tiene las tres pestañas y el Excel', str_contains( $htmlSim, '¿Y si…?' ) && str_contains( $htmlSim, 'Todo el equipo' ) && str_contains( $htmlSim, 'Desde cero' ) && str_contains( $htmlSim, 'pka_simulador_excel' ) );
+
+// ---- 22. Tardanzas: registro, contador acumulativo, amonestaciones, justificar y reiniciar (pedido 27-11).
+WP_CLI::line( '22. Tardanzas' );
+wp_set_current_user( 1 );
+$TA    = \Pekokis\Asistencia\WordPress\Tardanzas::class;
+$zona  = \Pekokis\Asistencia\WordPress\Ajustes::zona();
+$hb    = (int) array_keys( Trabajadores::horarios() )[0];
+$tTar  = Trabajadores::guardar( array( 'dni' => '77000022', 'nombres' => 'Tarda', 'apellidos' => 'Prueba', 'horario_id' => $hb, 'cumpleanos_dia' => '1', 'cumpleanos_mes' => '1' ) );
+$diasT = array();
+for ( $d = ( new DateTimeImmutable( $hoy ) )->modify( '-2 days' ); count( $diasT ) < 6; $d = $d->modify( '-1 day' ) ) {
+	if ( (int) $d->format( 'N' ) <= 5 && '' === \Pekokis\Asistencia\WordPress\Calendario::descripcion( $d->format( 'Y-m-d' ) ) && \Pekokis\Asistencia\WordPress\Horarios::deTrabajador( Trabajadores::buscar( (int) $tTar ), $d->format( 'Y-m-d' ) )->laborable ) {
+		$diasT[] = $d->format( 'Y-m-d' );
+	}
+}
+$diasT   = array_reverse( $diasT );
+$entrarA = static function ( string $dia, string $hora ) use ( $tTar, $zona ): int {
+	return \Pekokis\Asistencia\WordPress\Marcas::registrar(
+		array(
+			'trabajador_id'     => (int) $tTar,
+			'tipo'              => \Pekokis\Asistencia\Nucleo\TipoMarca::ENTRADA,
+			'motivo_clave'      => null,
+			'nota'              => '',
+			'marcado'           => new DateTimeImmutable( $dia . ' ' . $hora, $zona ),
+			'prueba'            => \Pekokis\Asistencia\Nucleo\PruebaPresencia::WIFI,
+			'requiere_revision' => false,
+			'dispositivo_id'    => null,
+			'credencial_id'     => null,
+			'pantalla_id'       => null,
+			'origen'            => 'manual',
+			'dia_laboral'       => $dia,
+		)
+	);
+};
+$m1 = $entrarA( $diasT[0], '09:12' );
+$f1 = $TA::delDia( (int) $tTar, $diasT[0] );
+$comprobar( 'Tardanza: 9:12 queda registrada con 12 min (desde la hora de entrada) y es la 1.ª, sin amonestación', is_int( $tTar ) && $f1 && 12 === (int) $f1['minutos'] && 1 === (int) $f1['numero'] && 0 === (int) $f1['amonestacion'] && str_contains( $TA::aviso( $f1 )['texto'], '12' ), wp_json_encode( $f1 ) );
+$entrarA( $diasT[1], '09:04' );
+$comprobar( 'Tardanza: dentro de los 5 min de tolerancia no cuenta', null === $TA::delDia( (int) $tTar, $diasT[1] ) && 1 === $TA::conteo( (int) $tTar ) );
+$entrarA( $diasT[2], '09:20' );
+$entrarA( $diasT[3], '09:30' );
+$m5 = $entrarA( $diasT[4], '09:45' );
+$f2 = $TA::delDia( (int) $tTar, $diasT[2] );
+$f3 = $TA::delDia( (int) $tTar, $diasT[3] );
+$f4 = $TA::delDia( (int) $tTar, $diasT[4] );
+$comprobar( 'Tardanza: la 2.ª y la 3.ª registran amonestación; la 4.ª pide conversar con gerencia', 1 === (int) $f2['amonestacion'] && 1 === (int) $f3['amonestacion'] && 0 === (int) $f4['amonestacion'] && 4 === $TA::conteo( (int) $tTar ) && 4 === $TA::aviso( $f4 )['nivel'] && 2 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Tablas::nombre( 'auditoria' ) . " WHERE accion = 'tardanza.amonestacion' AND entidad_id = %d", $tTar ) ) );
+$alertasT = \Pekokis\Asistencia\WordPress\Admin\PantallaDashboard::itemsAlerta( array(), null, $hoy, null, array( Trabajadores::buscar( (int) $tTar ) ), substr( $hoy, 0, 7 ) );
+$comprobar( 'Tardanza: el Dashboard avisa que lleva 4 y debe conversar con gerencia', (bool) array_filter( $alertasT, static fn( $i ) => str_contains( $i[2], 'lleva 4 tardanzas' ) ) );
+$comprobar( 'Tardanza: justificar pide motivo y deja de contar', $TA::justificar( (int) $f3['id'], '' ) instanceof WP_Error && true === $TA::justificar( (int) $f3['id'], 'Cita médica con sustento' ) && 3 === $TA::conteo( (int) $tTar ) && $TA::JUSTIFICADA === $TA::porId( (int) $f3['id'] )['estado'] );
+$comprobar( 'Tardanza: reiniciar el conteo lo deja en cero y conserva el historial', $TA::reiniciar( (int) $tTar, '' ) instanceof WP_Error && true === $TA::reiniciar( (int) $tTar, 'Conversó con gerencia' ) && 0 === $TA::conteo( (int) $tTar ) && 4 === count( $TA::historial( (int) $tTar ) ) );
+$entrarA( $diasT[5], '09:15' );
+$f6 = $TA::delDia( (int) $tTar, $diasT[5] );
+$comprobar( 'Tardanza: después del reinicio vuelve a ser la 1.ª', $f6 && 1 === (int) $f6['numero'] && 1 === $TA::conteo( (int) $tTar ) );
+$an = \Pekokis\Asistencia\WordPress\Correcciones::anular( (int) $m5, 'Marcó por error' );
+$comprobar( 'Tardanza: si se anula la entrada tarde, queda como "ya no fue tarde" (no se borra)', true === $an && $TA::ANULADA === $TA::delDia( (int) $tTar, $diasT[4] )['estado'], wp_json_encode( $an ) );
+wp_set_current_user( 0 );
+$comprobar( 'Tardanza: sin permiso de gerencia no se justifica ni se reinicia', $TA::justificar( (int) $f6['id'], 'x' ) instanceof WP_Error && $TA::reiniciar( (int) $tTar, 'x' ) instanceof WP_Error );
+wp_set_current_user( 1 );
+$comprobar( 'Justificar es solo de gerencia: RR.HH. y jefes no tienen el permiso; existe "Falta justificada"', ! get_role( 'pka_rrhh' )->has_cap( 'pka_justificar' ) && ! get_role( 'pka_jefe' )->has_cap( 'pka_justificar' ) && get_role( 'administrator' )->has_cap( 'pka_justificar' ) && isset( \Pekokis\Asistencia\Nucleo\ValidacionAusencia::TIPOS['falta'] ) );
+$_GET    = array( 'page' => 'pka-trabajadores', 'vista' => 'ficha', 'id' => (int) $tTar, 'pestana' => 'tardanzas' );
+$htmlTar = $dibujar( static fn() => \Pekokis\Asistencia\WordPress\Admin\PantallaFicha::pintar( Trabajadores::buscar( (int) $tTar ) ) );
+$_GET    = array();
+$comprobar( 'Tardanza: la ficha tiene la pestaña con el conteo, el historial, Justificar y Reiniciar', str_contains( $htmlTar, 'Conteo de tardanzas' ) && str_contains( $htmlTar, 'pka_justificar_tardanza' ) && str_contains( $htmlTar, 'Reiniciar conteo' ) && str_contains( $htmlTar, 'Ya no fue tarde' ) );
 
 $comprobar( 'presencia por IP del taller', ( $_SERVER['REMOTE_ADDR'] = '203.0.113.10' ) && Presencia::enRedDelTaller() );
 

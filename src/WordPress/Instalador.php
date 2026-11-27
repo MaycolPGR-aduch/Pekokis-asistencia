@@ -13,7 +13,7 @@ defined( 'ABSPATH' ) || exit;
  * lo que RR.HH. haya cambiado.
  */
 final class Instalador {
-	public const VERSION_BD = '11';
+	public const VERSION_BD = '12';
 
 	private const OPCION_VERSION = 'pka_version_bd';
 
@@ -69,7 +69,7 @@ final class Instalador {
 		$c = $wpdb->get_charset_collate();
 		$t = array();
 
-		foreach ( array( 'trabajadores', 'horarios', 'horario_dias', 'motivos', 'marcas', 'revisiones', 'correcciones', 'credenciales', 'dispositivos', 'activaciones', 'redes', 'pantallas', 'auditoria', 'calendario', 'ausencias', 'sueldos', 'sobretiempo', 'avisos', 'pagos', 'recibos', 'solicitudes_celular', 'llaves_gerencia', 'horario_cambios' ) as $tabla ) {
+		foreach ( array( 'trabajadores', 'horarios', 'horario_dias', 'motivos', 'marcas', 'revisiones', 'correcciones', 'credenciales', 'dispositivos', 'activaciones', 'redes', 'pantallas', 'auditoria', 'calendario', 'ausencias', 'sueldos', 'sobretiempo', 'avisos', 'pagos', 'recibos', 'solicitudes_celular', 'llaves_gerencia', 'horario_cambios', 'tardanzas' ) as $tabla ) {
 			$t[ $tabla ] = Tablas::nombre( $tabla );
 		}
 
@@ -94,6 +94,7 @@ final class Instalador {
 				cumpleanos char(5) NOT NULL DEFAULT '',
 				pin_hash varchar(255) NOT NULL DEFAULT '',
 				pin_creado_en datetime NULL,
+				tardanzas_desde_id bigint(20) unsigned NOT NULL DEFAULT 0,
 				origen varchar(16) NOT NULL DEFAULT 'panel',
 				creado_en datetime NOT NULL,
 				actualizado_en datetime NOT NULL,
@@ -324,6 +325,26 @@ final class Instalador {
 				PRIMARY KEY  (id),
 				KEY trabajador_periodo (trabajador_id,estado,desde,hasta),
 				KEY periodo (desde,hasta)
+			) {$c};",
+
+			// Tardanzas con contador acumulativo (versión 12). Una fila por persona y día;
+			// el historial no se borra: se justifica o queda "ya no fue tarde".
+			"CREATE TABLE {$t['tardanzas']} (
+				id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+				trabajador_id bigint(20) unsigned NOT NULL,
+				dia date NOT NULL,
+				minutos smallint(5) unsigned NOT NULL DEFAULT 0,
+				marca_id bigint(20) unsigned NULL,
+				numero smallint(5) unsigned NOT NULL DEFAULT 0,
+				amonestacion tinyint(1) NOT NULL DEFAULT 0,
+				estado varchar(12) NOT NULL DEFAULT 'vigente',
+				justificacion varchar(255) NOT NULL DEFAULT '',
+				justificado_por bigint(20) unsigned NULL,
+				justificado_en datetime NULL,
+				creado_en datetime NOT NULL,
+				PRIMARY KEY  (id),
+				UNIQUE KEY trabajador_dia (trabajador_id,dia),
+				KEY trabajador_estado (trabajador_id,estado)
 			) {$c};",
 
 			// Cambios de horario de una persona por un día o un periodo (maqueta G7, versión 11).

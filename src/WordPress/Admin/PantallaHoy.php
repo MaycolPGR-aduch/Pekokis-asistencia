@@ -138,6 +138,7 @@ final class PantallaHoy {
 				<?php endforeach; ?>
 			</nav>
 
+			<?php $conteosT = \Pekokis\Asistencia\WordPress\Tardanzas::conteos( array_map( static fn( $x ) => $x['t'], $filas ) ); ?>
 			<table class="widefat striped">
 				<thead><tr><th>Trabajador</th><th>Situación</th><th>Llegó</th><th>Desde</th><th>Detalle</th></tr></thead>
 				<tbody>
@@ -149,7 +150,7 @@ final class PantallaHoy {
 					<tr>
 						<td><strong><a href="<?php echo esc_url( PantallaDia::url( (int) $t['id'], $diaT ) ); ?>"><?php echo esc_html( $t['apellidos'] . ', ' . $t['nombres'] ); ?></a></strong><br><span class="description"><?php echo esc_html( $t['area'] ); ?></span></td>
 						<td><span class="pk-chip <?php echo esc_attr( $tipo ); ?>"><?php echo esc_html( $etiqueta ); ?></span></td>
-						<td><?php echo esc_html( $hora( $r->primeraEntrada ) ); ?><?php echo $r->minutosTardanza ? ' <span class="pk-txt-aviso">(+' . (int) $r->minutosTardanza . ' min)</span>' : ''; ?></td>
+						<td><?php echo esc_html( $hora( $r->primeraEntrada ) ); ?><?php echo $r->minutosTardanza ? ' <span class="pk-txt-aviso">(+' . (int) $r->minutosTardanza . ' min)</span>' : ''; ?><?php echo ! empty( $conteosT[ (int) $t['id'] ] ) && $r->minutosTardanza ? '<br><a class="pk-chip ' . ( $conteosT[ (int) $t['id'] ] >= \Pekokis\Asistencia\WordPress\Tardanzas::CONVERSAR ? 'error' : 'aviso' ) . '" href="' . esc_url( PantallaFicha::url( (int) $t['id'], 'tardanzas' ) ) . '">' . esc_html( \Pekokis\Asistencia\WordPress\Tardanzas::ordinal( $conteosT[ (int) $t['id'] ] ) . ' tardanza' ) . '</a>' : ''; ?></td>
 						<td><?php echo Estado::FUERA !== $r->estado || $r->desde ? esc_html( $hora( $r->desde ) ) : '—'; ?></td>
 						<td>
 							<?php

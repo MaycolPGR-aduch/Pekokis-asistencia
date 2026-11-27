@@ -24,6 +24,8 @@ final class Capacidades {
 	// Se pueden delegar por separado (maquetas G17).
 	public const HORARIOS           = 'pka_horarios';
 	public const RECIBOS            = 'pka_recibos';
+	/** Justificar tardanzas y faltas, y reiniciar el conteo de tardanzas: solo gerencia (administrador). */
+	public const JUSTIFICAR         = 'pka_justificar';
 
 	public const ROL_JEFE     = 'pka_jefe';
 	public const ROL_RRHH     = 'pka_rrhh';
@@ -70,6 +72,7 @@ final class Capacidades {
 			foreach ( self::deRrhh() as $capacidad ) {
 				$administrador->add_cap( $capacidad );
 			}
+			$administrador->add_cap( self::JUSTIFICAR );
 		}
 	}
 

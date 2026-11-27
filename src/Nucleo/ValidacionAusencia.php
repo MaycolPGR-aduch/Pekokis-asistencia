@@ -9,6 +9,7 @@ use DateTimeImmutable;
  */
 final class ValidacionAusencia {
 	public const TIPOS = array(
+		'falta'          => 'Falta justificada',
 		'vacaciones'     => 'Vacaciones',
 		'descanso_medico' => 'Descanso médico',
 		'licencia'       => 'Licencia',

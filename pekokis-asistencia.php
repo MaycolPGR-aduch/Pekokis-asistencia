@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Pekokis Asistencia
  * Description: Registro de asistencia del personal del taller: marca desde el celular con passkey y presencia por WiFi del taller o QR.
- * Version: 0.20.1
+ * Version: 0.21.0
  * Requires at least: 6.5
  * Requires PHP: 8.2
  * Author: Pekokis
@@ -11,7 +11,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'PKA_VERSION', '0.20.1' );
+define( 'PKA_VERSION', '0.21.0' );
 define( 'PKA_FILE', __FILE__ );
 define( 'PKA_DIR', plugin_dir_path( __FILE__ ) );
 define( 'PKA_URL', plugin_dir_url( __FILE__ ) );

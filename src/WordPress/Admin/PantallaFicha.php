@@ -44,7 +44,8 @@ final class PantallaFicha {
 			$tabs['pagos'] = 'Pagos y recibos';
 		}
 
-		$tabs['celular'] = 'Celular';
+		$tabs['tardanzas'] = 'Tardanzas';
+		$tabs['celular']   = 'Celular';
 
 		if ( current_user_can( Capacidades::AUDITORIA ) ) {
 			$tabs['cambios'] = 'Cambios';
@@ -71,6 +72,10 @@ final class PantallaFicha {
 				<p class="pk-fila junta pk-mt-s">
 					<span class="pk-chip <?php echo $activo ? 'ok' : 'gris'; ?>"><?php echo esc_html( $activo ? 'Activo' : ucfirst( (string) $t['estado'] ) ); ?></span>
 					<span class="pk-chip <?php echo $celular ? 'ok' : 'aviso'; ?>"><?php echo $celular ? 'Celular registrado' : 'Sin celular'; ?></span>
+					<?php $conteoT = \Pekokis\Asistencia\WordPress\Tardanzas::conteo( $id ); ?>
+					<?php if ( $conteoT ) : ?>
+						<a class="pk-chip <?php echo $conteoT >= \Pekokis\Asistencia\WordPress\Tardanzas::CONVERSAR ? 'error' : 'aviso'; ?>" href="<?php echo esc_url( self::url( $id, 'tardanzas' ) ); ?>"><?php echo esc_html( $conteoT . ( 1 === $conteoT ? ' tardanza' : ' tardanzas' ) ); ?></a>
+					<?php endif; ?>
 					<span class="pk-chip <?php echo $porVer ? 'aviso' : 'gris'; ?>"><?php echo $porVer ? esc_html( $porVer . ( 1 === $porVer ? ' día por revisar' : ' días por revisar' ) ) : 'Sin incidencias pendientes'; ?></span>
 				</p>
 			</div>
@@ -92,6 +97,7 @@ final class PantallaFicha {
 			'asistencia' => self::asistencia( $t ),
 			'pagos'      => self::pagos( $t ),
 			'celular'    => self::pestanaCelular( $t, $celular ),
+			'tardanzas'  => PantallaTardanzas::pestana( $t ),
 			'cambios'    => self::cambios( $t, 40 ),
 			default      => self::resumen( $t, $celular ),
 		};
