@@ -7,13 +7,31 @@ namespace Pekokis\Asistencia\Nucleo;
  * honorarios). Las horas normales están incluidas en el honorario; cada tipo de
  * hora adicional tiene su propia tarifa. Montos en céntimos para no arrastrar
  * errores de redondeo. Cada cambio crea un registro nuevo; el historial no se edita.
+ *
+ * Desde la 0.22.0 (pedido de gerencia): el sábado ya no tiene tarifa propia (se
+ * paga como hora extra si completó la semana, o a valor hora si no); el valor
+ * hora es el honorario ÷ 192; y hay un modo opcional "por horas", en el que el
+ * pago son las horas trabajadas × valor hora (con extra, madrugada y domingo o
+ * feriado aparte, si se eligen).
  */
 final class Sueldo {
 	public const TARIFAS = array(
-		'extra'   => 'Hora extra (lunes a viernes)',
-		'sabado'  => 'Hora de sábado',
+		'extra'   => 'Hora extra (y sábado con semana completa)',
 		'domingo' => 'Hora de domingo',
 		'feriado' => 'Hora de feriado',
+	);
+
+	/** Base para el valor hora: honorario ÷ 192 horas al mes. */
+	public const HORAS_MES = 192;
+
+	public const FIJO  = 'fijo';
+	public const HORAS = 'horas';
+
+	/** Lo que, en el modo por horas, se puede pagar con su propia tarifa. */
+	public const APARTE = array(
+		'extra'     => 'Horas extra y sábado con su tarifa',
+		'madrugada' => 'Madrugada con el multiplicador',
+		'domingo'   => 'Domingo y feriado con su tarifa',
 	);
 
 	public function __construct(
@@ -25,7 +43,24 @@ final class Sueldo {
 		public readonly string $vigenteDesde,        // Y-m-d
 		public readonly ?string $vigenteHasta = null, // Y-m-d, null = sigue vigente.
 		public readonly ?int $id = null,
+		public readonly string $modo = self::FIJO,
+		/** @var string[] Claves de APARTE, solo en el modo por horas. */
+		public readonly array $aparte = array(),
 	) {
+	}
+
+	/** Valor de la hora normal en céntimos: honorario ÷ 192 (informativo en el sueldo fijo). */
+	public function valorHora(): int {
+		return (int) round( $this->honorarioCentimos / self::HORAS_MES );
+	}
+
+	public function porHoras(): bool {
+		return self::HORAS === $this->modo;
+	}
+
+	/** En el modo por horas, ¿ese tipo se paga con su tarifa? (en el fijo, siempre). */
+	public function aparte( string $tipo ): bool {
+		return ! $this->porHoras() || in_array( $tipo, $this->aparte, true );
 	}
 
 	public function rigeEn( string $dia ): bool {

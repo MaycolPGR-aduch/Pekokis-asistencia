@@ -26,6 +26,7 @@ final class Riel {
 		'pka-ausencias'    => 'dashicons-palmtree',
 		'pka-historial'    => 'dashicons-shield',
 		'pka-sueldos'      => 'dashicons-money-alt',
+		'pka-horas'        => 'dashicons-backup',
 		'pka-pagos'        => 'dashicons-calculator',
 		'pka-simulador'    => 'dashicons-chart-line',
 		'pka-recibos'      => 'dashicons-media-text',

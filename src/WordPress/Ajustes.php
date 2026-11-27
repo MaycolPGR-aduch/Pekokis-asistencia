@@ -44,6 +44,7 @@ final class Ajustes {
 			// Jornadas que pasan la medianoche: más de estas horas se aceptan, pero quedan por revisar.
 			'jornada_larga_horas'    => 16,
 			'tardanza_desde'         => ReglasPago::TARDANZA_DESDE_ENTRADA,
+			'madrugada_multiplicador' => '1.5',
 			// Avisos (fase 4). Todos empiezan apagados; se encienden en Ajustes.
 			'avisos_activos'          => array(),
 			'aviso_hora_sin_salida'   => '20:00',

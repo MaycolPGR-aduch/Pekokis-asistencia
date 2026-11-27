@@ -221,9 +221,10 @@ final class PantallaTrabajadores {
 				? array(
 					'honorario'      => $monto( $actual->honorarioCentimos ),
 					'tarifa_extra'   => $monto( $actual->tarifaExtra ),
-					'tarifa_sabado'  => $monto( $actual->tarifaSabado ),
 					'tarifa_domingo' => $monto( $actual->tarifaDomingo ),
 					'tarifa_feriado' => $monto( $actual->tarifaFeriado ),
+					'modo'           => $actual->modo,
+					'aparte'         => $actual->aparte,
 				)
 				: array()
 		);
@@ -231,7 +232,7 @@ final class PantallaTrabajadores {
 		delete_transient( 'pka_form_sueldo_' . get_current_user_id() );
 		?>
 		<h2 class="pk-mt" id="remuneracion">Honorario y tarifas</h2>
-		<p class="description">Se paga por recibos por honorarios: el honorario mensual incluye las horas normales y cada hora adicional va con su tarifa. Solo lo ve gerencia; el trabajador nunca ve estos montos.</p>
+		<p class="description">Se paga por recibos por honorarios: el honorario mensual incluye las horas normales y cada hora adicional va con su tarifa. El valor hora es el honorario ÷ <?php echo (int) \Pekokis\Asistencia\Nucleo\Sueldo::HORAS_MES; ?>. Solo lo ve gerencia; el trabajador nunca ve estos montos.</p>
 		<table class="widefat striped pk-max">
 			<thead><tr><th>Honorario y tarifas por hora</th><th>Desde</th><th>Hasta</th><th>Nota</th><th>Registró</th><th></th></tr></thead>
 			<tbody>
@@ -280,8 +281,23 @@ final class PantallaTrabajadores {
 					<th scope="row"><label for="pka-sueldo-honorario">Honorario mensual (S/)</label></th>
 					<td>
 						<input type="text" inputmode="decimal" id="pka-sueldo-honorario" name="honorario" required value="<?php echo esc_attr( (string) ( $valores['honorario'] ?? '' ) ); ?>" placeholder="1800.00">
-						<p class="description">Incluye las horas normales de su horario.</p>
+						<p class="description">Incluye las horas normales de su horario. Valor hora: honorario ÷ <?php echo (int) \Pekokis\Asistencia\Nucleo\Sueldo::HORAS_MES; ?><?php echo $actual ? ' = ' . esc_html( \Pekokis\Asistencia\Nucleo\Sueldo::soles( $actual->valorHora() ) ) : ''; ?>.</p>
 						<?php self::error( $errores, 'honorario' ); ?>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row">Cómo se le paga</th>
+					<td>
+						<?php $modo = (string) ( $valores['modo'] ?? \Pekokis\Asistencia\Nucleo\Sueldo::FIJO ); ?>
+						<?php $aparte = (array) ( $valores['aparte'] ?? array() ); ?>
+						<label><input type="radio" name="modo" value="<?php echo esc_attr( \Pekokis\Asistencia\Nucleo\Sueldo::FIJO ); ?>" <?php checked( \Pekokis\Asistencia\Nucleo\Sueldo::HORAS !== $modo ); ?>> Sueldo fijo: el honorario del mes, más las horas adicionales</label><br>
+						<label><input type="radio" name="modo" value="<?php echo esc_attr( \Pekokis\Asistencia\Nucleo\Sueldo::HORAS ); ?>" <?php checked( \Pekokis\Asistencia\Nucleo\Sueldo::HORAS, $modo ); ?>> Por horas: las horas trabajadas × valor hora</label>
+						<fieldset class="pk-sub pk-mt-s">
+							<legend class="description">Por horas: ¿qué se paga con su propia tarifa? (si no se marca, va a valor hora)</legend>
+							<?php foreach ( \Pekokis\Asistencia\Nucleo\Sueldo::APARTE as $clave => $texto ) : ?>
+								<label><input type="checkbox" name="aparte[]" value="<?php echo esc_attr( $clave ); ?>" <?php checked( in_array( $clave, $aparte, true ) ); ?>> <?php echo esc_html( $texto ); ?></label><br>
+							<?php endforeach; ?>
+						</fieldset>
 					</td>
 				</tr>
 				<?php foreach ( \Pekokis\Asistencia\Nucleo\Sueldo::TARIFAS as $tipo => $nombre ) : ?>

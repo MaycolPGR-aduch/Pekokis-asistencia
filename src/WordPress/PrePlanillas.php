@@ -68,14 +68,15 @@ final class PrePlanillas {
 
 		$pagos = array(
 			array( '<b>Pagos de ' . $mes . ' — ' . $ajustes['razon_social'] . ' (RUC ' . $ajustes['ruc'] . ')</b>' ),
-			array( 'Recibos por honorarios: honorario + horas extra, de sábado, de domingo y de feriado por la tarifa de cada persona. Días calculados hasta el ' . $hasta . '.' ),
+			array( 'Recibos por honorarios: honorario + horas extra, de sábado (tarifa extra con la semana completa, si no valor hora), de domingo, de feriado y de madrugada (valor hora × ' . PrePlanilla::numero( Ajustes::reglasPago()->multiplicadorMadrugada ) . ') − descuentos. Valor hora = honorario ÷ ' . \Pekokis\Asistencia\Nucleo\Sueldo::HORAS_MES . '. Días calculados hasta el ' . $hasta . '.' ),
 			array(),
 			array(
-				'<b>DNI</b>', '<b>Apellidos y nombres</b>', '<b>Honorario (S/)</b>',
+				'<b>DNI</b>', '<b>Apellidos y nombres</b>', '<b>Honorario (S/)</b>', '<b>Valor hora (S/)</b>', '<b>Pago por horas (S/)</b>',
 				'<b>Horas extra</b>', '<b>Tarifa extra</b>', '<b>Extra (S/)</b>',
-				'<b>Horas sábado</b>', '<b>Tarifa sábado</b>', '<b>Sábado (S/)</b>',
+				'<b>Horas sábado semana completa</b>', '<b>Horas sábado sin completar</b>', '<b>Sábado (S/)</b>',
 				'<b>Horas domingo</b>', '<b>Tarifa domingo</b>', '<b>Domingo (S/)</b>',
 				'<b>Horas feriado</b>', '<b>Tarifa feriado</b>', '<b>Feriado (S/)</b>',
+				'<b>Horas madrugada</b>', '<b>Madrugada (S/)</b>', '<b>Descuentos (S/)</b>',
 				'<b>Total (S/)</b>', '<b>Estado</b>', '<b>Pagado</b>',
 				'<b>Días trabajados</b>', '<b>Faltas</b>', '<b>Justificados</b>', '<b>Tardanzas</b>', '<b>Incompletos</b>', '<b>Por revisar</b>', '<b>Observaciones</b>',
 			),
@@ -85,7 +86,7 @@ final class PrePlanillas {
 			array(
 				'<b>DNI</b>', '<b>Apellidos y nombres</b>', '<b>Fecha</b>', '<b>Tipo de día</b>', '<b>Estado</b>', '<b>Jornada (min)</b>', '<b>Trabajado (min)</b>',
 				'<b>Comida descontada (min)</b>', '<b>Tardanza (min)</b>', '<b>Salida anticipada (min)</b>',
-				'<b>Extra (min)</b>', '<b>Sábado (min)</b>', '<b>Domingo (min)</b>', '<b>Feriado (min)</b>', '<b>Detalle</b>',
+				'<b>Extra (min)</b>', '<b>Sábado (min)</b>', '<b>Domingo (min)</b>', '<b>Feriado (min)</b>', '<b>Madrugada (min)</b>', '<b>Antes de la entrada (min)</b>', '<b>Ajuste de gerencia (min)</b>', '<b>Detalle</b>',
 			),
 		);
 
@@ -104,6 +105,10 @@ final class PrePlanillas {
 				$obs[] = $f->diasSinSueldo . ' día(s) con horas adicionales sin tarifa vigente';
 			}
 
+			if ( $f->porHoras() ) {
+				$obs[] = 'cobra por horas';
+			}
+
 			if ( Trabajadores::CESADO === $t['estado'] ) {
 				$obs[] = 'cesó el ' . $t['fecha_cese'];
 			}
@@ -111,11 +116,12 @@ final class PrePlanillas {
 			$tarifa = static fn( string $tipo ): float|string => $s ? round( $s->tarifa( $tipo ) / 100, 2 ) : '';
 
 			$pagos[] = array(
-				$t['dni'], $nombre, $soles( $f->montos['honorario'] ),
+				$t['dni'], $nombre, $soles( $f->montos['honorario'] ), $s ? round( $s->valorHora() / 100, 2 ) : '', $soles( $f->montos['horas'] ),
 				$horas( $f->minutos['extra'] ), $tarifa( 'extra' ), $soles( $f->montos['extra'] ),
-				$horas( $f->minutos['sabado'] ), $tarifa( 'sabado' ), $soles( $f->montos['sabado'] ),
+				$horas( $f->minutos['sabado_extra'] ), $horas( $f->minutos['sabado_normal'] ), $soles( $f->montos['sabado'] ),
 				$horas( $f->minutos['domingo'] ), $tarifa( 'domingo' ), $soles( $f->montos['domingo'] ),
 				$horas( $f->minutos['feriado'] ), $tarifa( 'feriado' ), $soles( $f->montos['feriado'] ),
+				$horas( $f->minutos['madrugada'] ), $soles( $f->montos['madrugada'] ), $soles( $f->montos['descuentos'] ),
 				$soles( $f->montos['total'] ), PrePlanilla::ESTADOS[ $f->estado() ], isset( $pagados[ $id ] ) ? 'Sí, ' . Ajustes::local( $pagados[ $id ]['marcado_en'], 'd/m/Y' ) : 'No',
 				$f->dias['trabajados'], $f->dias['faltas'], $f->dias['justificados'], $f->dias['con_tardanza'], $f->dias['incompletos'], $f->dias['por_revisar'],
 				implode( '; ', $obs ),
@@ -126,7 +132,7 @@ final class PrePlanillas {
 				$detalle[] = array(
 					$t['dni'], $nombre, $dia, self::TIPOS_DIA[ $j->tipoDia ] ?? $j->tipoDia, CalculoJornada::ESTADOS[ $j->estado ] ?? $j->estado,
 					$j->minutosEsperados, $j->minutosTrabajados, $j->minutosComidaDescontada, $j->minutosTardanza, $j->minutosSalidaAnticipada,
-					$j->minutosExtra, $j->minutosSabado, $j->minutosDomingo, $j->minutosFeriado,
+					$j->minutosExtra, $j->minutosSabado, $j->minutosDomingo, $j->minutosFeriado, $j->minutosMadrugada, $j->minutosTemprano, $j->minutosAjuste,
 					$j->detalle,
 				);
 			}
@@ -134,11 +140,12 @@ final class PrePlanillas {
 
 		$pagos[] = array();
 		$pagos[] = array(
-			'', '<b>Total</b>', $soles( $total->montos['honorario'] ),
+			'', '<b>Total</b>', $soles( $total->montos['honorario'] ), '', $soles( $total->montos['horas'] ),
 			$horas( $total->minutos['extra'] ), '', $soles( $total->montos['extra'] ),
-			$horas( $total->minutos['sabado'] ), '', $soles( $total->montos['sabado'] ),
+			$horas( $total->minutos['sabado_extra'] ), $horas( $total->minutos['sabado_normal'] ), $soles( $total->montos['sabado'] ),
 			$horas( $total->minutos['domingo'] ), '', $soles( $total->montos['domingo'] ),
 			$horas( $total->minutos['feriado'] ), '', $soles( $total->montos['feriado'] ),
+			$horas( $total->minutos['madrugada'] ), $soles( $total->montos['madrugada'] ), $soles( $total->montos['descuentos'] ),
 			$soles( $total->montos['total'] ),
 		);
 

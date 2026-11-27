@@ -19,7 +19,7 @@ final class Historial {
 	public const GRUPOS = array(
 		'trabajadores' => array( 'Trabajadores, celulares, ausencias y tardanzas', array( 'trabajador.', 'activacion.', 'passkey.', 'celular.', 'permiso.', 'ausencia.', 'aviso.', 'tardanza.' ) ),
 		'marcas'       => array( 'Marcas y correcciones', array( 'marca.', 'correccion.' ) ),
-		'pagos'        => array( 'Pagos, honorarios y recibos', array( 'sobretiempo.', 'sueldo.', 'preplanilla.', 'pago.', 'recibo.', 'simulador.' ) ),
+		'pagos'        => array( 'Pagos, honorarios, descuentos y horas', array( 'sobretiempo.', 'sueldo.', 'preplanilla.', 'pago.', 'recibo.', 'simulador.', 'descuento.', 'horas.' ) ),
 		'ajustes'      => array( 'Ajustes, horarios, calendario, redes y pantallas', array( 'ajustes.', 'horario.', 'calendario.', 'red.', 'pantalla.' ) ),
 		'exportes'     => array( 'Descargas y respaldos', array( 'registro.', 'respaldo.', 'historial.', 'informe.', 'reporte.' ) ),
 	);
@@ -81,6 +81,10 @@ final class Historial {
 		'sobretiempo.anular'     => 'Horas extra anuladas',
 		'sueldo.agregar'         => 'Sueldo registrado',
 		'sueldo.anular'          => 'Sueldo anulado',
+		'descuento.crear'        => 'Descuento registrado',
+		'descuento.anular'       => 'Descuento anulado',
+		'horas.ajustar'          => 'Horas de un día ajustadas',
+		'horas.anular_ajuste'    => 'Ajuste de horas anulado',
 		'ajustes.reglas'         => 'Cambio de las reglas de horas',
 		'preplanilla.descargar'  => 'Planilla de pagos descargada',
 		'informe.descargar'      => 'Informe por trabajador descargado',
@@ -112,6 +116,8 @@ final class Historial {
 		'sueldo.'      => array( 'Tarifa', 'aviso' ),
 		'sobretiempo.' => array( 'Tarifa', 'aviso' ),
 		'pago.'        => array( 'Pago', 'aviso' ),
+		'descuento.'   => array( 'Pago', 'aviso' ),
+		'horas.'       => array( 'Horas', 'info' ),
 		'preplanilla.' => array( 'Pago', 'aviso' ),
 		'recibo.'      => array( 'Recibo', 'aviso' ),
 		'horario.'     => array( 'Horario', 'ok' ),
@@ -193,6 +199,9 @@ final class Historial {
 		'horas_jornada_valor'         => 'Horas para el valor hora',
 		'descontar_no_trabajado'      => 'Descontar lo no trabajado',
 		'tardanza_desde'              => 'Tardanza desde',
+		'madrugada_multiplicador'     => 'Multiplicador de madrugada',
+		'minutos'                     => 'Horas',
+		'dia'                         => 'Día',
 		'aviso_permanencia_min'       => 'Aviso de permanencia (min)',
 		'formato'                     => 'Formato',
 		'numero'                      => 'Número',
@@ -289,7 +298,7 @@ final class Historial {
 
 		// Los sueldos solo los ve quien puede ver sueldos (Gerencia y jefes, no).
 		if ( ! current_user_can( Capacidades::VER_SUELDOS ) ) {
-			$c[] = $wpdb->prepare( 'accion NOT LIKE %s AND accion NOT LIKE %s AND accion NOT LIKE %s AND accion NOT LIKE %s', 'sueldo.%', 'pago.%', 'recibo.%', 'simulador.%' );
+			$c[] = $wpdb->prepare( 'accion NOT LIKE %s AND accion NOT LIKE %s AND accion NOT LIKE %s AND accion NOT LIKE %s AND accion NOT LIKE %s', 'sueldo.%', 'pago.%', 'recibo.%', 'simulador.%', 'descuento.%' );
 		}
 		$utc  = new DateTimeZone( 'UTC' );
 

@@ -24,6 +24,8 @@ final class ValidacionPago {
 		return array(
 			'honorario'     => Sueldo::aCentimos( (string) ( $datos['honorario'] ?? '' ) ),
 			'tarifas'       => $tarifas,
+			'modo'          => Sueldo::HORAS === ( $datos['modo'] ?? '' ) ? Sueldo::HORAS : Sueldo::FIJO,
+			'aparte'        => Sueldo::HORAS === ( $datos['modo'] ?? '' ) ? array_values( array_intersect( array_keys( Sueldo::APARTE ), array_map( 'strval', (array) ( $datos['aparte'] ?? array() ) ) ) ) : array(),
 			'vigente_desde' => trim( (string) ( $datos['vigente_desde'] ?? '' ) ),
 			'nota'          => mb_substr( trim( (string) preg_replace( '/\s+/u', ' ', (string) ( $datos['nota'] ?? '' ) ) ), 0, 255 ),
 		);

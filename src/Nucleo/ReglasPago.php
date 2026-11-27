@@ -17,6 +17,9 @@ final class ReglasPago {
 	public function __construct(
 		public readonly int $comidaNoMarcadaMin = 60, // Se descuenta en días laborables si no marcó la comida.
 		public readonly string $tardanzaDesde = self::TARDANZA_DESDE_ENTRADA,
+		// Madrugada: de 00:00 a esta hora (y hasta la entrada si llegó antes). Se paga a valor hora × multiplicador.
+		public readonly int $madrugadaHastaMin = 360,
+		public readonly float $multiplicadorMadrugada = 1.5,
 	) {
 	}
 
@@ -25,6 +28,8 @@ final class ReglasPago {
 		return new self(
 			max( 0, min( 180, (int) ( $ajustes['comida_no_marcada_min'] ?? 60 ) ) ),
 			self::TARDANZA_DESDE_TOLERANCIA === ( $ajustes['tardanza_desde'] ?? '' ) ? self::TARDANZA_DESDE_TOLERANCIA : self::TARDANZA_DESDE_ENTRADA,
+			360,
+			max( 1.0, min( 5.0, (float) str_replace( ',', '.', (string) ( $ajustes['madrugada_multiplicador'] ?? '1.5' ) ) ) ),
 		);
 	}
 }

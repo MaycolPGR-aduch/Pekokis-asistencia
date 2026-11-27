@@ -13,7 +13,7 @@ defined( 'ABSPATH' ) || exit;
  * lo que RR.HH. haya cambiado.
  */
 final class Instalador {
-	public const VERSION_BD = '12';
+	public const VERSION_BD = '13';
 
 	private const OPCION_VERSION = 'pka_version_bd';
 
@@ -69,7 +69,7 @@ final class Instalador {
 		$c = $wpdb->get_charset_collate();
 		$t = array();
 
-		foreach ( array( 'trabajadores', 'horarios', 'horario_dias', 'motivos', 'marcas', 'revisiones', 'correcciones', 'credenciales', 'dispositivos', 'activaciones', 'redes', 'pantallas', 'auditoria', 'calendario', 'ausencias', 'sueldos', 'sobretiempo', 'avisos', 'pagos', 'recibos', 'solicitudes_celular', 'llaves_gerencia', 'horario_cambios', 'tardanzas' ) as $tabla ) {
+		foreach ( array( 'trabajadores', 'horarios', 'horario_dias', 'motivos', 'marcas', 'revisiones', 'correcciones', 'credenciales', 'dispositivos', 'activaciones', 'redes', 'pantallas', 'auditoria', 'calendario', 'ausencias', 'sueldos', 'sobretiempo', 'avisos', 'pagos', 'recibos', 'solicitudes_celular', 'llaves_gerencia', 'horario_cambios', 'tardanzas', 'descuentos', 'horas_ajustes' ) as $tabla ) {
 			$t[ $tabla ] = Tablas::nombre( $tabla );
 		}
 
@@ -388,8 +388,44 @@ final class Instalador {
 				anulado_por bigint(20) unsigned NULL,
 				anulado_en datetime NULL,
 				motivo_anulacion varchar(255) NOT NULL DEFAULT '',
+				opciones varchar(100) NOT NULL DEFAULT '',
 				PRIMARY KEY  (id),
 				KEY trabajador (trabajador_id,estado,vigente_desde)
+			) {$c};",
+
+			// Descuentos de monto libre en el pago de un mes (versión 13). No se editan: se anulan con motivo.
+			"CREATE TABLE {$t['descuentos']} (
+				id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+				trabajador_id bigint(20) unsigned NOT NULL,
+				mes char(7) NOT NULL,
+				monto_centimos int(10) unsigned NOT NULL,
+				motivo varchar(255) NOT NULL DEFAULT '',
+				estado varchar(12) NOT NULL DEFAULT 'vigente',
+				creado_por bigint(20) unsigned NOT NULL,
+				creado_en datetime NOT NULL,
+				anulado_por bigint(20) unsigned NULL,
+				anulado_en datetime NULL,
+				motivo_anulacion varchar(255) NOT NULL DEFAULT '',
+				PRIMARY KEY  (id),
+				KEY trabajador_mes (trabajador_id,mes,estado),
+				KEY mes (mes,estado)
+			) {$c};",
+
+			// Ajustes de gerencia a las horas de un día (versión 13): minutos + o −, con motivo.
+			"CREATE TABLE {$t['horas_ajustes']} (
+				id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+				trabajador_id bigint(20) unsigned NOT NULL,
+				dia date NOT NULL,
+				minutos smallint(6) NOT NULL,
+				motivo varchar(255) NOT NULL DEFAULT '',
+				estado varchar(12) NOT NULL DEFAULT 'vigente',
+				creado_por bigint(20) unsigned NOT NULL,
+				creado_en datetime NOT NULL,
+				anulado_por bigint(20) unsigned NULL,
+				anulado_en datetime NULL,
+				motivo_anulacion varchar(255) NOT NULL DEFAULT '',
+				PRIMARY KEY  (id),
+				KEY trabajador_dia (trabajador_id,estado,dia)
 			) {$c};",
 
 			// En desuso desde la versión 5: las horas extra ya no se autorizan (son automáticas).

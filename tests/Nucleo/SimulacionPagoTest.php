@@ -27,13 +27,21 @@ final class SimulacionPagoTest extends TestCase {
 		return CalculoJornada::calcular( $marcas, $h, $dia, new DateTimeZone( 'America/Lima' ), new ReglasPago() );
 	}
 
-	/** El ejemplo de las maquetas: S/ 1,800 + 6,5 h × 12 + 4 h × 14 = S/ 1,934. */
+	/** El ejemplo de las maquetas: S/ 1,800 + 6,5 h × 12 + 4 h de sábado con la semana completa × 12 = S/ 1,926. */
 	public function test_desde_cero_da_el_ejemplo_de_las_maquetas(): void {
-		$r = SimulacionPago::libre( 180000, array( 'extra' => 1200, 'sabado' => 1400 ), array( 'extra' => 390, 'sabado' => 240 ) );
+		$r = SimulacionPago::libre( 180000, array( 'extra' => 1200 ), array( 'extra' => 390, 'sabado_extra' => 240 ) );
 
 		$this->assertSame( 7800, $r['montos']['extra'] );
-		$this->assertSame( 5600, $r['montos']['sabado'] );
-		$this->assertSame( 193400, $r['montos']['total'] );
+		$this->assertSame( 4800, $r['montos']['sabado_extra'] );
+		$this->assertSame( 192600, $r['montos']['total'] );
+	}
+
+	public function test_desde_cero_sabado_sin_semana_y_madrugada_a_valor_hora(): void {
+		$r = SimulacionPago::libre( 180000, array( 'extra' => 1200 ), array( 'sabado_normal' => 240, 'madrugada' => 60 ), 2.0, 1000 );
+
+		$this->assertSame( 3752, $r['montos']['sabado_normal'], '4 h × 9.38' );
+		$this->assertSame( 1876, $r['montos']['madrugada'], '1 h × 9.38 × 2' );
+		$this->assertSame( 180000 + 3752 + 1876 - 1000, $r['montos']['total'] );
 	}
 
 	public function test_desde_cero_no_acepta_negativos(): void {
@@ -49,9 +57,9 @@ final class SimulacionPagoTest extends TestCase {
 			'2026-11-03' => $this->dia( '2026-11-03', '20:07' ),
 			'2026-11-07' => $this->dia( '2026-11-07', '17:00', false ),
 		);
-		$sueldo   = new Sueldo( 180000, 1250, 1400, 1600, 2000, '2026-01-01' );
-		$real     = SimulacionPago::deReal( PrePlanilla::calcular( $jornadas, array( $sueldo ) ) );
-		$simulado = SimulacionPago::conJornadas( $jornadas, 180000, array( 'extra' => 1250, 'sabado' => 1400, 'domingo' => 1600, 'feriado' => 2000 ) );
+		$sueldo   = new Sueldo( 180000, 1250, 1250, 1600, 2000, '2026-01-01' );
+		$real     = SimulacionPago::deReal( PrePlanilla::calcular( $jornadas, array( $sueldo ), null, null, 3000 ) );
+		$simulado = SimulacionPago::conJornadas( $jornadas, 180000, array( 'extra' => 1250, 'domingo' => 1600, 'feriado' => 2000 ), array(), null, null, 3000 );
 
 		$this->assertSame( $real['montos'], $simulado['montos'] );
 		$this->assertSame( $real['minutos'], $simulado['minutos'] );
@@ -73,6 +81,16 @@ final class SimulacionPagoTest extends TestCase {
 		$this->assertSame( 0, $r['minutos']['extra'] );
 		$this->assertSame( 0, $r['montos']['extra'] );
 		$this->assertSame( 100000, $r['montos']['total'] );
+	}
+
+	public function test_por_horas_lo_sumado_va_a_valor_hora(): void {
+		$jornadas = array( '2026-11-02' => $this->dia( '2026-11-02', '19:30' ) ); // 9 h 30.
+		$r        = SimulacionPago::conJornadas( $jornadas, 180000, array( 'extra' => 1200 ), array( 'horas' => 60, 'extra' => 60 ), null, null, 0, Sueldo::HORAS );
+
+		$this->assertSame( 0, $r['montos']['honorario'] );
+		$this->assertSame( 690, $r['minutos']['horas'], '9 h 30 + 1 h normal + 1 h extra, todo a valor hora' );
+		$this->assertSame( 0, $r['montos']['extra'] );
+		$this->assertSame( (int) round( 570 * 938 / 60 ) + 938 + 938, $r['montos']['total'] );
 	}
 
 	public function test_el_honorario_cuenta_aunque_el_mes_no_tenga_dias(): void {

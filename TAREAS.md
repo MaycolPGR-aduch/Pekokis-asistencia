@@ -273,6 +273,33 @@ Vienen de la sección 16 del plan; se resuelven con gerencia y el contador.
 
 ## Bitácora
 
+### 27-11-2026 — versión 0.22.0: pagos (bloque 2 de los cambios de gerencia)
+- **Valor hora** = honorario ÷ 192. Sale en Sueldos y tarifas (se recalcula al escribir), en el perfil, en la ficha y en la Contabilidad de horas.
+- **Cálculo del día** (`CalculoJornada`):
+  - Primero se completa el horario: lo que faltó se cubre con lo de después de la salida y luego con lo de antes de la entrada.
+  - Extra después de la salida por minutos; antes de la entrada solo horas completas (los minutos quedan en `minutosTemprano`).
+  - La comida cuenta mínimo 60 min aunque sea más corta.
+  - **Madrugada**: de 00:00 a 6:00, y hasta su entrada si llegó antes de las 6. Se calcula también en domingo y feriado y no completa el horario.
+  - **Ajuste de gerencia** en minutos (+ o −). Si el día no tenía marcas y se le reconocen horas, queda completo.
+- **Pago del mes** (`PrePlanilla`):
+  - **Sábado**: tarifa extra si completó las horas de lunes a viernes de su semana (total semanal; los feriados y los justificados cuentan como cumplidos); si no, valor hora. Se quitó la tarifa de sábado (la columna queda con la extra).
+  - **Madrugada**: valor hora × multiplicador (ajuste nuevo, 1,5 por defecto).
+  - **Descuentos** de monto libre. El total nunca baja de 0.
+  - **Modo por horas** (opcional): horas × valor hora, y extra, madrugada o domingo y feriado con su tarifa si se marcan.
+  - `Jornadas::delMes` trae la semana completa aunque empiece en el mes anterior.
+- **Base de datos v13:**
+  - Tablas `descuentos` y `horas_ajustes`.
+  - Columna `sueldos.opciones`; `modalidad` puede ser `horas`.
+- **Panel:**
+  - Página nueva **Contabilidad de horas**, solo gerencia: equipo, persona por semana, y ajustar o anular las horas de un día.
+  - Ficha → **Pagos y recibos**: selector de mes, **Descuentos** (agregar o anular) e **Historial de pagos**.
+  - Perfil: **Cómo se le paga** (fijo o por horas).
+  - Reglas: el **multiplicador de la madrugada**.
+  - Actualizados la Calculadora, la planilla en Excel (valor hora, sábado con y sin semana, madrugada y descuentos), los Registros por persona en Excel, la gerencia en el celular y el simulador (tipos nuevos y descuentos).
+  - Auditoría: `descuento.*` y `horas.*`.
+- **Pruebas:** pasan 170 unitarias y las 321 comprobaciones de punta a punta (sección 23 nueva).
+- **Siguiente:** bloque 3 (varias áreas por persona y documento de retención de 4.ª o 5.ª).
+
 ### 27-11-2026 — versión 0.21.0: tardanzas y justificaciones (bloque 1 de los cambios de gerencia)
 - **Pedido de gerencia, 26-11. Son 16 cambios en 4 bloques**; ver "Cambios pedidos por gerencia" en Pendientes. Este es el **bloque 1**.
 - **Registro de tardanzas** (tabla nueva `tardanzas`, base de datos v12):
@@ -296,7 +323,7 @@ Vienen de la sección 16 del plan; se resuelven con gerencia y el contador.
 
 ## Cambios pedidos por gerencia (26-11)
 - [x] **Bloque 1**, en la 0.21.0: avisos de tardanza 1.ª–4.ª, contador acumulativo con reinicio, amonestaciones registradas, justificar tardanzas y faltas solo gerencia, sin RR.HH. ni jefes.
-- [ ] **Bloque 2 · Pagos:**
+- [x] **Bloque 2 · Pagos**, en la 0.22.0:
   - Valor hora informativo = honorario ÷ 192.
   - Sábado: hora extra si completó las horas de L–V de la semana (total semanal; los feriados y las faltas justificadas cuentan como cumplidos), y si no, hora normal. Se quita la tarifa de sábado.
   - Madrugada = hora normal × multiplicador (también en domingo y feriado).

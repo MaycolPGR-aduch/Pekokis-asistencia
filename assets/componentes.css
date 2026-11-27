@@ -188,6 +188,11 @@ a.pk-cal-dia:hover, button.pk-cal-dia:hover { border-color: var(--pk-rosa); }
 .pk-lista-puntos { margin: 6px 0 0 18px; list-style: disc; }
 .pk-lista-puntos li { margin: 0 0 2px; }
 .pk-sin-lista { margin: 0; padding-left: 18px; }
+.pk-lista { list-style: disc; margin: 6px 0 12px; padding-left: 22px; }
+.pk-lista li { margin-bottom: 4px; }
+.pk-sub { border: 0; margin: 4px 0 0 24px; padding: 0; }
+.pk-mt-xs { margin-top: 4px !important; }
+.pk-descuentos li { margin-bottom: 10px; }
 .pk-bloque { display: block; }
 .pk-resumen-clic { cursor: pointer; font-weight: 600; color: var(--pk-rosa-oscuro); }
 

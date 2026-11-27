@@ -295,6 +295,23 @@ Decidido el 14-11-2026, siguiendo las maquetas entregadas por Pekokis (`CONTEXTO
 - **Mis horas (T5/T6):** horas, extra y días completos (sin dinero), "Te falta marcar", calendario con cada día tocable y el detalle con sus pasos, otras salidas y correcciones pedidas. "Pedir corrección" manda la hora, qué pasó y un comentario a `POST /correcciones`.
 - **Perfil (T7):** DNI oculto; "Ver" lo trae con `POST /yo/dni` y queda en el historial.
 
+### 6.15 Pagos: semana completa, madrugada, ajustes, descuentos y modo por horas (versión 0.22.0)
+
+- `CalculoJornada::calcular(…, int $ajuste = 0)` reparte lo trabajado con `partes()`:
+  - Partes: madrugada (00:00–6:00, y hasta la entrada si el tramo empezó antes de las 6), antes de la entrada, dentro del horario, después de la salida y, sin horario, el resto.
+  - La comida se descuenta del horario: `max(0, refrigerioMin − comida marcada)`, o la regla si no la marcó.
+  - Lo que falta del horario se cubre primero con lo de después y luego con lo de antes. Extra = lo que queda después + horas completas de lo de antes.
+  - Campos nuevos: `minutosMadrugada`, `minutosTemprano` y `minutosAjuste`.
+- `PrePlanilla::calcular( $jornadas, $historial, ?ReglasPago, ?array $semanas, int $descuentos )`:
+  - `semanas()` suma lunes a viernes sin madrugada ni días justificados; `lunes()` da la clave.
+  - El sábado se paga con `tarifa('extra')` si la semana está completa, y si no con `Sueldo::valorHora()` (honorario ÷ `HORAS_MES` = 192).
+  - Madrugada = valor hora × `ReglasPago::multiplicadorMadrugada` (ajuste `madrugada_multiplicador`).
+  - En el modo `Sueldo::HORAS`, lo trabajado va a `montos['horas']`, salvo lo marcado en `aparte` (extra, madrugada, domingo).
+- `Jornadas::delMes()` calcula desde el lunes de la primera semana y devuelve jornadas del mes, semanas y descuentos; `prePlanilla()` lo usa.
+- Base de datos v13: `descuentos` (trabajador, mes, monto, motivo, estado y anulación), `horas_ajustes` (trabajador, día, minutos con signo, motivo, estado y anulación) y `sueldos.opciones`.
+  - Clases: `Descuentos` (permiso pka_ver_sueldos) y `HorasAjustes` (permiso pka_justificar).
+  - Pantallas: `PantallaHoras` (Contabilidad de horas) y `PantallaDescuentos` (ficha).
+
 ### 6.14 Auditoría, horarios por persona, feriados e informes (versión 0.18.0)
 
 - `Horarios::deTrabajador( $t, $dia )` reemplaza a `delDia( horario_id, dia )` en todos los cálculos: primero mira `horario_cambios` (trabajador, desde, hasta, laborable, entrada, salida, motivo, estado vigente/anulado), después el horario base. En un feriado devuelve el horario del cambio con `feriado = true`, para que se pague como feriado.

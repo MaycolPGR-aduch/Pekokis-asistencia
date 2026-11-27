@@ -20,7 +20,7 @@ if ( 'local' !== wp_get_environment_type() ) {
 
 global $wpdb;
 
-foreach ( array( 'trabajadores', 'marcas', 'auditoria', 'credenciales', 'dispositivos', 'activaciones', 'redes', 'correcciones', 'pantallas', 'revisiones', 'calendario', 'ausencias', 'sueldos', 'avisos', 'pagos', 'recibos', 'solicitudes_celular', 'llaves_gerencia', 'horario_cambios', 'tardanzas' ) as $tabla ) {
+foreach ( array( 'trabajadores', 'marcas', 'auditoria', 'credenciales', 'dispositivos', 'activaciones', 'redes', 'correcciones', 'pantallas', 'revisiones', 'calendario', 'ausencias', 'sueldos', 'avisos', 'pagos', 'recibos', 'solicitudes_celular', 'llaves_gerencia', 'horario_cambios', 'tardanzas', 'descuentos', 'horas_ajustes' ) as $tabla ) {
 	$wpdb->query( 'TRUNCATE TABLE ' . Tablas::nombre( $tabla ) ); // phpcs:ignore
 }
 
@@ -115,7 +115,6 @@ foreach ( $ids as $i => $tid ) {
 		array(
 			'honorario'      => (string) ( 1500 + 100 * $i ),
 			'tarifa_extra'   => (string) ( 10 + $i ),
-			'tarifa_sabado'  => (string) ( 12 + $i ),
 			'tarifa_domingo' => (string) ( 18 + $i ),
 			'tarifa_feriado' => (string) ( 20 + $i ),
 			'vigente_desde'  => '2026-01-01',

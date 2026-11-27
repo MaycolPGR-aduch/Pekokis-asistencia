@@ -11,14 +11,20 @@ use DateTimeZone;
  * Criterio (contexto del sistema, secciones 6.2 y 8):
  * - Horas trabajadas = tiempo dentro del taller (más las salidas que cuentan
  *   como trabajadas). La comida no cuenta.
- * - Si en un día laborable no marcó la comida, se descuenta la comida de la
- *   regla (60 min por defecto, por confirmar).
- * - Lunes a viernes laborable: es hora extra todo lo que pase de la jornada
- *   efectiva del horario (9 h 30 min con el horario base). Es automático: no
- *   hace falta autorizarla.
- * - Sábado: todas sus horas van con la tarifa de sábado. Domingo: con la de
- *   domingo. Feriado (o día no laborable del calendario): con la de feriado.
+ * - La comida cuenta como mínimo lo de su horario (60 min): si comió menos,
+ *   esos minutos no suman. Si no la marcó, se descuenta la de la regla.
+ * - Madrugada: lo trabajado de 00:00 a 6:00 y, si llegó antes de las 6:00 (o
+ *   venía de la noche anterior), hasta su hora de entrada. Se paga aparte
+ *   (valor hora × multiplicador), cualquier día.
+ * - Lunes a viernes laborable: primero se completa el horario (lo que faltó se
+ *   cubre con lo trabajado después de la salida y luego con lo de antes de la
+ *   entrada). Lo que sobra es hora extra: después de la salida, por minutos;
+ *   antes de la entrada, solo horas completas (los minutos quedan anotados).
+ * - Sábado: todas sus horas (la tarifa depende de si completó la semana, ver
+ *   PrePlanilla). Domingo y feriado: con su tarifa.
  * - Un día de semana que no es laborable en su horario: todo es hora extra.
+ * - Gerencia puede ajustar los minutos de un día (con motivo): suman como
+ *   tiempo trabajado después de la salida, o restan.
  * - Tardanzas, salidas anticipadas y faltas se señalan; no se descuentan.
  */
 final class CalculoJornada {
@@ -53,7 +59,7 @@ final class CalculoJornada {
 		public readonly int $minutosTrabajados,      // Ya sin la comida descontada.
 		public readonly int $minutosSalidasPagadas,
 		public readonly int $minutosRefrigerio,
-		public readonly int $minutosComidaDescontada, // Comida no marcada que se descontó.
+		public readonly int $minutosComidaDescontada, // Comida no marcada, o lo que faltó para el mínimo de su horario.
 		public readonly int $minutosExcesoRefrigerio,
 		public readonly int $minutosTardanza,
 		public readonly int $minutosSalidaAnticipada,
@@ -64,6 +70,9 @@ final class CalculoJornada {
 		public readonly int $minutosFeriado,
 		public readonly int $pendientesRevision,
 		public readonly string $detalle = '',
+		public readonly int $minutosMadrugada = 0,
+		public readonly int $minutosTemprano = 0,   // Antes de la entrada (sin madrugada), aunque no cuenten como extra.
+		public readonly int $minutosAjuste = 0,     // Ajuste de gerencia (+ o −).
 	) {
 	}
 
@@ -80,11 +89,14 @@ final class CalculoJornada {
 		ReglasPago $reglas,
 		array $revisiones = array(),
 		?string $ausencia = null,
+		int $ajuste = 0,
 	): self {
 		$marcas  = MaquinaEstados::ordenar( $marcasDelDia );
 		$ventana = self::ventana( $horario, $dia, $zona );
 		$esperan = $ventana ? max( 0, intdiv( $ventana[1] - $ventana[0], 60 ) - $horario->refrigerioMin ) : 0;
 		$tipo    = self::tipoDia( $horario, $dia, $zona );
+
+		$estadoSinMarcas = null;
 
 		if ( ! $marcas ) {
 			[ $estado, $noTrabajado ] = match ( true ) {
@@ -93,7 +105,12 @@ final class CalculoJornada {
 				default               => array( self::FALTA, $esperan ),
 			};
 
-			return new self( $estado, $horario->laborable, $tipo, $esperan, 0, 0, 0, 0, 0, 0, 0, $noTrabajado, 0, 0, 0, 0, 0, $ausencia ?? $horario->descanso );
+			if ( 0 === $ajuste ) {
+				return new self( $estado, $horario->laborable, $tipo, $esperan, 0, 0, 0, 0, 0, 0, 0, $noTrabajado, 0, 0, 0, 0, 0, $ausencia ?? $horario->descanso );
+			}
+
+			// Sin marcas pero con un ajuste de gerencia: si le reconoce horas, el día no queda como falta.
+			$estadoSinMarcas = $ajuste > 0 && null === $ausencia ? self::COMPLETO : $estado;
 		}
 
 		$dentro     = array(); // Tramos [inicio, fin] en segundos Unix.
@@ -141,20 +158,60 @@ final class CalculoJornada {
 			}
 		}
 
-		$bruto    = intdiv( self::suma( $dentro ) + self::suma( $pagadas ), 60 );
+		$tramos   = array_merge( $dentro, $pagadas );
+		$bruto    = intdiv( self::suma( $tramos ), 60 );
 		$refriMin = intdiv( $refrigerio, 60 );
-		$comida   = $horario->laborable && 0 === $refrigerio && null === $abierta ? min( $reglas->comidaNoMarcadaMin, $bruto ) : 0;
-		$neto     = $bruto - $comida;
+		$comida   = 0;
 
-		[ $extra, $sabado, $domingo, $feriado ] = match ( $tipo ) {
-			self::DIA_LABORABLE => array( max( 0, $neto - $esperan ), 0, 0, 0 ),
-			self::DIA_SABADO    => array( 0, $neto, 0, 0 ),
-			self::DIA_DOMINGO   => array( 0, 0, $neto, 0 ),
-			self::DIA_FERIADO   => array( 0, 0, 0, $neto ),
-			default             => array( $neto, 0, 0, 0 ),
-		};
+		// La comida cuenta como mínimo lo de su horario; sin marcarla, lo de la regla.
+		if ( $horario->laborable && null === $abierta && $marcas ) {
+			$comida = 0 === $refrigerio
+				? min( $reglas->comidaNoMarcadaMin, $bruto )
+				: min( max( 0, $horario->refrigerioMin - $refriMin ), $bruto );
+		}
 
-		$estado = match ( true ) {
+		[ $madrugada, $temprano, $enHorario, $despues, $resto ] = self::partes( $tramos, $dia, $zona, $ventana, $reglas->madrugadaHastaMin );
+
+		// El descuento de la comida sale de lo trabajado en el horario (o de lo que sigue).
+		$quita      = min( $comida, $enHorario );
+		$enHorario -= $quita;
+		$despues    = max( 0, $despues - ( $comida - $quita ) );
+		$neto       = max( 0, $bruto - $comida + $ajuste );
+		$faltan     = 0;
+		$extra      = 0;
+		$sabado     = 0;
+		$domingo    = 0;
+		$feriado    = 0;
+
+		if ( self::DIA_LABORABLE === $tipo ) {
+			// Ajuste de gerencia: suma como tiempo después de la salida; si resta, primero de ahí.
+			$faltan = null !== $ausencia ? 0 : max( 0, $esperan - $enHorario );
+			if ( $ajuste >= 0 ) {
+				$despues += $ajuste;
+			} else {
+				$saca     = min( $despues, -$ajuste );
+				$despues -= $saca;
+				$faltan  += -$ajuste - $saca;
+			}
+
+			// Primero se completa el horario; lo que sobra es extra.
+			$cubre    = min( $despues, $faltan );
+			$despues -= $cubre;
+			$faltan  -= $cubre;
+			$cubre2   = min( $temprano, $faltan );
+			$faltan  -= $cubre2;
+			$extra    = $despues + intdiv( $temprano - $cubre2, 60 ) * 60;
+		} else {
+			$libre = max( 0, $resto + $temprano + $enHorario + $despues + $ajuste );
+			match ( $tipo ) {
+				self::DIA_SABADO  => $sabado = $libre,
+				self::DIA_DOMINGO => $domingo = $libre,
+				self::DIA_FERIADO => $feriado = $libre,
+				default           => $extra = $libre,
+			};
+		}
+
+		$estado = $estadoSinMarcas ?? match ( true ) {
 			null !== $abierta || null !== MaquinaEstados::problemaEnSecuencia( $marcas ) => self::INCOMPLETO,
 			$pendientes > 0 => self::A_REVISAR,
 			default         => self::COMPLETO,
@@ -171,15 +228,75 @@ final class CalculoJornada {
 			$comida,
 			$horario->laborable ? max( 0, $refriMin - $horario->refrigerioMin ) : 0,
 			self::tardanza( self::primeraEntrada( $marcas ), $horario, $ventana, $reglas ),
-			self::salidaAnticipada( $marcas, $ventana, $revisiones ),
-			$horario->laborable && null === $ausencia && self::INCOMPLETO !== $estado ? max( 0, $esperan - $neto ) : 0,
+			$marcas ? self::salidaAnticipada( $marcas, $ventana, $revisiones ) : 0,
+			$horario->laborable && null === $ausencia && self::INCOMPLETO !== $estado ? $faltan : 0,
 			$extra,
 			$sabado,
 			$domingo,
 			$feriado,
 			$pendientes,
-			$ausencia ?? $horario->descanso
+			$ausencia ?? $horario->descanso,
+			$madrugada,
+			$temprano,
+			$ajuste
 		);
+	}
+
+	/**
+	 * Reparte lo trabajado: madrugada, antes de la entrada, dentro del horario,
+	 * después de la salida y (sin horario) el resto. En minutos.
+	 *
+	 * @param array<int, array{0: int, 1: int}> $tramos
+	 * @param array{0: int, 1: int}|null       $ventana
+	 * @return array{0: int, 1: int, 2: int, 3: int, 4: int}
+	 */
+	private static function partes( array $tramos, string $dia, DateTimeZone $zona, ?array $ventana, int $madrugadaHasta ): array {
+		$cero   = ( new DateTimeImmutable( $dia . ' 00:00', $zona ) )->getTimestamp();
+		$fin6   = $cero + $madrugadaHasta * 60;
+		$mad    = array( array( $cero, $fin6 ), array( $cero + 86400, $fin6 + 86400 ) );
+		$t      = array( 0, 0, 0, 0, 0 );
+
+		foreach ( $tramos as [ $a, $b ] ) {
+			$piezas = array( array( $a, $b ) );
+			$madTramo = $mad;
+
+			// Llegó en la madrugada y siguió: hasta su entrada también es madrugada.
+			if ( $ventana && $a < $fin6 && $b > $fin6 && $ventana[0] > $fin6 ) {
+				$madTramo[0] = array( $cero, $ventana[0] );
+			}
+
+			foreach ( $madTramo as [ $m0, $m1 ] ) {
+				$siguen = array();
+				foreach ( $piezas as [ $p0, $p1 ] ) {
+					$i0 = max( $p0, $m0 );
+					$i1 = min( $p1, $m1 );
+					if ( $i1 > $i0 ) {
+						$t[0] += $i1 - $i0;
+						if ( $i0 > $p0 ) {
+							$siguen[] = array( $p0, $i0 );
+						}
+						if ( $p1 > $i1 ) {
+							$siguen[] = array( $i1, $p1 );
+						}
+					} else {
+						$siguen[] = array( $p0, $p1 );
+					}
+				}
+				$piezas = $siguen;
+			}
+
+			foreach ( $piezas as [ $p0, $p1 ] ) {
+				if ( ! $ventana ) {
+					$t[4] += $p1 - $p0;
+					continue;
+				}
+				$t[1] += max( 0, min( $p1, $ventana[0] ) - $p0 );
+				$t[2] += max( 0, min( $p1, $ventana[1] ) - max( $p0, $ventana[0] ) );
+				$t[3] += max( 0, $p1 - max( $p0, $ventana[1] ) );
+			}
+		}
+
+		return array_map( static fn( int $seg ): int => intdiv( $seg, 60 ), $t );
 	}
 
 	public function trabajoAlgo(): bool {
@@ -190,9 +307,9 @@ final class CalculoJornada {
 		return self::FALTA === $this->estado;
 	}
 
-	/** Minutos que se pagan aparte del honorario (extra, sábado, domingo y feriado). */
+	/** Minutos que se pagan aparte del honorario (extra, sábado, domingo, feriado y madrugada). */
 	public function minutosAdicionales(): int {
-		return $this->minutosExtra + $this->minutosSabado + $this->minutosDomingo + $this->minutosFeriado;
+		return $this->minutosExtra + $this->minutosSabado + $this->minutosDomingo + $this->minutosFeriado + $this->minutosMadrugada;
 	}
 
 	/** Feriado del calendario, sábado, domingo, o laborable / libre según su horario. */

@@ -130,9 +130,9 @@ final class PantallaPagos {
 					?>
 					<tr>
 						<td><strong><?php echo esc_html( $p['apellidos'] . ', ' . $p['nombres'] ); ?></strong><br><span class="description"><?php echo esc_html( $p['area'] ); ?></span></td>
-						<td><?php echo $f->sueldoFinal ? esc_html( Sueldo::soles( $f->montos['honorario'] ) ) : '—'; ?></td>
+						<td><?php echo $f->sueldoFinal ? ( $f->porHoras() ? '<span class="pk-chip info">Por horas</span>' : esc_html( Sueldo::soles( $f->montos['honorario'] ) ) ) : '—'; ?></td>
 						<td><?php echo esc_html( PrePlanilla::horas( $f->minutosAdicionales() ) . ' h' ); ?><?php echo $f->costoExtra() ? '<br><span class="description">' . esc_html( Sueldo::soles( $f->costoExtra() ) ) . '</span>' : ''; ?></td>
-						<td><strong><?php echo $f->sueldoFinal ? esc_html( Sueldo::soles( $f->montos['total'] ) ) : '—'; ?></strong></td>
+						<td><strong><?php echo $f->sueldoFinal ? esc_html( Sueldo::soles( $f->montos['total'] ) ) : '—'; ?></strong><?php echo $f->montos['descuentos'] ? '<br><span class="description">' . esc_html( 'desc. − ' . Sueldo::soles( $f->montos['descuentos'] ) ) . '</span>' : ''; ?></td>
 						<td><?php self::etiquetaRecibo( $r, $f ); ?></td>
 						<td><span class="pk-chip <?php echo PrePlanilla::LISTO === $estado ? 'ok' : 'error'; ?>"><?php echo esc_html( PrePlanilla::ESTADOS[ $estado ] ); ?></span></td>
 						<td><?php self::casillaPagado( $p, $mes, $estado, $pago ); ?></td>

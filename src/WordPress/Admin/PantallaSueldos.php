@@ -23,8 +23,7 @@ final class PantallaSueldos {
 
 	private const CAMPOS = array(
 		'honorario'      => 'Honorario mensual',
-		'tarifa_extra'   => 'Hora extra',
-		'tarifa_sabado'  => 'Hora sábado',
+		'tarifa_extra'   => 'Hora extra y sábado',
 		'tarifa_domingo' => 'Hora domingo',
 		'tarifa_feriado' => 'Hora feriado',
 	);
@@ -50,7 +49,7 @@ final class PantallaSueldos {
 		<div class="wrap">
 			<?php Avisos::mostrar(); ?>
 			<h1>Sueldos y tarifas <span class="pk-h1-der" id="pk-sin-guardar" hidden>0 cambios sin guardar</span></h1>
-			<p class="description">Cada persona tiene su propio honorario y su precio por hora. El honorario incluye las horas normales; cada hora adicional va con su tarifa. Los trabajadores nunca ven estos montos.</p>
+			<p class="description">Cada persona tiene su propio honorario y su precio por hora. El honorario incluye las horas normales; cada hora adicional va con su tarifa. El valor hora es el honorario ÷ <?php echo (int) Sueldo::HORAS_MES; ?> y se usa para el sábado sin semana completa y la madrugada. El sábado con la semana completa va con la tarifa extra. Quien cobra por horas se cambia en su perfil. Los trabajadores nunca ven estos montos.</p>
 
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" id="pk-sueldos" class="pk-sueldos">
 				<input type="hidden" name="action" value="pka_guardar_sueldos">
@@ -63,6 +62,7 @@ final class PantallaSueldos {
 								<?php foreach ( self::CAMPOS as $etiqueta ) : ?>
 									<th><?php echo esc_html( $etiqueta ); ?></th>
 								<?php endforeach; ?>
+								<th>Valor hora</th>
 								<th>Vigente desde</th>
 							</tr>
 						</thead>
@@ -77,7 +77,6 @@ final class PantallaSueldos {
 							$actual = array(
 								'honorario'      => $monto( $s?->honorarioCentimos ),
 								'tarifa_extra'   => $monto( $s?->tarifaExtra ),
-								'tarifa_sabado'  => $monto( $s?->tarifaSabado ),
 								'tarifa_domingo' => $monto( $s?->tarifaDomingo ),
 								'tarifa_feriado' => $monto( $s?->tarifaFeriado ),
 							);
@@ -88,6 +87,8 @@ final class PantallaSueldos {
 									<span class="pk-av"><?php echo esc_html( mb_strtoupper( mb_substr( (string) $t['nombres'], 0, 1 ) . mb_substr( (string) $t['apellidos'], 0, 1 ) ) ); ?></span><a href="<?php echo esc_url( PantallaFicha::url( $id, 'pagos' ) ); ?>"><?php echo esc_html( Trabajadores::nombreCompleto( $t ) ); ?></a>
 									<?php if ( ! $s ) : ?>
 										<span class="pk-chip error">Sin honorario</span>
+									<?php elseif ( $s->porHoras() ) : ?>
+										<span class="pk-chip info">Por horas</span>
 									<?php endif; ?>
 									<?php if ( isset( $errores[ $id ] ) ) : ?>
 										<br><span class="pk-txt-error"><?php echo esc_html( implode( ' ', $errores[ $id ] ) ); ?></span>
@@ -100,6 +101,7 @@ final class PantallaSueldos {
 										<input type="hidden" name="antes[<?php echo (int) $id; ?>][<?php echo esc_attr( $campo ); ?>]" value="<?php echo esc_attr( $actual[ $campo ] ); ?>">
 									</td>
 								<?php endforeach; ?>
+								<td class="pk-chico pk-valor-hora" data-horas="<?php echo (int) Sueldo::HORAS_MES; ?>"><?php echo $s ? esc_html( Sueldo::soles( $s->valorHora() ) ) : '—'; ?></td>
 								<td class="pk-chico"><?php echo $s ? esc_html( wp_date( 'j M Y', strtotime( $s->vigenteDesde . ' 12:00:00' ) ) ) : '—'; ?><?php echo $propio ? '<br><em>Es tuyo: lo cambia otra persona.</em>' : ''; ?></td>
 							</tr>
 						<?php endforeach; ?>
@@ -164,7 +166,9 @@ final class PantallaSueldos {
 				continue;
 			}
 
-			$r = Sueldos::agregar( $id, array_intersect_key( $fila, self::CAMPOS ) + array( 'vigente_desde' => $desde, 'nota' => $nota ) );
+			// El modo (fijo o por horas) se conserva: se cambia en el perfil.
+			$vigente = Sueldos::vigente( $id );
+			$r       = Sueldos::agregar( $id, array_intersect_key( $fila, self::CAMPOS ) + array( 'vigente_desde' => $desde, 'nota' => $nota, 'modo' => $vigente?->modo, 'aparte' => $vigente ? $vigente->aparte : array() ) );
 
 			if ( is_wp_error( $r ) ) {
 				$errores[ $id ] = array_values( (array) ( $r->get_error_data()['errores'] ?? array( $r->get_error_message() ) ) );

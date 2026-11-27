@@ -39,13 +39,13 @@ final class PrePlanillaTest extends TestCase {
 		return CalculoJornada::calcular( array(), $this->laborable(), $dia, $this->zona(), new ReglasPago() );
 	}
 
-	/** Honorario S/ 1,800; extra S/ 12; sábado S/ 14; domingo S/ 20; feriado S/ 24. */
+	/** Honorario S/ 1,800 (valor hora S/ 9.38); extra S/ 12; domingo S/ 20; feriado S/ 24. */
 	private function tarifa( string $desde = '2026-01-01', ?string $hasta = null, int $honorario = 180000 ): Sueldo {
 		return new Sueldo( $honorario, 1200, 1400, 2000, 2400, $desde, $hasta );
 	}
 
 	public function test_ejemplo_de_las_maquetas(): void {
-		// Lucía Ramos, noviembre: 6,5 h extra y 4 h de sábado → 1,800 + 78 + 56 = S/ 1,934.
+		// Lucía Ramos, noviembre: 6,5 h extra y 4 h de sábado con la semana completa → 1,800 + 78 + 48 = S/ 1,926.
 		$jornadas = array(
 			'2026-11-16' => $this->dia( '2026-11-16', '22:00' ),   // 2 h 30 extra.
 			'2026-11-17' => $this->dia( '2026-11-17', '23:30' ),   // 4 h extra.
@@ -63,9 +63,10 @@ final class PrePlanillaTest extends TestCase {
 		$this->assertSame( 240, $fila->minutos['sabado'] );
 		$this->assertSame( 180000, $fila->montos['honorario'] );
 		$this->assertSame( 7800, $fila->montos['extra'] );
-		$this->assertSame( 5600, $fila->montos['sabado'] );
-		$this->assertSame( 193400, $fila->montos['total'] );
-		$this->assertSame( 13400, $fila->costoExtra() );
+		$this->assertSame( 4800, $fila->montos['sabado'], 'Completó la semana: el sábado va con la tarifa extra' );
+		$this->assertSame( 240, $fila->minutos['sabado_extra'] );
+		$this->assertSame( 192600, $fila->montos['total'] );
+		$this->assertSame( 12600, $fila->costoExtra() );
 		$this->assertSame( 1, $fila->dias['sabados'] );
 		$this->assertSame( PrePlanilla::LISTO, $fila->estado() );
 	}
@@ -163,7 +164,94 @@ final class PrePlanillaTest extends TestCase {
 		$this->assertSame( 0, $ok['tarifas']['feriado'], 'Una tarifa puede ser 0' );
 		$this->assertArrayHasKey( 'vigente_desde', ValidacionPago::erroresSueldo( $ok, '2026-12-01' ) );
 
-		$mal = ValidacionPago::normalizarSueldo( array( 'honorario' => '0', 'tarifa_extra' => 'x', 'tarifa_sabado' => '5000', 'vigente_desde' => 'ayer' ) + $base );
-		$this->assertSame( array( 'honorario', 'tarifa_extra', 'tarifa_sabado', 'vigente_desde' ), array_keys( ValidacionPago::erroresSueldo( $mal ) ) );
+		$mal = ValidacionPago::normalizarSueldo( array( 'honorario' => '0', 'tarifa_extra' => 'x', 'tarifa_domingo' => '5000', 'vigente_desde' => 'ayer' ) + $base );
+		$this->assertSame( array( 'honorario', 'tarifa_extra', 'tarifa_domingo', 'vigente_desde' ), array_keys( ValidacionPago::erroresSueldo( $mal ) ) );
+
+		$this->assertSame( Sueldo::FIJO, $ok['modo'] );
+		$horas = ValidacionPago::normalizarSueldo( array( 'modo' => 'horas', 'aparte' => array( 'extra', 'raro' ) ) + $base );
+		$this->assertSame( Sueldo::HORAS, $horas['modo'] );
+		$this->assertSame( array( 'extra' ), $horas['aparte'] );
+	}
+
+	/** Una semana de lunes (16-11) a sábado (21-11); $lunesFalta deja el lunes sin marcas. */
+	private function semana( bool $lunesFalta = false, ?string $ausencia = null ): array {
+		$j = array();
+		foreach ( array( '2026-11-16', '2026-11-17', '2026-11-18', '2026-11-19', '2026-11-20' ) as $i => $d ) {
+			$j[ $d ] = 0 === $i && $lunesFalta ? CalculoJornada::calcular( array(), $this->laborable(), $d, $this->zona(), new ReglasPago(), array(), $ausencia ) : $this->dia( $d );
+		}
+		$j['2026-11-21'] = CalculoJornada::calcular( array( Fabrica::entrada( '2026-11-21 09:00', 1 ), Fabrica::salida( '2026-11-21 13:00', 'fin_jornada', 2 ) ), HorarioDelDia::libre(), '2026-11-21', $this->zona(), new ReglasPago() );
+
+		return $j;
+	}
+
+	public function test_valor_hora_es_el_honorario_entre_192(): void {
+		$this->assertSame( 938, $this->tarifa()->valorHora(), '1,800 ÷ 192 = 9.375' );
+		$this->assertSame( 1042, $this->tarifa( honorario: 200000 )->valorHora() );
+	}
+
+	public function test_el_sabado_depende_de_la_semana(): void {
+		$completa = PrePlanilla::calcular( $this->semana(), array( $this->tarifa() ) );
+		$this->assertSame( 4800, $completa->montos['sabado'], '4 h × tarifa extra' );
+		$this->assertTrue( PrePlanilla::semanas( $this->semana() )['2026-11-16']['completa'] );
+
+		$incompleta = PrePlanilla::calcular( $this->semana( true ), array( $this->tarifa() ) );
+		$this->assertSame( 3752, $incompleta->montos['sabado'], 'Faltó el lunes: 4 h × valor hora (9.38)' );
+		$this->assertSame( 240, $incompleta->minutos['sabado_normal'] );
+		$this->assertStringContainsString( 'Sábado sin completar la semana: 4 h × S/ 9.38 (valor hora) = S/ 37.52.', implode( "
+", $incompleta->explicacion() ) );
+
+		$justificada = PrePlanilla::calcular( $this->semana( true, 'Vacaciones' ), array( $this->tarifa() ) );
+		$this->assertSame( 4800, $justificada->montos['sabado'], 'Un día justificado cuenta como cumplido' );
+
+		// La semana se mira en total: una hora menos el lunes y una más el martes, completa.
+		$compensa               = $this->semana();
+		$compensa['2026-11-16'] = $this->dia( '2026-11-16', '18:30' );
+		$compensa['2026-11-17'] = $this->dia( '2026-11-17', '20:30' );
+		$this->assertSame( 4800, PrePlanilla::calcular( $compensa, array( $this->tarifa() ) )->montos['sabado'] );
+
+		// La semana puede empezar el mes anterior: se pasan las semanas aparte.
+		$soloSabado = array( '2026-11-21' => $this->semana()['2026-11-21'] );
+		$this->assertSame( 0, PrePlanilla::calcular( $soloSabado, array( $this->tarifa() ) )->montos['sabado_extra'], 'Sin datos de la semana, va a valor hora' );
+		$this->assertSame( 4800, PrePlanilla::calcular( $soloSabado, array( $this->tarifa() ), null, PrePlanilla::semanas( $this->semana() ) )->montos['sabado'] );
+		$this->assertSame( '2026-11-16', PrePlanilla::lunes( '2026-11-21' ) );
+		$this->assertSame( '2026-11-30', PrePlanilla::lunes( '2026-12-06' ) );
+	}
+
+	public function test_madrugada_con_multiplicador_y_descuentos(): void {
+		$madruga = array( '2026-11-16' => $this->dia( '2026-11-16', entrada: '05:00' ) ); // 4 h de madrugada.
+		$fila    = PrePlanilla::calcular( $madruga, array( $this->tarifa() ), new ReglasPago( multiplicadorMadrugada: 1.5 ), null, 5000 );
+
+		$this->assertSame( 240, $fila->minutos['madrugada'] );
+		$this->assertSame( 5628, $fila->montos['madrugada'], '4 h × (9.38 × 1,5)' );
+		$this->assertSame( 5000, $fila->montos['descuentos'] );
+		$this->assertSame( 180000 + 5628 - 5000, $fila->montos['total'] );
+		$texto = implode( "
+", $fila->explicacion() );
+		$this->assertStringContainsString( 'Madrugada (hasta las 6:00): 4 h × S/ 14.07 (valor hora × 1,5) = S/ 56.28.', $texto );
+		$this->assertStringContainsString( 'Descuentos: − S/ 50.00.', $texto );
+
+		$this->assertSame( 0, PrePlanilla::calcular( array(), array( $this->tarifa() ), null, null, 999999 )->montos['total'], 'El total nunca es negativo' );
+	}
+
+	public function test_modo_por_horas(): void {
+		$dias = array( '2026-11-16' => $this->dia( '2026-11-16', '21:00' ) ); // 11 h: 9 h 30 + 1 h 30 extra.
+		$todo = new Sueldo( 180000, 1200, 1200, 2000, 2400, '2026-01-01', null, null, Sueldo::HORAS );
+		$fila = PrePlanilla::calcular( $dias, array( $todo ) );
+
+		$this->assertTrue( $fila->porHoras() );
+		$this->assertSame( 0, $fila->montos['honorario'] );
+		$this->assertSame( 660, $fila->minutos['horas'] );
+		$this->assertSame( 10318, $fila->montos['horas'], '11 h × 9.38' );
+		$this->assertSame( 0, $fila->montos['extra'] );
+		$this->assertSame( 10318, $fila->montos['total'] );
+
+		$aparte = new Sueldo( 180000, 1200, 1200, 2000, 2400, '2026-01-01', null, null, Sueldo::HORAS, array( 'extra' ) );
+		$fila2  = PrePlanilla::calcular( $dias, array( $aparte ) );
+		$this->assertSame( 570, $fila2->minutos['horas'] );
+		$this->assertSame( 8911, $fila2->montos['horas'] );
+		$this->assertSame( 1800, $fila2->montos['extra'], '1,5 h × 12' );
+		$this->assertSame( 10711, $fila2->montos['total'] );
+		$this->assertStringContainsString( 'Pago por horas: 9,5 h × S/ 9.38', implode( "
+", $fila2->explicacion() ) );
 	}
 }

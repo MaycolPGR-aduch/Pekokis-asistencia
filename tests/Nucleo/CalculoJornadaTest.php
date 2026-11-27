@@ -86,7 +86,91 @@ final class CalculoJornadaTest extends TestCase {
 		$this->assertSame( 0, $j->minutosExtra, 'Sin el descuento serían 60 min de extra' );
 
 		$sinRegla = $this->calcular( $sinComida, reglas: new ReglasPago( comidaNoMarcadaMin: 0 ) );
-		$this->assertSame( 60, $sinRegla->minutosExtra );
+		$this->assertSame( 0, $sinRegla->minutosExtra, 'Lo trabajado dentro del horario no es extra, aunque no haya comido' );
+		$this->assertSame( 630, $sinRegla->minutosTrabajados );
+	}
+
+	public function test_la_comida_corta_no_suma_minutos(): void {
+		$corta = array(
+			Fabrica::entrada( $this->h( '09:00' ), 1 ),
+			Fabrica::salida( $this->h( '13:00' ), 'refrigerio', 2 ),
+			Fabrica::entrada( $this->h( '13:30' ), 3 ),
+			Fabrica::salida( $this->h( '19:30' ), 'fin_jornada', 4 ),
+		);
+		$j = $this->calcular( $corta );
+
+		$this->assertSame( 30, $j->minutosComidaDescontada, 'Cuenta como mínimo la hora de su horario' );
+		$this->assertSame( 570, $j->minutosTrabajados );
+		$this->assertSame( 0, $j->minutosExtra );
+		$this->assertSame( 0, $j->minutosNoTrabajados );
+
+		$corta[3] = Fabrica::salida( $this->h( '20:00' ), 'fin_jornada', 4 );
+		$this->assertSame( 30, $this->calcular( $corta )->minutosExtra, 'Solo cuentan los 30 min después de la salida' );
+	}
+
+	public function test_despues_de_la_salida_cuenta_por_minutos(): void {
+		$this->assertSame( 17, $this->calcular( $this->diaNormal( salida: '19:47' ) )->minutosExtra );
+	}
+
+	public function test_antes_de_la_entrada_solo_horas_completas(): void {
+		$j = $this->calcular( $this->diaNormal( '07:10' ) );
+		$this->assertSame( 110, $j->minutosTemprano, 'Los minutos quedan anotados' );
+		$this->assertSame( 60, $j->minutosExtra, 'Pero solo la hora completa es extra' );
+		$this->assertSame( 0, $j->minutosMadrugada );
+
+		$this->assertSame( 0, $this->calcular( $this->diaNormal( '08:55' ) )->minutosExtra, 'Llegar 5 minutos antes no es extra' );
+
+		// Llegó a las 7 y se fue a las 18:30: primero completa el horario con lo de la mañana.
+		$cubre = $this->calcular( $this->diaNormal( '07:00', salida: '18:30' ) );
+		$this->assertSame( 60, $cubre->minutosExtra );
+		$this->assertSame( 0, $cubre->minutosNoTrabajados );
+		$this->assertSame( 60, $cubre->minutosSalidaAnticipada, 'La salida anticipada se señala igual' );
+	}
+
+	public function test_madrugada_hasta_las_6_y_hasta_su_entrada(): void {
+		$j = $this->calcular( $this->diaNormal( '05:00' ) );
+		$this->assertSame( 240, $j->minutosMadrugada, 'Llegó antes de las 6: madrugada hasta su entrada (9:00)' );
+		$this->assertSame( 0, $j->minutosExtra, 'La madrugada se paga aparte y no completa el horario' );
+		$this->assertSame( 0, $j->minutosTemprano );
+		$this->assertSame( 240, $j->minutosAdicionales() );
+
+		$falta = $this->calcular( $this->diaNormal( '05:00', salida: '18:30' ) );
+		$this->assertSame( 60, $falta->minutosNoTrabajados, 'La madrugada no cubre lo que faltó del horario' );
+
+		$domingo = $this->calcular( array( Fabrica::entrada( $this->h( '04:00', self::DOMINGO ), 1 ), Fabrica::salida( $this->h( '08:00', self::DOMINGO ), 'fin_jornada', 2 ) ), horario: HorarioDelDia::libre(), dia: self::DOMINGO );
+		$this->assertSame( 120, $domingo->minutosMadrugada, 'También en domingo' );
+		$this->assertSame( 120, $domingo->minutosDomingo );
+
+		// Volvió en la noche y pasó la medianoche: de 00:00 a 01:00 es madrugada.
+		$noche = $this->diaNormal();
+		$noche[] = Fabrica::entrada( $this->h( '23:00' ), 5 );
+		$noche[] = Fabrica::salida( '2026-11-17 01:00', 'fin_jornada', 6 );
+		$n = $this->calcular( $noche );
+		$this->assertSame( 60, $n->minutosMadrugada );
+		$this->assertSame( 60, $n->minutosExtra );
+	}
+
+	public function test_ajuste_de_gerencia(): void {
+		$suma = CalculoJornada::calcular( $this->diaNormal(), $this->horario(), self::DIA, $this->zona(), new ReglasPago(), array(), null, 90 );
+		$this->assertSame( 90, $suma->minutosExtra, 'Con el horario completo, lo sumado es extra' );
+		$this->assertSame( 660, $suma->minutosTrabajados );
+		$this->assertSame( 90, $suma->minutosAjuste );
+
+		$cubre = CalculoJornada::calcular( $this->diaNormal( salida: '18:30' ), $this->horario(), self::DIA, $this->zona(), new ReglasPago(), array(), null, 90 );
+		$this->assertSame( 30, $cubre->minutosExtra, 'Primero completa la hora que faltó' );
+		$this->assertSame( 0, $cubre->minutosNoTrabajados );
+
+		$resta = CalculoJornada::calcular( $this->diaNormal( salida: '20:00' ), $this->horario(), self::DIA, $this->zona(), new ReglasPago(), array(), null, -60 );
+		$this->assertSame( 0, $resta->minutosExtra );
+		$this->assertSame( 30, $resta->minutosNoTrabajados );
+
+		$sinMarcas = CalculoJornada::calcular( array(), $this->horario(), self::DIA, $this->zona(), new ReglasPago(), array(), null, 570 );
+		$this->assertSame( CalculoJornada::COMPLETO, $sinMarcas->estado, 'Si gerencia le reconoce las horas, no es falta' );
+		$this->assertSame( 570, $sinMarcas->minutosTrabajados );
+		$this->assertSame( 0, $sinMarcas->minutosNoTrabajados );
+
+		$sabado = CalculoJornada::calcular( array(), HorarioDelDia::libre(), self::SABADO, $this->zona(), new ReglasPago(), array(), null, 120 );
+		$this->assertSame( 120, $sabado->minutosSabado );
 	}
 
 	public function test_sabado_domingo_y_feriado(): void {

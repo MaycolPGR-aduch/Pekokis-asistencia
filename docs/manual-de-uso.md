@@ -176,25 +176,48 @@ Al tocar a una persona se abre su **calendario del mes** y el detalle de cada d�
 
 ## Pagos y recibos
 
-El pago del mes es el **honorario mensual** más las **horas adicionales × su tarifa**. Las horas salen solas de la asistencia: no se digitan. Solo lo ve quien tiene permiso de sueldos (RR.HH. y administrador).
+El pago del mes es el **honorario mensual** más las **horas adicionales × su tarifa**, menos los **descuentos**. Las horas salen solas de la asistencia: no se digitan. Solo lo ve gerencia.
+
+El **valor hora** es el honorario ÷ **192** (por ejemplo, S/ 1,800 ÷ 192 = S/ 9.38). Es informativo en el sueldo fijo, y se usa para el sábado sin semana completa y para la madrugada.
 
 **Sueldos y tarifas** (se configura una vez y se cambia cuando haya aumentos)
 
-- Una fila por persona: honorario mensual y 4 tarifas por hora (extra, sábado, domingo y feriado).
+- Una fila por persona: honorario mensual, 3 tarifas por hora (extra, domingo y feriado) y el valor hora, que se recalcula al escribir el honorario. El sábado ya no tiene tarifa propia.
 - Lo cambiado se resalta y se cuenta arriba (*2 cambios sin guardar*). Al guardar se elige **desde cuándo rige**; los meses anteriores no cambian.
 - Cada cambio queda en el historial de la ficha de la persona.
 
+**Sueldo fijo o por horas** (perfil de la persona → *Honorario y tarifas* → *Cómo se le paga*)
+
+- **Sueldo fijo** (lo normal): el honorario del mes, más las horas adicionales.
+- **Por horas** (opcional, para quien no tiene horario fijo): se le paga cada hora trabajada × valor hora, sin honorario. Se puede marcar qué va con su propia tarifa: horas extra y sábado, madrugada con el multiplicador, o domingo y feriado. Lo que no se marca va también a valor hora. En la tabla de Sueldos sale con la etiqueta *Por horas*.
+
 **Cómo se cuentan las horas**
 
-- **Horas extra:** de lunes a viernes, lo que pase de la jornada efectiva (9 h 30 min con el horario base 9:00–19:30). Son automáticas, no se autorizan.
-- **Sábado, domingo y feriado:** todas las horas de ese día, con su tarifa.
-- **Comida no marcada:** se descuentan 60 minutos (se cambia en *Seguridad y reglas → Reglas de horas*).
+- **De lunes a viernes, primero se completa el horario.** Si faltó tiempo (llegó tarde o salió antes), se cubre con lo que se quedó después de la salida y, si no alcanza, con lo que llegó antes de la entrada.
+- **Hora extra:** lo que sobra después de completar el horario. Después de la salida cuenta **por minutos**. Antes de la entrada cuentan **solo horas completas** (si llegó 7:10, 1 hora; si llegó 8:55, nada). Los minutos de antes de la entrada quedan anotados igual. Es automático, no se autoriza.
+- **Comida:** cuenta como mínimo lo de su horario (60 min), aunque coma menos. Esos minutos ahorrados no suman a la extra. Si no marcó la comida, se descuentan 60 minutos.
+- **Madrugada:** lo trabajado entre las 00:00 y las 6:00. Si llegó antes de las 6:00, la madrugada sigue hasta su hora de entrada. Se paga a **valor hora × multiplicador** (1,5 por defecto; se cambia en *Seguridad y reglas → Reglas de horas*), cualquier día, también domingo y feriado. No completa el horario.
+- **Sábado:** si de lunes a viernes de esa semana trabajó en total todas las horas de su horario, el sábado va con la **tarifa extra**. Si no, va a **valor hora**. Los feriados y los días justificados cuentan como cumplidos.
+- **Domingo y feriado:** todas las horas de ese día, con su tarifa.
+- Las faltas y tardanzas se señalan, pero no se descuentan.
+
+**Contabilidad de horas** (Asistencia → Contabilidad de horas; solo gerencia)
+
+- **Todo el equipo:** por persona, las horas esperadas por su horario, las trabajadas, lo que faltó, la extra, el sábado, domingo y feriado, la madrugada, los ajustes y cuántas semanas completó.
+- **Una persona:** la base de 192 h y su valor hora, y el mes día por día agrupado por semana, con lo que llegó antes de entrar, la madrugada y la extra. Debajo de cada semana dice si la completó (de eso depende el sábado).
+- **Ajustar las horas de un día:** elige el día, las horas a sumar o restar (por ejemplo `1:30` o `-0:45`) y el motivo. Lo sumado completa primero su horario y lo que pasa es hora extra. Si el día era falta y se le reconocen las horas, queda como completo. Cada ajuste se puede **Anular** con motivo y queda en la Auditoría.
+
+**Descuentos e historial de pagos** (ficha → *Pagos y recibos*)
+
+- Arriba se elige el mes. *Cómo se calcula su pago* explica el monto línea por línea.
+- **Descuentos:** monto libre y motivo (adelanto, préstamo, daño…). Se restan del total del mes. No se editan: se **Anulan** con motivo.
+- **Historial de pagos:** cada mes marcado como pagado, con el total, los descuentos de ese mes y quién lo marcó.
 
 **Calculadora de pagos** (Asistencia → Pagos)
 
 1. Elige el mes. Arriba sale el **total del mes** (honorarios + horas).
 2. Revisa **Antes de pagar**: personas con días por resolver, personas sin honorario y el estado de los recibos. Cada aviso lleva a donde se arregla.
-3. En cada persona, **Ver** muestra *Cómo se calculó*: horas por tipo × tarifa, y el monto del recibo comparado con el cálculo.
+3. En cada persona, **Ver** muestra *Cómo se calculó*: horas por tipo × tarifa, los descuentos, y el monto del recibo comparado con el cálculo. Quien cobra por horas sale con la etiqueta *Por horas* en vez del honorario.
 4. Cuando se le paga, **Marcar pagado**. Si fue un error, **Desmarcar**.
 5. **Planilla de las listas** o **Planilla de todas** descargan el Excel para pagar.
 
@@ -202,7 +225,7 @@ Si cambia una tarifa o se corrige un registro, el cálculo se actualiza solo. El
 
 **Simulador de pagos** (Asistencia → Simulador de pagos; no guarda nada)
 
-- **¿Y si…?:** eliges a una persona y un mes. Se cargan sus horas reales, su honorario y sus tarifas. Cambia cualquier valor o suma o resta horas (por ejemplo, -2), y ves lo real, lo simulado y la diferencia por concepto.
+- **¿Y si…?:** eliges a una persona y un mes. Se cargan sus horas reales, su honorario, sus tarifas y sus descuentos. Cambia cualquier valor o suma o resta horas de cada tipo (extra, sábado con o sin semana completa, domingo, feriado, madrugada), y ves lo real, lo simulado y la diferencia por concepto.
 - **Todo el equipo:** sube (o baja, con signo menos) el honorario o una tarifa a todos, o suma horas a cada uno, y ves el total del mes real contra el simulado, persona por persona.
 - **Desde cero:** escribe un honorario, las tarifas y las horas, y obtienes el total con su desglose. No usa datos reales.
 - Se recalcula solo al escribir, con la misma fórmula de la Calculadora. **Descargar simulación (Excel)** la baja para compartirla. En la Auditoría solo queda que alguien usó el simulador.
@@ -234,7 +257,7 @@ Estas pantallas las usa RR.HH. o el administrador para preparar el sistema y man
 **Perfiles** (las personas)
 
 - **+ Nuevo trabajador:** nombre, DNI, cumpleaños, teléfono, horario, jefe que aprueba y honorario mensual. Con el cumpleaños registrado, la persona puede activar su celular sola en el taller.
-- La **ficha** de cada persona tiene pestañas: **Resumen**, **Asistencia**, **Pagos y recibos**, **Celular** y **Cambios**. El DNI se ve con **Mostrar**, y eso queda en la Auditoría.
+- La **ficha** de cada persona tiene pestañas: **Resumen**, **Asistencia**, **Pagos y recibos** (cálculo del mes, descuentos e historial de pagos), **Tardanzas**, **Celular** y **Cambios**. El DNI se ve con **Mostrar**, y eso queda en la Auditoría.
 - Si un jefe o alguien de RR.HH. también marca, se enlaza su perfil con su usuario del panel, para que no pueda aprobar sus propias marcas.
 - **Cesar** a una persona desactiva su celular y su llave; su historial se conserva.
 

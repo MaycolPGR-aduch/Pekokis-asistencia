@@ -38,13 +38,20 @@ final class PantallaSimulador {
 	);
 
 	private const NOMBRES = array(
-		'honorario' => 'Honorario',
-		'extra'     => 'Horas extra',
-		'sabado'    => 'Sábado',
-		'domingo'   => 'Domingo',
-		'feriado'   => 'Feriado',
-		'total'     => 'Total del mes',
+		'honorario'     => 'Honorario',
+		'horas'         => 'Pago por horas',
+		'extra'         => 'Horas extra',
+		'sabado_extra'  => 'Sábado con semana completa',
+		'sabado_normal' => 'Sábado sin completar la semana',
+		'domingo'       => 'Domingo',
+		'feriado'       => 'Feriado',
+		'madrugada'     => 'Madrugada',
+		'descuentos'    => 'Descuentos',
+		'total'         => 'Total del mes',
 	);
+
+	/** Filas que solo se muestran si tienen algo. */
+	private const OPCIONALES = array( 'horas', 'descuentos' );
 
 	public static function registrar(): void {
 		add_action( 'admin_post_pka_simulador_excel', array( self::class, 'excel' ) );
@@ -130,6 +137,9 @@ final class PantallaSimulador {
 		} else {
 			$hoja[] = array( '<b>Concepto</b>', '<b>Horas</b>' ) + ( $r['real'] ? array( 2 => '<b>Real (S/)</b>', 3 => '<b>Simulado (S/)</b>', 4 => '<b>Diferencia (S/)</b>' ) : array( 2 => '<b>Monto (S/)</b>' ) );
 			foreach ( self::NOMBRES as $clave => $nombre ) {
+				if ( ! self::mostrar( $clave, $r ) ) {
+					continue;
+				}
 				$fila = array( $nombre, in_array( $clave, SimulacionPago::TIPOS, true ) ? $horas( $r['simulado']['minutos'][ $clave ] ) : '' );
 				if ( $r['real'] ) {
 					$fila[] = $soles( $r['real']['montos'][ $clave ] );
@@ -171,7 +181,7 @@ final class PantallaSimulador {
 		$pest   = isset( self::PESTANAS[ $texto( 'pestana' ) ] ) ? $texto( 'pestana' ) : 'persona';
 		$e      = array( 'pestana' => $pest, 'mes' => $mes, 't' => absint( $texto( 't' ) ), 'crudo' => array() );
 
-		foreach ( array( 'honorario', 'extra', 'sabado', 'domingo', 'feriado' ) as $k ) {
+		foreach ( array_merge( array( 'honorario' ), array_keys( Sueldo::TARIFAS ) ) as $k ) {
 			$e['dinero'][ $k ]      = self::dinero( $texto( $k ) );
 			$e['crudo'][ $k ]       = $texto( $k );
 		}
@@ -193,17 +203,22 @@ final class PantallaSimulador {
 		$desde    = $e['mes'] . '-01';
 		$hasta    = min( ( new DateTimeImmutable( $desde ) )->format( 'Y-m-t' ), Jornadas::ayer() );
 
+		$reglas = \Pekokis\Asistencia\WordPress\Ajustes::reglasPago();
+
 		if ( 'libre' === $e['pestana'] ) {
 			$tarifas = array();
-			foreach ( SimulacionPago::TIPOS as $k ) {
+			foreach ( array_keys( Sueldo::TARIFAS ) as $k ) {
 				$tarifas[ $k ] = (int) ( $e['dinero'][ $k ] ?? 0 );
 			}
 
-			return array( 'real' => null, 'simulado' => SimulacionPago::libre( (int) ( $e['dinero']['honorario'] ?? 0 ), $tarifas, array_map( 'intval', $e['horas'] ) ) );
+			return array( 'real' => null, 'simulado' => SimulacionPago::libre( (int) ( $e['dinero']['honorario'] ?? 0 ), $tarifas, array_map( 'intval', $e['horas'] ), $reglas->multiplicadorMadrugada ) );
 		}
 
-		$jornadas = $hasta >= $desde && $personas ? Jornadas::delRango( $personas, $desde, $hasta ) : array();
+		$mesD     = Jornadas::delMes( $personas, $e['mes'] );
+		$jornadas = $mesD['jornadas'];
 		$sueldos  = Sueldos::deTrabajadores( array_map( static fn( array $t ): int => (int) $t['id'], $personas ) );
+		$conMes   = static fn( int $id, int $honorario, array $tarifas, ?Sueldo $base ): array => SimulacionPago::conJornadas( $jornadas[ $id ] ?? array(), $honorario, $tarifas, array_map( 'intval', $e['horas'] ), $reglas, $mesD['semanas'][ $id ] ?? array(), $mesD['descuentos'][ $id ] ?? 0, $base ? $base->modo : Sueldo::FIJO, $base ? $base->aparte : array() );
+		$real     = static fn( int $id ): PrePlanilla => PrePlanilla::calcular( $jornadas[ $id ] ?? array(), $sueldos[ $id ] ?? array(), $reglas, $mesD['semanas'][ $id ] ?? array(), $mesD['descuentos'][ $id ] ?? 0 );
 
 		if ( 'equipo' === $e['pestana'] ) {
 			$filas = array();
@@ -212,8 +227,8 @@ final class PantallaSimulador {
 
 			foreach ( $personas as $t ) {
 				$id   = (int) $t['id'];
-				$real = PrePlanilla::calcular( $jornadas[ $id ] ?? array(), $sueldos[ $id ] ?? array() );
-				$base = $real->sueldoFinal ?? Sueldo::vigenteEn( $sueldos[ $id ] ?? array(), $hasta );
+				$filaR = $real( $id );
+				$base  = $filaR->sueldoFinal ?? Sueldo::vigenteEn( $sueldos[ $id ] ?? array(), $hasta );
 
 				if ( null === $base ) {
 					$filas[] = array( 'nombre' => $t['apellidos'] . ', ' . $t['nombres'], 'real' => null, 'simulado' => null );
@@ -221,12 +236,12 @@ final class PantallaSimulador {
 				}
 
 				$tarifas = array();
-				foreach ( SimulacionPago::TIPOS as $k ) {
+				foreach ( array_keys( Sueldo::TARIFAS ) as $k ) {
 					$tarifas[ $k ] = $base->tarifa( $k ) + (int) ( $e['dinero'][ $k ] ?? 0 );
 				}
 
-				$sim     = SimulacionPago::conJornadas( $jornadas[ $id ] ?? array(), $base->honorarioCentimos + (int) ( $e['dinero']['honorario'] ?? 0 ), $tarifas, array_map( 'intval', $e['horas'] ) );
-				$rea     = SimulacionPago::deReal( $real );
+				$sim     = $conMes( $id, $base->honorarioCentimos + (int) ( $e['dinero']['honorario'] ?? 0 ), $tarifas, $base );
+				$rea     = SimulacionPago::deReal( $filaR );
 				$tReal  += $rea['montos']['total'];
 				$tSim   += $sim['montos']['total'];
 				$filas[] = array( 'nombre' => $t['apellidos'] . ', ' . $t['nombres'], 'real' => $rea, 'simulado' => $sim );
@@ -243,11 +258,11 @@ final class PantallaSimulador {
 			return array( 'persona' => null, 'real' => null, 'simulado' => SimulacionPago::libre( 0, array(), array() ), 'base' => null, 'hasta' => $hasta );
 		}
 
-		$real = PrePlanilla::calcular( $jornadas[ $id ] ?? array(), $sueldos[ $id ] ?? array() );
-		$base = $real->sueldoFinal ?? Sueldo::vigenteEn( $sueldos[ $id ] ?? array(), $hasta ) ?? Sueldos::vigente( $id );
+		$filaR = $real( $id );
+		$base  = $filaR->sueldoFinal ?? Sueldo::vigenteEn( $sueldos[ $id ] ?? array(), $hasta ) ?? Sueldos::vigente( $id );
 
 		$tarifas = array();
-		foreach ( SimulacionPago::TIPOS as $k ) {
+		foreach ( array_keys( Sueldo::TARIFAS ) as $k ) {
 			$tarifas[ $k ] = $e['dinero'][ $k ] ?? ( $base ? $base->tarifa( $k ) : 0 );
 		}
 
@@ -256,9 +271,9 @@ final class PantallaSimulador {
 		return array(
 			'persona'  => array_values( array_filter( $personas, static fn( $t ) => (int) $t['id'] === $id ) )[0],
 			'base'     => $base,
-			'cambio'   => $real->cambioDeSueldo,
-			'real'     => $base ? SimulacionPago::deReal( $real ) : null,
-			'simulado' => SimulacionPago::conJornadas( $jornadas[ $id ] ?? array(), (int) $honorario, $tarifas, array_map( 'intval', $e['horas'] ) ),
+			'cambio'   => $filaR->cambioDeSueldo,
+			'real'     => $base ? SimulacionPago::deReal( $filaR ) : null,
+			'simulado' => $conMes( $id, (int) $honorario, $tarifas, $base ),
 			'hasta'    => $hasta,
 		);
 	}
@@ -281,7 +296,7 @@ final class PantallaSimulador {
 		</p>
 
 		<h2 class="pk-mt-s">Honorario y tarifas</h2>
-		<p class="description">Vienen con sus valores reales<?php echo $base ? '' : ' (no tiene honorario registrado: escribe uno)'; ?>. Cambia los que quieras probar.</p>
+		<p class="description">Vienen con sus valores reales<?php echo $base ? '' : ' (no tiene honorario registrado: escribe uno)'; ?>. Cambia los que quieras probar. El valor hora (sábado sin semana completa y madrugada) es el honorario ÷ <?php echo (int) Sueldo::HORAS_MES; ?>.<?php echo $base && $base->porHoras() ? ' Cobra por horas: se simula igual.' : ''; ?></p>
 		<div class="pk-sim-campos">
 			<?php self::campoDinero( 'honorario', 'Honorario mensual (S/)', $valor( 'honorario', $base ? $base->honorarioCentimos : null ) ); ?>
 			<?php foreach ( Sueldo::TARIFAS as $k => $nombre ) : ?>
@@ -291,7 +306,7 @@ final class PantallaSimulador {
 
 		<h2 class="pk-mt-s">Horas a sumar o restar</h2>
 		<p class="description">Sobre sus horas reales del mes. Usa un signo menos para restar (por ejemplo, -2).</p>
-		<?php self::camposHoras( $e ); ?>
+		<?php self::camposHoras( $e, $base && $base->porHoras() ); ?>
 		<?php
 	}
 
@@ -328,7 +343,7 @@ final class PantallaSimulador {
 		</div>
 
 		<h2 class="pk-mt-s">Horas del mes</h2>
-		<p class="description">Horas adicionales de cada tipo (las normales ya están en el honorario).</p>
+		<p class="description">Horas adicionales de cada tipo (las normales ya están en el honorario). El sábado va con la tarifa extra si completó la semana; si no, a valor hora (honorario ÷ <?php echo (int) Sueldo::HORAS_MES; ?>). La madrugada, a valor hora × <?php echo esc_html( PrePlanilla::numero( \Pekokis\Asistencia\WordPress\Ajustes::reglasPago()->multiplicadorMadrugada ) ); ?>.</p>
 		<?php self::camposHoras( $e ); ?>
 		<input type="hidden" name="mes" value="<?php echo esc_attr( $e['mes'] ); ?>">
 		<?php
@@ -385,14 +400,19 @@ final class PantallaSimulador {
 					<thead><tr><th>Concepto</th><th>Horas</th><?php echo $conReal ? '<th>Real</th>' : ''; ?><th><?php echo $conReal ? 'Simulado' : 'Monto'; ?></th><?php echo $conReal ? '<th>Diferencia</th>' : ''; ?></tr></thead>
 					<tbody>
 					<?php foreach ( self::NOMBRES as $clave => $nombre ) : ?>
-						<?php $esHora = in_array( $clave, SimulacionPago::TIPOS, true ); ?>
+						<?php
+						if ( ! self::mostrar( $clave, $r ) ) {
+							continue;
+						}
+						$esHora = in_array( $clave, SimulacionPago::TIPOS, true );
+						?>
 						<tr class="<?php echo 'total' === $clave ? 'pk-sim-total' : ''; ?>">
 							<td><?php echo esc_html( $nombre ); ?></td>
 							<td><?php echo $esHora ? esc_html( PrePlanilla::horas( $r['simulado']['minutos'][ $clave ] ) . ' h' ) : ''; ?><?php echo $esHora && $conReal && $r['simulado']['minutos'][ $clave ] !== $r['real']['minutos'][ $clave ] ? ' <span class="description">(real ' . esc_html( PrePlanilla::horas( $r['real']['minutos'][ $clave ] ) ) . ')</span>' : ''; ?></td>
 							<?php if ( $conReal ) : ?>
-								<td><?php echo esc_html( Sueldo::soles( $r['real']['montos'][ $clave ] ) ); ?></td>
+								<td><?php echo esc_html( ( 'descuentos' === $clave ? '− ' : '' ) . Sueldo::soles( $r['real']['montos'][ $clave ] ) ); ?></td>
 							<?php endif; ?>
-							<td><strong><?php echo esc_html( Sueldo::soles( $r['simulado']['montos'][ $clave ] ) ); ?></strong></td>
+							<td><strong><?php echo esc_html( ( 'descuentos' === $clave ? '− ' : '' ) . Sueldo::soles( $r['simulado']['montos'][ $clave ] ) ); ?></strong></td>
 							<?php if ( $conReal ) : ?>
 								<?php $d = $r['simulado']['montos'][ $clave ] - $r['real']['montos'][ $clave ]; ?>
 								<td class="<?php echo esc_attr( self::claseDif( $d ) ); ?>"><?php echo esc_html( self::conSigno( $d ) ); ?></td>
@@ -432,8 +452,18 @@ final class PantallaSimulador {
 	}
 
 	/** @param array<string, mixed> $e */
-	private static function camposHoras( array $e ): void {
-		$nombres = array( 'extra' => 'Horas extra', 'sabado' => 'Horas de sábado', 'domingo' => 'Horas de domingo', 'feriado' => 'Horas de feriado' );
+	private static function camposHoras( array $e, bool $conNormales = false ): void {
+		$nombres = array(
+			'extra'         => 'Horas extra',
+			'sabado_extra'  => 'Sábado con semana completa',
+			'sabado_normal' => 'Sábado sin completar la semana',
+			'domingo'       => 'Horas de domingo',
+			'feriado'       => 'Horas de feriado',
+			'madrugada'     => 'Horas de madrugada',
+		);
+		if ( $conNormales || 'equipo' === $e['pestana'] ) {
+			$nombres = array( 'horas' => 'Horas normales (quien cobra por horas)' ) + $nombres;
+		}
 		?>
 		<div class="pk-sim-campos">
 			<?php foreach ( $nombres as $k => $nombre ) : ?>
@@ -481,6 +511,15 @@ final class PantallaSimulador {
 		}
 
 		return $menos ? -$min : $min;
+	}
+
+	/** @param array<string, mixed> $r */
+	private static function mostrar( string $clave, array $r ): bool {
+		if ( ! in_array( $clave, self::OPCIONALES, true ) ) {
+			return true;
+		}
+
+		return ( $r['simulado']['montos'][ $clave ] ?? 0 ) || ( $r['real']['montos'][ $clave ] ?? 0 ) || ( $r['simulado']['minutos'][ $clave ] ?? 0 );
 	}
 
 	private static function claseDif( int $d ): string {

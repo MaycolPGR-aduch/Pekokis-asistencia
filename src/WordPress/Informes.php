@@ -175,12 +175,14 @@ final class Informes {
 			array( 'Horas de sábado', $h( $fila->minutos['sabado'] ) ),
 			array( 'Horas de domingo', $h( $fila->minutos['domingo'] ) ),
 			array( 'Horas de feriado', $h( $fila->minutos['feriado'] ) ),
+			array( 'Horas de madrugada', $h( $fila->minutos['madrugada'] ) ),
 			array( 'Puntualidad', null === $fila->puntualidad() ? '—' : $fila->puntualidad() . ' %' ),
 		);
 
 		if ( $conSueldos ) {
 			$resumen[] = array( 'Honorario (S/)', round( $fila->montos['honorario'] / 100, 2 ) );
-			$resumen[] = array( 'Horas adicionales (S/)', round( $fila->costoExtra() / 100, 2 ) );
+			$resumen[] = array( $fila->porHoras() ? 'Horas trabajadas y adicionales (S/)' : 'Horas adicionales (S/)', round( $fila->costoExtra() / 100, 2 ) );
+			$resumen[] = array( 'Descuentos (S/)', round( $fila->montos['descuentos'] / 100, 2 ) );
 			$resumen[] = array( 'Total del mes (S/)', round( $fila->montos['total'] / 100, 2 ) );
 		}
 

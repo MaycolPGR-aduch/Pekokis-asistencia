@@ -614,11 +614,21 @@ final class GerenciaMovil {
 					<p class="gm-aviso">Todavía no tiene honorario: regístralo en Sueldos y tarifas.</p>
 				<?php else : ?>
 					<ul class="gm-calc">
-						<li><span>Honorario mensual<small><?php echo esc_html( PantallaResumen::plural( (int) $f->dias['trabajados'], 'día', 'días' ) ); ?> · horas normales incluidas</small></span><b><?php echo esc_html( Sueldo::soles( $f->montos['honorario'] ) ); ?></b></li>
+						<?php if ( $f->porHoras() ) : ?>
+							<li><span>Pago por horas<small><?php echo esc_html( PrePlanilla::horasDecimal( $f->minutos['horas'] ) . ' h × ' . Sueldo::soles( $f->sueldoFinal->valorHora() ) ); ?></small></span><b><?php echo esc_html( Sueldo::soles( $f->montos['horas'] ) ); ?></b></li>
+						<?php else : ?>
+							<li><span>Honorario mensual<small><?php echo esc_html( PantallaResumen::plural( (int) $f->dias['trabajados'], 'día', 'días' ) ); ?> · horas normales incluidas · valor hora <?php echo esc_html( Sueldo::soles( $f->sueldoFinal->valorHora() ) ); ?></small></span><b><?php echo esc_html( Sueldo::soles( $f->montos['honorario'] ) ); ?></b></li>
+						<?php endif; ?>
 						<li><span>Horas extra<small><?php echo esc_html( $h( $f->minutos['extra'], 'extra' ) ); ?></small></span><b><?php echo esc_html( Sueldo::soles( $f->montos['extra'] ?? 0 ) ); ?></b></li>
-						<li><span>Sábados<small><?php echo esc_html( $h( $f->minutos['sabado'], 'sabado' ) ); ?></small></span><b><?php echo esc_html( Sueldo::soles( $f->montos['sabado'] ?? 0 ) ); ?></b></li>
+						<li><span>Sábados<small><?php echo esc_html( PrePlanilla::horasDecimal( $f->minutos['sabado'] ) . ' h' . ( $f->minutos['sabado_extra'] ? ' · ' . PrePlanilla::horasDecimal( $f->minutos['sabado_extra'] ) . ' h con semana completa' : '' ) ); ?></small></span><b><?php echo esc_html( Sueldo::soles( $f->montos['sabado'] ?? 0 ) ); ?></b></li>
 						<li><span>Domingos<small><?php echo esc_html( $h( $f->minutos['domingo'], 'domingo' ) ); ?></small></span><b><?php echo esc_html( Sueldo::soles( $f->montos['domingo'] ?? 0 ) ); ?></b></li>
 						<li><span>Feriados<small><?php echo esc_html( $h( $f->minutos['feriado'], 'feriado' ) ); ?></small></span><b><?php echo esc_html( Sueldo::soles( $f->montos['feriado'] ?? 0 ) ); ?></b></li>
+						<?php if ( $f->minutos['madrugada'] ) : ?>
+							<li><span>Madrugada<small><?php echo esc_html( PrePlanilla::horasDecimal( $f->minutos['madrugada'] ) . ' h' ); ?></small></span><b><?php echo esc_html( Sueldo::soles( $f->montos['madrugada'] ) ); ?></b></li>
+						<?php endif; ?>
+						<?php if ( $f->montos['descuentos'] ) : ?>
+							<li><span>Descuentos</span><b><?php echo esc_html( '− ' . Sueldo::soles( $f->montos['descuentos'] ) ); ?></b></li>
+						<?php endif; ?>
 						<li class="tot"><span>Total a pagar</span><b><?php echo esc_html( Sueldo::soles( $f->montos['total'] ) ); ?></b></li>
 					</ul>
 				<?php endif; ?>

@@ -52,7 +52,13 @@ final class PantallaAjustes {
 		$a = Ajustes::todos();
 		?>
 		<h2 class="pk-mt" id="reglas">Reglas de horas y pagos</h2>
-		<p>Se paga por recibos por honorarios: <strong>honorario + horas extra, de sábado, de domingo y de feriado, cada una por la tarifa de la persona</strong> (se registran en la ficha de cada trabajador). De lunes a viernes es hora extra todo lo que pase de la jornada de su horario (9 h 30 min con el horario base), sin autorizar nada. El sábado, el domingo y los feriados, todas las horas van con su tarifa. Las faltas y tardanzas se señalan, pero no se descuentan.</p>
+		<p>Se paga por recibos por honorarios: <strong>honorario + horas extra, de sábado, de domingo, de feriado y de madrugada</strong>. El valor hora es el honorario ÷ 192.</p>
+		<ul class="pk-lista">
+			<li>De lunes a viernes, primero se completa el horario. Lo que sobra es hora extra: después de la salida, por minutos; antes de la entrada, solo horas completas. La comida cuenta como mínimo lo de su horario, aunque sea más corta.</li>
+			<li>El sábado va con la tarifa extra si completó las horas de lunes a viernes de esa semana (los feriados y los días justificados cuentan como cumplidos); si no, a valor hora.</li>
+			<li>Domingo y feriado, con su tarifa. La madrugada (hasta las 6:00, y hasta su entrada si llegó antes) se paga a valor hora × el multiplicador de abajo, cualquier día.</li>
+			<li>Las faltas y tardanzas se señalan, pero no se descuentan. Los descuentos de monto libre se registran en la ficha → Pagos y recibos.</li>
+		</ul>
 		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="pk-sigue">
 			<input type="hidden" name="action" value="pka_guardar_reglas">
 			<?php wp_nonce_field( 'pka_guardar_reglas' ); ?>
@@ -66,6 +72,13 @@ final class PantallaAjustes {
 						</td>
 					</tr>
 				<?php endforeach; ?>
+				<tr>
+					<th scope="row"><label for="pka-r-madrugada">Multiplicador de la madrugada</label></th>
+					<td>
+						<input type="text" inputmode="decimal" id="pka-r-madrugada" name="madrugada_multiplicador" class="small-text" required value="<?php echo esc_attr( str_replace( '.', ',', (string) $a['madrugada_multiplicador'] ) ); ?>">
+						<p class="description">La hora de madrugada se paga a valor hora × este número (por ejemplo 1,5 = 50 % más). Entre 1 y 5.</p>
+					</td>
+				</tr>
 				<tr>
 					<th scope="row">Avisos de tardanza</th>
 					<td>
@@ -111,6 +124,11 @@ final class PantallaAjustes {
 			$ajustes['tardanza_textos'] = $textos;
 		}
 
+		if ( isset( $_POST['madrugada_multiplicador'] ) ) {
+			$mult                               = (float) str_replace( ',', '.', sanitize_text_field( wp_unslash( (string) $_POST['madrugada_multiplicador'] ) ) );
+			$ajustes['madrugada_multiplicador'] = (string) round( max( 1.0, min( 5.0, $mult > 0 ? $mult : 1.5 ) ), 2 );
+		}
+
 		$ajustes['tardanza_desde'] = isset( $_POST['tardanza_desde'] ) && ReglasPago::TARDANZA_DESDE_TOLERANCIA === $_POST['tardanza_desde'] ? ReglasPago::TARDANZA_DESDE_TOLERANCIA : ReglasPago::TARDANZA_DESDE_ENTRADA;
 		update_option( Ajustes::OPCION, $ajustes );
 
@@ -118,7 +136,7 @@ final class PantallaAjustes {
 			Auditoria::registrar( 'ajustes.reglas', 'ajustes', null, null, array( 'textos' => 'Avisos de tardanza modificados' ) );
 		}
 
-		$claves    = array_merge( array_keys( self::REGLAS ), array( 'tardanza_desde' ) );
+		$claves    = array_merge( array_keys( self::REGLAS ), array( 'tardanza_desde', 'madrugada_multiplicador' ) );
 		[ $a, $d ] = Auditoria::diferencias( array_intersect_key( $antes, array_flip( $claves ) ), array_intersect_key( $ajustes, array_flip( $claves ) ) );
 
 		if ( $d ) {

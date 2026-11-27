@@ -27,6 +27,13 @@ final class Pagos {
 		return $porId;
 	}
 
+	/** @return array<int, array<string, mixed>> Pagos marcados de una persona (también los desmarcados), del más reciente al más antiguo. */
+	public static function historial( int $trabajadorId ): array {
+		global $wpdb;
+
+		return (array) $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM ' . Tablas::nombre( 'pagos' ) . ' WHERE trabajador_id = %d ORDER BY mes DESC, id DESC', $trabajadorId ), ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+	}
+
 	/** @return array<string, mixed>|null */
 	public static function delTrabajador( int $trabajadorId, string $mes ): ?array {
 		global $wpdb;

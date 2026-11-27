@@ -44,7 +44,7 @@ $api = static function ( string $metodo, string $ruta, array $cuerpo = array() )
 };
 
 // ---- Preparación: tablas vacías, una red autorizada y la IP del "WiFi del taller".
-foreach ( array( 'trabajadores', 'marcas', 'auditoria', 'credenciales', 'dispositivos', 'activaciones', 'redes', 'correcciones', 'pantallas', 'revisiones', 'calendario', 'ausencias', 'sueldos', 'avisos', 'pagos', 'recibos', 'solicitudes_celular', 'llaves_gerencia', 'horario_cambios', 'tardanzas' ) as $tabla ) {
+foreach ( array( 'trabajadores', 'marcas', 'auditoria', 'credenciales', 'dispositivos', 'activaciones', 'redes', 'correcciones', 'pantallas', 'revisiones', 'calendario', 'ausencias', 'sueldos', 'avisos', 'pagos', 'recibos', 'solicitudes_celular', 'llaves_gerencia', 'horario_cambios', 'tardanzas', 'descuentos', 'horas_ajustes' ) as $tabla ) {
 	$wpdb->query( 'TRUNCATE TABLE ' . Tablas::nombre( $tabla ) ); // phpcs:ignore
 }
 $wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE '\\_transient\\_pka\\_%' OR option_name LIKE '\\_transient\\_timeout\\_pka\\_%'" ); // phpcs:ignore
@@ -551,11 +551,11 @@ $luis = Trabajadores::buscar( $id2 );
 $j    = $J::delDia( $luis, $diaExtra );
 $comprobar( 'el día: 11 h 10 trabajadas, 20 min de tardanza y 1 h 40 de extra automática', $j && 670 === $j->minutosTrabajados && 20 === $j->minutosTardanza && 100 === $j->minutosExtra, $j ? wp_json_encode( get_object_vars( $j ) ) : 'null' );
 
-$tarifas = array( 'honorario' => '1.800,00', 'tarifa_extra' => '12', 'tarifa_sabado' => '14', 'tarifa_domingo' => '20', 'tarifa_feriado' => '24', 'vigente_desde' => '2020-01-01', 'nota' => 'Contrato' );
+$tarifas = array( 'honorario' => '1.800,00', 'tarifa_extra' => '12', 'tarifa_domingo' => '20', 'tarifa_feriado' => '24', 'vigente_desde' => '2020-01-01', 'nota' => 'Contrato' );
 $comprobar( 'un honorario de 0 no se acepta', is_wp_error( $SU::agregar( $id2, array( 'honorario' => '0' ) + $tarifas ) ) );
-$comprobar( 'una tarifa vacía no se acepta', is_wp_error( $SU::agregar( $id2, array( 'tarifa_sabado' => '' ) + $tarifas ) ) );
+$comprobar( 'una tarifa vacía no se acepta', is_wp_error( $SU::agregar( $id2, array( 'tarifa_domingo' => '' ) + $tarifas ) ) );
 $s1 = $SU::agregar( $id2, $tarifas );
-$comprobar( 'se registran el honorario y las 4 tarifas', is_int( $s1 ) && 180000 === $SU::vigente( $id2 )->honorarioCentimos && 1200 === $SU::vigente( $id2 )->tarifaExtra && 2400 === $SU::vigente( $id2 )->tarifaFeriado );
+$comprobar( 'se registran el honorario y las 3 tarifas (el sábado usa la extra)', is_int( $s1 ) && 180000 === $SU::vigente( $id2 )->honorarioCentimos && 1200 === $SU::vigente( $id2 )->tarifaExtra && 2400 === $SU::vigente( $id2 )->tarifaFeriado );
 $comprobar( 'un cambio tiene que regir después del actual', is_wp_error( $SU::agregar( $id2, $tarifas ) ) );
 $manana = ( new DateTimeImmutable( $hoy ) )->modify( '+1 day' )->format( 'Y-m-d' );
 $s2     = $SU::agregar( $id2, array( 'honorario' => '2000', 'tarifa_extra' => '15', 'vigente_desde' => $manana, 'nota' => 'Aumento' ) + $tarifas );
@@ -574,7 +574,7 @@ if ( $sabado <= $ayer ) {
 	$CM::marcaManual( $id2, $sabado, '09:00', $A::ENTRADA, null, 'Sábado de prueba' );
 	$CM::marcaManual( $id2, $sabado, '13:00', $A::FIN_JORNADA, 'fin_jornada', 'Sábado de prueba' );
 	$js = $J::delDia( Trabajadores::buscar( $id2 ), $sabado );
-	$comprobar( 'el sábado: 4 h con la tarifa de sábado', $js && 240 === $js->minutosSabado && 0 === $js->minutosExtra );
+	$comprobar( 'el sábado: 4 h de sábado', $js && 240 === $js->minutosSabado && 0 === $js->minutosExtra );
 }
 
 $xlsPP = \Pekokis\Asistencia\WordPress\PrePlanillas::excel( $mesExtra, 'Prueba' );
@@ -1036,8 +1036,8 @@ $comprobar( 'Registros: la fila con "Pasó de medianoche" y "Editado", y el pane
 // G8: varias personas a la vez; solo las que cambian.
 $SU  = \Pekokis\Asistencia\WordPress\Admin\PantallaSueldos::class;
 $hoyL = wp_date( 'Y-m-d', null, new DateTimeZone( 'America/Lima' ) );
-$vac  = array( 'honorario' => '', 'tarifa_extra' => '', 'tarifa_sabado' => '', 'tarifa_domingo' => '', 'tarifa_feriado' => '' );
-$nuevo = array( 'honorario' => '1500', 'tarifa_extra' => '10', 'tarifa_sabado' => '12', 'tarifa_domingo' => '20', 'tarifa_feriado' => '20' );
+$vac  = array( 'honorario' => '', 'tarifa_extra' => '', 'tarifa_domingo' => '', 'tarifa_feriado' => '' );
+$nuevo = array( 'honorario' => '1500', 'tarifa_extra' => '10', 'tarifa_domingo' => '20', 'tarifa_feriado' => '20' );
 $r1 = $SU::aplicar( array( $reg => $nuevo, $g6 ?? 0 => $vac ), array( $reg => $vac, $g6 ?? 0 => $vac ), $hoyL, 'Alta' );
 $comprobar( 'Sueldos en lote: guarda solo las filas que cambian', 1 === $r1['guardados'] && ! $r1['errores'] && 150000 === \Pekokis\Asistencia\WordPress\Sueldos::vigente( $reg )->honorarioCentimos, wp_json_encode( $r1 ) );
 $r2 = $SU::aplicar( array( $reg => array( 'honorario' => '1600' ) + $nuevo ), array( $reg => $nuevo ), $hoyL, 'Aumento' );
@@ -1211,8 +1211,8 @@ if ( $conSueldo ) {
 $e21 = $SIM::calcular( $SIM::entrada( array( 'pestana' => 'equipo', 'mes' => $mes21, 'honorario' => '100' ) ) );
 $conBase = array_filter( $e21['filas'], static fn( $f ) => null !== $f['real'] );
 $comprobar( 'Todo el equipo: +S/ 100 de honorario suma S/ 100 por cada persona con honorario', $e21['totalSimulado'] - $e21['totalReal'] === 10000 * count( $conBase ) );
-$l21 = $SIM::calcular( $SIM::entrada( array( 'pestana' => 'libre', 'honorario' => '1,800.00', 'extra' => '12', 'sabado' => '14', 'h_extra' => '6,5', 'h_sabado' => '4:00' ) ) );
-$comprobar( 'Desde cero: el ejemplo de las maquetas da S/ 1,934', 193400 === $l21['simulado']['montos']['total'] );
+$l21 = $SIM::calcular( $SIM::entrada( array( 'pestana' => 'libre', 'honorario' => '1,800.00', 'extra' => '12', 'h_extra' => '6,5', 'h_sabado_extra' => '4:00' ) ) );
+$comprobar( 'Desde cero: el ejemplo de las maquetas da S/ 1,926 (sábado con la semana completa a tarifa extra)', 192600 === $l21['simulado']['montos']['total'], wp_json_encode( $l21['simulado'] ) );
 $comprobar( 'El simulador no guarda sueldos ni pagos', $sueldosAntes === $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Tablas::nombre( 'sueldos' ) ) && $auditAntes === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Tablas::nombre( 'auditoria' ) . " WHERE accion LIKE 'sueldo.%' OR accion LIKE 'pago.%'" ) );
 $_GET    = array( 'page' => 'pka-simulador', 'pestana' => 'equipo' );
 $htmlSim = $dibujar( array( $SIM, 'pintar' ) );
@@ -1280,6 +1280,104 @@ $_GET    = array( 'page' => 'pka-trabajadores', 'vista' => 'ficha', 'id' => (int
 $htmlTar = $dibujar( static fn() => \Pekokis\Asistencia\WordPress\Admin\PantallaFicha::pintar( Trabajadores::buscar( (int) $tTar ) ) );
 $_GET    = array();
 $comprobar( 'Tardanza: la ficha tiene la pestaña con el conteo, el historial, Justificar y Reiniciar', str_contains( $htmlTar, 'Conteo de tardanzas' ) && str_contains( $htmlTar, 'pka_justificar_tardanza' ) && str_contains( $htmlTar, 'Reiniciar conteo' ) && str_contains( $htmlTar, 'Ya no fue tarde' ) );
+
+// ---- 23. Pagos (bloque 2 de gerencia, 27-11): semana completa, madrugada, ajustes, descuentos y por horas.
+WP_CLI::line( '23. Pagos: sábado según la semana, madrugada, ajustes de horas, descuentos y modo por horas' );
+wp_set_current_user( 1 );
+$CAL  = \Pekokis\Asistencia\WordPress\Calendario::class;
+$HA   = \Pekokis\Asistencia\WordPress\HorasAjustes::class;
+$DE   = \Pekokis\Asistencia\WordPress\Descuentos::class;
+$SUE  = \Pekokis\Asistencia\WordPress\Sueldos::class;
+$hb23 = (int) array_keys( Trabajadores::horarios() )[0];
+$t23  = Trabajadores::guardar( array( 'dni' => '77000023', 'nombres' => 'Semana', 'apellidos' => 'Completa', 'horario_id' => $hb23, 'fecha_ingreso' => '2020-01-01', 'cumpleanos_dia' => '1', 'cumpleanos_mes' => '1' ) );
+$wpdb->update( Tablas::nombre( 'trabajadores' ), array( 'creado_en' => '2026-01-05 12:00:00' ), array( 'id' => (int) $t23 ) ); // Ya trabajaba antes.
+$SUE::agregar( (int) $t23, array( 'honorario' => '1800', 'tarifa_extra' => '12', 'tarifa_domingo' => '20', 'tarifa_feriado' => '24', 'vigente_desde' => '2020-01-01', 'nota' => 'Prueba 23' ) );
+
+// La última semana terminada sin feriados de lunes a viernes.
+$semana23 = null;
+for ( $sab = ( new DateTimeImmutable( $ayer ) )->modify( 'last saturday +7 days' ); null === $semana23 && $sab > ( new DateTimeImmutable( $hoy ) )->modify( '-60 days' ); $sab = $sab->modify( '-7 days' ) ) {
+	if ( $sab->format( 'Y-m-d' ) > $ayer ) {
+		continue;
+	}
+	$dias = array();
+	for ( $k = 5; $k >= 1; $k-- ) {
+		$dias[] = $sab->modify( '-' . $k . ' days' )->format( 'Y-m-d' );
+	}
+	$libres = array_filter( $dias, static fn( string $d ): bool => '' !== $CAL::descripcion( $d ) || ! \Pekokis\Asistencia\WordPress\Horarios::deTrabajador( Trabajadores::buscar( (int) $t23 ), $d )->laborable );
+	if ( ! $libres && '' === $CAL::descripcion( $sab->format( 'Y-m-d' ) ) ) {
+		$semana23 = array( 'lv' => $dias, 'sab' => $sab->format( 'Y-m-d' ) );
+	}
+}
+$comprobar( 'Hay una semana terminada para probar el sábado', null !== $semana23 );
+foreach ( $semana23['lv'] as $k => $d ) {
+	$CM::marcaManual( (int) $t23, $d, 0 === $k ? '05:00' : '09:00', $A::ENTRADA, null, 'Prueba 23' );
+	$CM::marcaManual( (int) $t23, $d, '13:00', $A::SALIDA_REFRIGERIO, 'refrigerio', 'Prueba 23' );
+	$CM::marcaManual( (int) $t23, $d, '14:00', $A::REGRESO, null, 'Prueba 23' );
+	$CM::marcaManual( (int) $t23, $d, '19:30', $A::FIN_JORNADA, 'fin_jornada', 'Prueba 23' );
+}
+$CM::marcaManual( (int) $t23, $semana23['sab'], '09:00', $A::ENTRADA, null, 'Prueba 23' );
+$CM::marcaManual( (int) $t23, $semana23['sab'], '13:00', $A::FIN_JORNADA, 'fin_jornada', 'Prueba 23' );
+$mes23  = substr( $semana23['sab'], 0, 7 );
+$p23    = static fn() => $J::prePlanilla( array( Trabajadores::buscar( (int) $t23 ) ), $mes23 )[ (int) $t23 ];
+$f23    = $p23();
+$lunes23 = $J::delDia( Trabajadores::buscar( (int) $t23 ), $semana23['lv'][0] );
+$comprobar( 'Madrugada: entró a las 5:00 → 4 h de madrugada (hasta su entrada), sin extra', 240 === $lunes23->minutosMadrugada && 0 === $lunes23->minutosExtra && 570 === $lunes23->minutosTrabajados - 240, wp_json_encode( get_object_vars( $lunes23 ) ) );
+$comprobar( 'Semana completa: el sábado va con la tarifa extra (4 h × S/ 12) y la madrugada a valor hora × 1,5', 240 === $f23->minutos['sabado_extra'] && 4800 === $f23->montos['sabado'] && 5628 === $f23->montos['madrugada'] && 938 === $f23->sueldoFinal->valorHora(), wp_json_encode( array( $f23->minutos, $f23->montos ) ) );
+$base23 = $f23->montos['total'];
+
+$comprobar( 'Ajuste: valida día, horas y motivo', $HA::crear( (int) $t23, $hoy, 60, 'x' ) instanceof WP_Error && $HA::crear( (int) $t23, $semana23['lv'][1], 0, 'x' ) instanceof WP_Error && $HA::crear( (int) $t23, $semana23['lv'][1], 60, '' ) instanceof WP_Error );
+$comprobar( 'Ajuste: entiende 1:30, -0:45, 2 y 1,5', 90 === $HA::aMinutos( '1:30' ) && -45 === $HA::aMinutos( '-0:45' ) && 120 === $HA::aMinutos( '2' ) && 90 === $HA::aMinutos( '1,5' ) && null === $HA::aMinutos( 'mucho' ) && '−0:45' === $HA::texto( -45 ) );
+$aj1 = $HA::crear( (int) $t23, $semana23['lv'][1], -60, 'Salió antes sin marcar' );
+$f23b = $p23();
+$comprobar( 'Ajuste −1 h el martes: la semana queda incompleta y el sábado pasa a valor hora (4 h × S/ 9.38)', is_int( $aj1 ) && 0 === $f23b->minutos['sabado_extra'] && 240 === $f23b->minutos['sabado_normal'] && 3752 === $f23b->montos['sabado'] && 60 === $f23b->minutos['no_trabajados'] - $f23->minutos['no_trabajados'], wp_json_encode( array( $f23b->minutos, $f23b->montos ) ) );
+$comprobar( 'Anular el ajuste pide motivo y devuelve la semana completa', $HA::anular( (int) $aj1, '' ) instanceof WP_Error && true === $HA::anular( (int) $aj1, 'Era un error' ) && 4800 === $p23()->montos['sabado'] );
+$aj2 = $HA::crear( (int) $t23, $semana23['lv'][2], 90, 'Entrega fuera del taller' );
+$comprobar( 'Ajuste +1:30 con el horario completo: es hora extra (1,5 h × S/ 12)', is_int( $aj2 ) && $base23 + 1800 === $p23()->montos['total'] );
+
+$comprobar( 'Descuento: pide monto y motivo', $DE::crear( (int) $t23, $mes23, '0', 'x' ) instanceof WP_Error && $DE::crear( (int) $t23, $mes23, '50', '' ) instanceof WP_Error && $DE::crear( (int) $t23, '2026-13', '50', 'x' ) instanceof WP_Error );
+$de1 = $DE::crear( (int) $t23, $mes23, '50', 'Adelanto' );
+$f23c = $p23();
+$comprobar( 'Descuento de S/ 50: se resta del total y sale en el cálculo', is_int( $de1 ) && 5000 === $f23c->montos['descuentos'] && $base23 + 1800 - 5000 === $f23c->montos['total'] && str_contains( implode( ' ', $f23c->explicacion() ), 'Descuentos: − S/ 50.00.' ) );
+$comprobar( 'Anular el descuento lo saca del total', true === $DE::anular( (int) $de1, 'Ya lo devolvió' ) && $base23 + 1800 === $p23()->montos['total'] && 1 === count( $DE::deTrabajador( (int) $t23, $mes23 ) ) );
+\Pekokis\Asistencia\WordPress\Pagos::marcar( (int) $t23, $mes23, $p23()->montos['total'] );
+$comprobar( 'Historial de pagos de la persona', 1 === count( \Pekokis\Asistencia\WordPress\Pagos::historial( (int) $t23 ) ) );
+
+// Modo por horas: 9 h 30 + 1 h 30 extra; la extra con su tarifa.
+$t23h = Trabajadores::guardar( array( 'dni' => '77000024', 'nombres' => 'Por', 'apellidos' => 'Horas', 'horario_id' => $hb23, 'fecha_ingreso' => '2020-01-01', 'cumpleanos_dia' => '1', 'cumpleanos_mes' => '1' ) );
+$wpdb->update( Tablas::nombre( 'trabajadores' ), array( 'creado_en' => '2026-01-05 12:00:00' ), array( 'id' => (int) $t23h ) );
+$s23h = $SUE::agregar( (int) $t23h, array( 'honorario' => '1800', 'tarifa_extra' => '12', 'tarifa_domingo' => '20', 'tarifa_feriado' => '24', 'vigente_desde' => '2020-01-01', 'nota' => 'Por horas', 'modo' => 'horas', 'aparte' => array( 'extra' ) ) );
+$v23h = $SUE::vigente( (int) $t23h );
+$comprobar( 'Por horas: se guarda el modo y lo que va aparte', is_int( $s23h ) && $v23h->porHoras() && array( 'extra' ) === $v23h->aparte && str_contains( $SUE::etiqueta( $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM ' . Tablas::nombre( 'sueldos' ) . ' WHERE id = %d', $s23h ), ARRAY_A ) ), 'Por horas: S/ 9.38 la hora' ) );
+$dH = $semana23['lv'][3];
+$CM::marcaManual( (int) $t23h, $dH, '09:00', $A::ENTRADA, null, 'Prueba 23' );
+$CM::marcaManual( (int) $t23h, $dH, '13:00', $A::SALIDA_REFRIGERIO, 'refrigerio', 'Prueba 23' );
+$CM::marcaManual( (int) $t23h, $dH, '14:00', $A::REGRESO, null, 'Prueba 23' );
+$CM::marcaManual( (int) $t23h, $dH, '21:00', $A::FIN_JORNADA, 'fin_jornada', 'Prueba 23' );
+$fH = $J::prePlanilla( array( Trabajadores::buscar( (int) $t23h ) ), substr( $dH, 0, 7 ) )[ (int) $t23h ];
+$comprobar( 'Por horas: 9,5 h × S/ 9.38 + 1,5 h extra × S/ 12, sin honorario', 0 === $fH->montos['honorario'] && 8911 === $fH->montos['horas'] && 1800 === $fH->montos['extra'] && 10711 === $fH->montos['total'], wp_json_encode( array( $fH->minutos, $fH->montos ) ) );
+$r23s = \Pekokis\Asistencia\WordPress\Admin\PantallaSueldos::aplicar( array( (int) $t23h => array( 'honorario' => '1900', 'tarifa_extra' => '12', 'tarifa_domingo' => '20', 'tarifa_feriado' => '24' ) ), array( (int) $t23h => array( 'honorario' => '1800.00', 'tarifa_extra' => '12.00', 'tarifa_domingo' => '20.00', 'tarifa_feriado' => '24.00' ) ), ( new DateTimeImmutable( $hoy ) )->modify( '+1 day' )->format( 'Y-m-d' ), 'Aumento' );
+$comprobar( 'Sueldos y tarifas (G8) conserva el modo por horas al cambiar el honorario', 1 === $r23s['guardados'] && $SUE::vigente( (int) $t23h, ( new DateTimeImmutable( $hoy ) )->modify( '+1 day' )->format( 'Y-m-d' ) )->porHoras(), wp_json_encode( $r23s ) );
+
+// Pantallas.
+$_GET    = array( 'page' => 'pka-horas', 'mes' => $mes23 );
+$htmlH1  = $dibujar( array( \Pekokis\Asistencia\WordPress\Admin\PantallaHoras::class, 'pintar' ) );
+$_GET    = array( 'page' => 'pka-horas', 'mes' => $mes23, 't' => (string) $t23 );
+$htmlH2  = $dibujar( array( \Pekokis\Asistencia\WordPress\Admin\PantallaHoras::class, 'pintar' ) );
+$_GET    = array( 'page' => 'pka-trabajadores', 'vista' => 'ficha', 'id' => (int) $t23, 'pestana' => 'pagos', 'mes' => $mes23 );
+$htmlF23 = $dibujar( static fn() => \Pekokis\Asistencia\WordPress\Admin\PantallaFicha::pintar( Trabajadores::buscar( (int) $t23 ) ) );
+$_GET    = array();
+$htmlS23 = $dibujar( array( \Pekokis\Asistencia\WordPress\Admin\PantallaSueldos::class, 'pintar' ) );
+$comprobar( 'Contabilidad de horas: el equipo, y la persona por semana con el ajuste', str_contains( $htmlH1, 'Semana Completa' ) && str_contains( $htmlH1, 'Semanas completas' ) && str_contains( $htmlH2, 'Semana completa' ) && str_contains( $htmlH2, 'Ajustar las horas de un día' ) && str_contains( $htmlH2, 'Entrega fuera del taller' ) && str_contains( $htmlH2, '192 h' ) );
+$comprobar( 'Ficha → Pagos y recibos: descuentos del mes e historial de pagos', str_contains( $htmlF23, 'Descuentos de' ) && str_contains( $htmlF23, 'Ya lo devolvió' ) && str_contains( $htmlF23, 'Historial de pagos' ) && str_contains( $htmlF23, 'Contabilidad de horas' ) );
+$comprobar( 'Sueldos y tarifas: valor hora, sin tarifa de sábado aparte y "Por horas"', str_contains( $htmlS23, 'Valor hora' ) && ! str_contains( $htmlS23, 'Hora sábado' ) && str_contains( $htmlS23, 'Por horas' ) );
+[ $hist23 ] = \Pekokis\Asistencia\WordPress\Historial::buscar( array( 'trabajador' => (int) $t23 ) );
+$acc23 = array_column( $hist23, 'accion' );
+$comprobar( 'Auditoría: ajustes y descuentos quedan registrados', in_array( 'horas.ajustar', $acc23, true ) && in_array( 'horas.anular_ajuste', $acc23, true ) && in_array( 'descuento.crear', $acc23, true ) && in_array( 'descuento.anular', $acc23, true ) );
+wp_set_current_user( 0 );
+$comprobar( 'Sin permiso de gerencia no se ajustan horas ni se registran descuentos', $HA::crear( (int) $t23, $semana23['lv'][1], 30, 'x' ) instanceof WP_Error && $DE::crear( (int) $t23, $mes23, '10', 'x' ) instanceof WP_Error );
+wp_set_current_user( 1 );
+Trabajadores::cesar( (int) $t23, gmdate( 'Y-m-d' ), 'Prueba' );
+Trabajadores::cesar( (int) $t23h, gmdate( 'Y-m-d' ), 'Prueba' );
 
 $comprobar( 'presencia por IP del taller', ( $_SERVER['REMOTE_ADDR'] = '203.0.113.10' ) && Presencia::enRedDelTaller() );
 

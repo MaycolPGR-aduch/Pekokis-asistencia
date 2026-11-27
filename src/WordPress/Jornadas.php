@@ -32,6 +32,7 @@ final class Jornadas {
 		$marcas     = Marcas::delRango( $ids, $desde, $hasta );
 		$ausencias  = Ausencias::delRango( $ids, $desde, $hasta );
 		$revisiones = self::revisiones( $ids, $desde, $hasta );
+		$ajustes    = HorasAjustes::delRango( $ids, $desde, $hasta );
 		$resultado  = array();
 
 		foreach ( $trabajadores as $t ) {
@@ -48,7 +49,8 @@ final class Jornadas {
 					$zona,
 					$reglas,
 					$revisiones,
-					$ausencias[ $id ][ $dia ] ?? null
+					$ausencias[ $id ][ $dia ] ?? null,
+					$ajustes[ $id ][ $dia ] ?? 0
 				);
 			}
 		}
@@ -75,16 +77,46 @@ final class Jornadas {
 			return array();
 		}
 
-		$jornadas = self::delRango( $trabajadores, $desde, $hasta );
-		$sueldos  = Sueldos::deTrabajadores( array_map( static fn( array $t ): int => (int) $t['id'], $trabajadores ) );
-		$filas    = array();
+		$datos   = self::delMes( $trabajadores, $mes );
+		$sueldos = Sueldos::deTrabajadores( array_map( static fn( array $t ): int => (int) $t['id'], $trabajadores ) );
+		$reglas  = Ajustes::reglasPago();
+		$filas   = array();
 
 		foreach ( $trabajadores as $t ) {
 			$id           = (int) $t['id'];
-			$filas[ $id ] = PrePlanilla::calcular( $jornadas[ $id ] ?? array(), $sueldos[ $id ] ?? array() );
+			$filas[ $id ] = PrePlanilla::calcular( $datos['jornadas'][ $id ] ?? array(), $sueldos[ $id ] ?? array(), $reglas, $datos['semanas'][ $id ] ?? array(), $datos['descuentos'][ $id ] ?? 0 );
 		}
 
 		return $filas;
+	}
+
+	/**
+	 * Lo que necesita el pago de un mes: los días ya terminados, las semanas
+	 * (de lunes a viernes, aunque empiecen el mes anterior: el sábado depende de
+	 * ellas) y los descuentos.
+	 *
+	 * @param array<int, array<string, mixed>> $trabajadores
+	 * @return array{jornadas: array<int, array<string, CalculoJornada>>, semanas: array<int, array<string, array{esperados: int, trabajados: int, completa: bool}>>, descuentos: array<int, int>, desde: string, hasta: string}
+	 */
+	public static function delMes( array $trabajadores, string $mes ): array {
+		$desde = $mes . '-01';
+		$hasta = min( ( new DateTimeImmutable( $desde ) )->format( 'Y-m-t' ), self::ayer() );
+		$vacio = array( 'jornadas' => array(), 'semanas' => array(), 'descuentos' => array(), 'desde' => $desde, 'hasta' => $hasta );
+
+		if ( $hasta < $desde || ! $trabajadores ) {
+			return $vacio;
+		}
+
+		$todo = self::delRango( $trabajadores, PrePlanilla::lunes( $desde ), $hasta );
+
+		foreach ( $todo as $id => $dias ) {
+			$vacio['semanas'][ $id ]  = PrePlanilla::semanas( $dias );
+			$vacio['jornadas'][ $id ] = array_filter( $dias, static fn( string $dia ): bool => $dia >= $desde, ARRAY_FILTER_USE_KEY );
+		}
+
+		$vacio['descuentos'] = Descuentos::totales( array_map( static fn( array $t ): int => (int) $t['id'], $trabajadores ), $mes );
+
+		return $vacio;
 	}
 
 	/**

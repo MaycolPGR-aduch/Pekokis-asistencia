@@ -4,16 +4,22 @@ namespace Pekokis\Asistencia\Nucleo;
 
 /**
  * Cálculo del pago de un trabajador en un periodo (normalmente un mes), por
- * recibos por honorarios:
+ * recibos por honorarios. Sueldo fijo:
  *
- *   total = honorario + horas extra × tarifa extra + horas de sábado × tarifa
- *           sábado + horas de domingo × tarifa domingo + horas de feriado ×
- *           tarifa feriado
+ *   total = honorario + horas extra × tarifa extra
+ *           + horas de sábado × (tarifa extra si completó la semana, o valor hora)
+ *           + horas de domingo × tarifa domingo + horas de feriado × tarifa feriado
+ *           + horas de madrugada × valor hora × multiplicador
+ *           − descuentos
  *
- * Cada día usa la tarifa vigente ese día. El honorario es el vigente al final
- * del periodo. No hay descuentos. El pago solo se frena por una incidencia de
- * asistencia sin resolver (un día incompleto o una marca por revisar); el
- * recibo por honorarios no lo frena.
+ * Valor hora = honorario ÷ 192. "Completó la semana": de lunes a viernes trabajó,
+ * en total, las horas de su horario (los días justificados y los feriados cuentan
+ * como cumplidos). Modo por horas: horas trabajadas × valor hora, y lo que se
+ * elija (extra, madrugada, domingo y feriado) con su propia tarifa.
+ *
+ * Cada día usa el sueldo vigente ese día. El honorario es el vigente al final
+ * del periodo. El pago solo se frena por una incidencia de asistencia sin
+ * resolver (un día incompleto o una marca por revisar).
  */
 final class PrePlanilla {
 	public const LISTO      = 'listo';
@@ -25,6 +31,9 @@ final class PrePlanilla {
 		self::INCIDENCIA => 'Resolver incidencia',
 		self::SIN_TARIFA => 'Falta su honorario',
 	);
+
+	/** Lo que se suma al honorario (en céntimos), en el orden en que se muestra. */
+	public const ADICIONALES = array( 'horas', 'extra', 'sabado', 'domingo', 'feriado', 'madrugada' );
 
 	/** @var array<string, int> */
 	public array $dias = array(
@@ -50,21 +59,34 @@ final class PrePlanilla {
 		'comida_descontada' => 0,
 		'extra'             => 0,
 		'sabado'            => 0,
+		'sabado_extra'      => 0, // Sábados con la semana completa (tarifa extra).
+		'sabado_normal'     => 0, // Sábados sin completar la semana (valor hora).
 		'domingo'           => 0,
 		'feriado'           => 0,
+		'madrugada'         => 0,
+		'temprano'          => 0, // Antes de la entrada (informativo).
+		'ajuste'            => 0, // Ajustes de gerencia (+ o −).
+		'horas'             => 0, // Modo por horas: las que se pagan a valor hora.
 	);
 
 	/** @var array<string, int> Céntimos. */
 	public array $montos = array(
-		'honorario' => 0,
-		'extra'     => 0,
-		'sabado'    => 0,
-		'domingo'   => 0,
-		'feriado'   => 0,
-		'total'     => 0,
+		'honorario'     => 0,
+		'horas'         => 0,
+		'extra'         => 0,
+		'sabado'        => 0,
+		'sabado_extra'  => 0,
+		'sabado_normal' => 0,
+		'domingo'       => 0,
+		'feriado'       => 0,
+		'madrugada'     => 0,
+		'descuentos'    => 0,
+		'total'         => 0,
 	);
 
 	public ?Sueldo $sueldoFinal = null;
+
+	public float $multiplicadorMadrugada = 1.5;
 
 	/** Días con horas adicionales y sin tarifa vigente: esas horas no se pudieron valorizar. */
 	public int $diasSinSueldo = 0;
@@ -72,17 +94,28 @@ final class PrePlanilla {
 	public bool $cambioDeSueldo = false;
 
 	/**
-	 * @param array<string, CalculoJornada> $jornadas  Día (Y-m-d) => cálculo.
-	 * @param Sueldo[]                      $historial Honorarios y tarifas del trabajador.
+	 * @param array<string, CalculoJornada>                                         $jornadas   Día (Y-m-d) => cálculo.
+	 * @param Sueldo[]                                                              $historial  Honorarios y tarifas del trabajador.
+	 * @param array<string, array{esperados: int, trabajados: int, completa: bool}>|null $semanas Lunes => semana (ver semanas()); si no
+	 *                                                                              se pasa, se calcula con estas mismas jornadas.
+	 * @param int                                                                   $descuentos Céntimos a descontar del mes.
 	 */
-	public static function calcular( array $jornadas, array $historial ): self {
+	public static function calcular( array $jornadas, array $historial, ?ReglasPago $reglas = null, ?array $semanas = null, int $descuentos = 0 ): self {
 		ksort( $jornadas );
 
-		$fila   = new self();
-		$previo = null;
+		$reglas ??= new ReglasPago();
+		$semanas ??= self::semanas( $jornadas );
+		$fila      = new self();
+		$previo    = null;
+		$mult      = $reglas->multiplicadorMadrugada;
+
+		$fila->multiplicadorMadrugada = $mult;
 
 		foreach ( $jornadas as $dia => $j ) {
 			$fila->acumular( $j );
+
+			$completa = $j->minutosSabado > 0 && ( $semanas[ self::lunes( (string) $dia ) ]['completa'] ?? false );
+			$fila->minutos[ $completa ? 'sabado_extra' : 'sabado_normal' ] += $j->minutosSabado;
 
 			$sueldo = Sueldo::vigenteEn( $historial, (string) $dia );
 
@@ -97,16 +130,89 @@ final class PrePlanilla {
 
 			$previo            = $sueldo;
 			$fila->sueldoFinal = $sueldo;
+			$hora              = $sueldo->valorHora();
+			$aValorHora        = $sueldo->porHoras() ? $j->minutosTrabajados : 0;
+			$pagar             = static function ( string $clave, int $min, float $tarifa ) use ( $fila ): void {
+				$fila->montos[ $clave ] += (int) round( $min * $tarifa / 60 );
+			};
 
-			foreach ( array( 'extra' => $j->minutosExtra, 'sabado' => $j->minutosSabado, 'domingo' => $j->minutosDomingo, 'feriado' => $j->minutosFeriado ) as $tipo => $min ) {
-				$fila->montos[ $tipo ] += (int) round( $min * $sueldo->tarifa( $tipo ) / 60 );
+			if ( $sueldo->aparte( 'extra' ) ) {
+				$pagar( 'extra', $j->minutosExtra, $sueldo->tarifa( 'extra' ) );
+				$aValorHora -= $j->minutosExtra + ( $completa ? $j->minutosSabado : 0 );
+
+				if ( $completa ) {
+					$pagar( 'sabado_extra', $j->minutosSabado, $sueldo->tarifa( 'extra' ) );
+				}
+			}
+
+			if ( ! $sueldo->porHoras() && ! $completa ) {
+				$pagar( 'sabado_normal', $j->minutosSabado, $hora );
+			}
+
+			if ( $sueldo->aparte( 'domingo' ) ) {
+				$pagar( 'domingo', $j->minutosDomingo, $sueldo->tarifa( 'domingo' ) );
+				$pagar( 'feriado', $j->minutosFeriado, $sueldo->tarifa( 'feriado' ) );
+				$aValorHora -= $j->minutosDomingo + $j->minutosFeriado;
+			}
+
+			if ( $sueldo->aparte( 'madrugada' ) ) {
+				$pagar( 'madrugada', $j->minutosMadrugada, $hora * $mult );
+				$aValorHora -= $j->minutosMadrugada;
+			}
+
+			if ( $sueldo->porHoras() ) {
+				$aValorHora              = max( 0, $aValorHora );
+				$fila->minutos['horas'] += $aValorHora;
+				$pagar( 'horas', $aValorHora, $hora );
 			}
 		}
 
-		$fila->montos['honorario'] = $fila->sueldoFinal ? $fila->sueldoFinal->honorarioCentimos : 0;
-		$fila->montos['total']     = $fila->montos['honorario'] + $fila->montos['extra'] + $fila->montos['sabado'] + $fila->montos['domingo'] + $fila->montos['feriado'];
+		$fila->montos['sabado']     = $fila->montos['sabado_extra'] + $fila->montos['sabado_normal'];
+		$fila->montos['honorario']  = $fila->sueldoFinal && ! $fila->sueldoFinal->porHoras() ? $fila->sueldoFinal->honorarioCentimos : 0;
+		$fila->montos['descuentos'] = max( 0, $descuentos );
+		$fila->montos['total']      = max( 0, $fila->montos['honorario'] + $fila->costoExtra() - $fila->montos['descuentos'] );
 
 		return $fila;
+	}
+
+	/**
+	 * Lunes a viernes de cada semana: horas esperadas y trabajadas, y si la
+	 * completó (en total). Los días justificados no cuentan; los feriados no
+	 * esperan horas. La madrugada no completa el horario.
+	 *
+	 * @param array<string, CalculoJornada> $jornadas
+	 * @return array<string, array{esperados: int, trabajados: int, completa: bool}> Lunes (Y-m-d) => semana.
+	 */
+	public static function semanas( array $jornadas ): array {
+		$semanas = array();
+
+		foreach ( $jornadas as $dia => $j ) {
+			$n = (int) gmdate( 'N', (int) strtotime( $dia . ' 12:00 UTC' ) );
+
+			if ( $n > 5 ) {
+				continue;
+			}
+
+			$lunes             = self::lunes( (string) $dia );
+			$semanas[ $lunes ] ??= array( 'esperados' => 0, 'trabajados' => 0, 'completa' => true );
+
+			if ( ! $j->laborable || CalculoJornada::JUSTIFICADO === $j->estado ) {
+				continue;
+			}
+
+			$semanas[ $lunes ]['esperados']  += $j->minutosEsperados;
+			$semanas[ $lunes ]['trabajados'] += max( 0, $j->minutosTrabajados - $j->minutosMadrugada );
+			$semanas[ $lunes ]['completa']    = $semanas[ $lunes ]['trabajados'] >= $semanas[ $lunes ]['esperados'];
+		}
+
+		return $semanas;
+	}
+
+	/** El lunes de la semana de ese día (Y-m-d). */
+	public static function lunes( string $dia ): string {
+		$t = (int) strtotime( $dia . ' 12:00 UTC' );
+
+		return gmdate( 'Y-m-d', $t - ( (int) gmdate( 'N', $t ) - 1 ) * 86400 );
 	}
 
 	private function acumular( CalculoJornada $j ): void {
@@ -149,6 +255,9 @@ final class PrePlanilla {
 		$this->minutos['sabado']            += $j->minutosSabado;
 		$this->minutos['domingo']           += $j->minutosDomingo;
 		$this->minutos['feriado']           += $j->minutosFeriado;
+		$this->minutos['madrugada']         += $j->minutosMadrugada;
+		$this->minutos['temprano']          += $j->minutosTemprano;
+		$this->minutos['ajuste']            += $j->minutosAjuste;
 	}
 
 	/** Listo para pagar, o qué lo frena. */
@@ -190,12 +299,16 @@ final class PrePlanilla {
 
 	/** Minutos que se pagan aparte del honorario. */
 	public function minutosAdicionales(): int {
-		return $this->minutos['extra'] + $this->minutos['sabado'] + $this->minutos['domingo'] + $this->minutos['feriado'];
+		return $this->minutos['extra'] + $this->minutos['sabado'] + $this->minutos['domingo'] + $this->minutos['feriado'] + $this->minutos['madrugada'];
 	}
 
-	/** Lo que se paga aparte del honorario, en céntimos. */
+	/** Lo que se paga aparte del honorario (en el modo por horas, todo), en céntimos y antes de descuentos. */
 	public function costoExtra(): int {
-		return $this->montos['extra'] + $this->montos['sabado'] + $this->montos['domingo'] + $this->montos['feriado'];
+		return array_sum( array_intersect_key( $this->montos, array_flip( self::ADICIONALES ) ) );
+	}
+
+	public function porHoras(): bool {
+		return (bool) $this->sueldoFinal?->porHoras();
 	}
 
 	/**
@@ -210,12 +323,36 @@ final class PrePlanilla {
 			return array( 'Todavía no tiene honorario ni tarifas registrados: no se puede calcular su pago.' );
 		}
 
-		$lineas = array( 'Honorario del mes: ' . Sueldo::soles( $this->montos['honorario'] ) . ' (incluye las horas normales).' );
+		$hora   = Sueldo::soles( $s->valorHora() );
+		$lineas = $s->porHoras()
+			? array( sprintf( 'Pago por horas: %s h × %s (valor hora: %s ÷ %d) = %s.', self::horasDecimal( $this->minutos['horas'] ), $hora, Sueldo::soles( $s->honorarioCentimos ), Sueldo::HORAS_MES, Sueldo::soles( $this->montos['horas'] ) ) )
+			: array( 'Honorario del mes: ' . Sueldo::soles( $this->montos['honorario'] ) . ' (incluye las horas normales). Valor hora: ' . Sueldo::soles( $s->honorarioCentimos ) . ' ÷ ' . Sueldo::HORAS_MES . ' = ' . $hora . '.' );
+		$tarifa = static fn( string $tipo ): string => Sueldo::soles( $s->tarifa( $tipo ) );
+		$filas  = array(
+			array( 'extra', 'extra', 'Horas extra de lunes a viernes', $tarifa( 'extra' ) ),
+			array( 'sabado_extra', 'sabado_extra', 'Sábado con la semana completa', $tarifa( 'extra' ) . ' (tarifa extra)' ),
+			array( 'sabado_normal', 'sabado_normal', 'Sábado sin completar la semana', $hora . ' (valor hora)' ),
+			array( 'domingo', 'domingo', 'Horas de domingo', $tarifa( 'domingo' ) ),
+			array( 'feriado', 'feriado', 'Horas de feriado', $tarifa( 'feriado' ) ),
+			array( 'madrugada', 'madrugada', 'Madrugada (hasta las 6:00)', Sueldo::soles( (int) round( $s->valorHora() * $this->multiplicadorMadrugada ) ) . ' (valor hora × ' . self::numero( $this->multiplicadorMadrugada ) . ')' ),
+		);
 
-		foreach ( array( 'extra' => 'Horas extra de lunes a viernes', 'sabado' => 'Horas de sábado', 'domingo' => 'Horas de domingo', 'feriado' => 'Horas de feriado' ) as $tipo => $nombre ) {
-			if ( $this->minutos[ $tipo ] > 0 ) {
-				$lineas[] = sprintf( '%s: %s h × %s = %s.', $nombre, self::horasDecimal( $this->minutos[ $tipo ] ), Sueldo::soles( $s->tarifa( $tipo ) ), Sueldo::soles( $this->montos[ $tipo ] ) );
+		foreach ( $filas as [ $min, $monto, $nombre, $precio ] ) {
+			if ( $this->minutos[ $min ] <= 0 ) {
+				continue;
 			}
+
+			$lineas[] = $this->montos[ $monto ] > 0 || ! $s->porHoras()
+				? sprintf( '%s: %s h × %s = %s.', $nombre, self::horasDecimal( $this->minutos[ $min ] ), $precio, Sueldo::soles( $this->montos[ $monto ] ) )
+				: sprintf( '%s: %s h (incluidas en el pago por horas).', $nombre, self::horasDecimal( $this->minutos[ $min ] ) );
+		}
+
+		if ( $this->minutos['ajuste'] ) {
+			$lineas[] = sprintf( 'Ajustes de horas de gerencia: %s%s h (ya sumados arriba).', $this->minutos['ajuste'] > 0 ? '+' : '−', self::horasDecimal( abs( $this->minutos['ajuste'] ) ) );
+		}
+
+		if ( $this->montos['descuentos'] ) {
+			$lineas[] = 'Descuentos: − ' . Sueldo::soles( $this->montos['descuentos'] ) . '.';
 		}
 
 		$lineas[] = 'Total: ' . Sueldo::soles( $this->montos['total'] ) . '.';
@@ -229,6 +366,11 @@ final class PrePlanilla {
 		}
 
 		return $lineas;
+	}
+
+	/** 1.5 → "1,5". */
+	public static function numero( float $n ): string {
+		return rtrim( rtrim( number_format( $n, 2, ',', '' ), '0' ), ',' );
 	}
 
 	/** 135 → "2:15". */

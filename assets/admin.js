@@ -126,6 +126,19 @@
 	document.addEventListener( 'DOMContentLoaded', function () {
 		document.querySelectorAll( '.pk-sueldos, .pk-panel form' ).forEach( seguirCambios );
 
+		// G8: el valor hora (honorario ÷ 192) se recalcula al escribir el honorario.
+		document.querySelectorAll( '.pk-sueldos input[name$="[honorario]"]' ).forEach( function ( campo ) {
+			var celda = campo.closest( 'tr' ) ? campo.closest( 'tr' ).querySelector( '.pk-valor-hora' ) : null;
+			if ( ! celda ) {
+				return;
+			}
+			campo.addEventListener( 'input', function () {
+				var monto = parseFloat( String( campo.value ).replace( /,/g, '' ) );
+				var horas = parseInt( celda.getAttribute( 'data-horas' ), 10 ) || 192;
+				celda.textContent = monto > 0 ? 'S/ ' + ( Math.round( monto * 100 / horas ) / 100 ).toFixed( 2 ) : '—';
+			} );
+		} );
+
 		var sigue = document.querySelectorAll( 'form.pk-sigue' );
 		if ( sigue.length ) {
 			seguirFormularios( Array.prototype.slice.call( sigue ) );

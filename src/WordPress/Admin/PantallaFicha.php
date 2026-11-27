@@ -208,9 +208,14 @@ final class PantallaFicha {
 
 		if ( current_user_can( Capacidades::VER_SUELDOS ) ) {
 			$meses = Exportes::meses();
-			$mes   = $meses[1] ?? $meses[0];
+			$mes   = isset( $_GET['mes'] ) && in_array( $_GET['mes'], $meses, true ) ? sanitize_text_field( wp_unslash( $_GET['mes'] ) ) : ( $meses[1] ?? $meses[0] ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 			$fila  = Jornadas::prePlanilla( array( $t ), $mes )[ $id ] ?? new PrePlanilla();
 			?>
+			<nav class="pk-pestanas" aria-label="Mes">
+				<?php foreach ( array_slice( $meses, 0, 6 ) as $m ) : ?>
+					<a href="<?php echo esc_url( self::url( $id, 'pagos', array( 'mes' => $m ) ) ); ?>" class="<?php echo $m === $mes ? 'activa' : ''; ?>"><?php echo esc_html( PantallaResumen::nombreMes( $m ) ); ?></a>
+				<?php endforeach; ?>
+			</nav>
 			<div class="pk-dos">
 				<div class="pk-caja">
 					<h2>Cómo se calcula su pago de <?php echo esc_html( PantallaResumen::nombreMes( $mes ) ); ?></h2>
@@ -222,7 +227,18 @@ final class PantallaFicha {
 					<p class="pk-fila pk-mt-s">
 						<a class="button" href="<?php echo esc_url( PantallaPagos::url( $mes ) ); ?>">Calculadora de pagos</a>
 						<a class="button" href="<?php echo esc_url( add_query_arg( array( 'page' => PantallaTrabajadores::SLUG, 'vista' => 'editar', 'id' => $id ), admin_url( 'admin.php' ) ) . '#remuneracion' ); ?>">Cambiar honorario y tarifas</a>
+						<?php if ( current_user_can( Capacidades::JUSTIFICAR ) ) : ?>
+							<a class="button" href="<?php echo esc_url( PantallaHoras::url( $mes, $id ) ); ?>">Contabilidad de horas</a>
+						<?php endif; ?>
 					</p>
+				</div>
+				<div class="pk-caja">
+					<?php PantallaDescuentos::caja( $t, $mes ); ?>
+				</div>
+			</div>
+			<div class="pk-dos pk-mt-s">
+				<div class="pk-caja">
+					<?php PantallaDescuentos::historialPagos( $t ); ?>
 				</div>
 				<?php if ( current_user_can( Capacidades::RECIBOS ) ) : ?>
 					<div class="pk-caja">

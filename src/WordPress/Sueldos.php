@@ -87,10 +87,11 @@ final class Sueldos {
 			$tabla,
 			array(
 				'trabajador_id'  => $trabajadorId,
-				'modalidad'      => 'honorario',
+				'modalidad'      => Sueldo::HORAS === $datos['modo'] ? 'horas' : 'honorario',
+				'opciones'       => implode( ',', $datos['aparte'] ),
 				'monto_centimos' => $datos['honorario'],
 				'tarifa_extra'   => $datos['tarifas']['extra'],
-				'tarifa_sabado'  => $datos['tarifas']['sabado'],
+				'tarifa_sabado'  => $datos['tarifas']['extra'], // Desde la 0.22.0 el sábado con semana completa usa la tarifa extra.
 				'tarifa_domingo' => $datos['tarifas']['domingo'],
 				'tarifa_feriado' => $datos['tarifas']['feriado'],
 				'vigente_desde'  => $datos['vigente_desde'],
@@ -109,9 +110,10 @@ final class Sueldos {
 			$actual ? self::paraAuditoria( $actual ) : null,
 			self::paraAuditoria(
 				array(
+					'modalidad'      => Sueldo::HORAS === $datos['modo'] ? 'horas' : 'honorario',
+					'opciones'       => implode( ',', $datos['aparte'] ),
 					'monto_centimos' => $datos['honorario'],
 					'tarifa_extra'   => $datos['tarifas']['extra'],
-					'tarifa_sabado'  => $datos['tarifas']['sabado'],
 					'tarifa_domingo' => $datos['tarifas']['domingo'],
 					'tarifa_feriado' => $datos['tarifas']['feriado'],
 					'vigente_desde'  => $datos['vigente_desde'],
@@ -173,15 +175,24 @@ final class Sueldos {
 			(int) ( $fila['tarifa_feriado'] ?? 0 ),
 			(string) $fila['vigente_desde'],
 			! empty( $fila['vigente_hasta'] ) ? (string) $fila['vigente_hasta'] : null,
-			(int) ( $fila['id'] ?? 0 )
+			(int) ( $fila['id'] ?? 0 ),
+			'horas' === ( $fila['modalidad'] ?? '' ) ? Sueldo::HORAS : Sueldo::FIJO,
+			'horas' === ( $fila['modalidad'] ?? '' ) ? array_values( array_filter( explode( ',', (string) ( $fila['opciones'] ?? '' ) ) ) ) : array()
 		);
 	}
 
-	/** "S/ 1,800.00 al mes · extra S/ 12.00 · sábado S/ 14.00 · domingo S/ 20.00 · feriado S/ 24.00". */
+	/** "S/ 1,800.00 al mes (valor hora S/ 9.38) · extra S/ 12.00 · domingo S/ 20.00 · feriado S/ 24.00". */
 	public static function etiqueta( array $fila ): string {
-		$s = self::aSueldo( $fila + array( 'id' => 0, 'vigente_hasta' => null ) );
+		$s      = self::aSueldo( $fila + array( 'id' => 0, 'vigente_hasta' => null ) );
+		$tarifa = ' · extra ' . Sueldo::soles( $s->tarifaExtra ) . ' · domingo ' . Sueldo::soles( $s->tarifaDomingo ) . ' · feriado ' . Sueldo::soles( $s->tarifaFeriado );
 
-		return Sueldo::soles( $s->honorarioCentimos ) . ' al mes · extra ' . Sueldo::soles( $s->tarifaExtra ) . ' · sábado ' . Sueldo::soles( $s->tarifaSabado ) . ' · domingo ' . Sueldo::soles( $s->tarifaDomingo ) . ' · feriado ' . Sueldo::soles( $s->tarifaFeriado );
+		if ( $s->porHoras() ) {
+			$aparte = array_map( static fn( string $k ): string => array( 'extra' => 'extra', 'madrugada' => 'madrugada', 'domingo' => 'domingo y feriado' )[ $k ] ?? $k, $s->aparte );
+
+			return 'Por horas: ' . Sueldo::soles( $s->valorHora() ) . ' la hora (' . Sueldo::soles( $s->honorarioCentimos ) . ' ÷ ' . Sueldo::HORAS_MES . ')' . ( $aparte ? ' · aparte: ' . implode( ', ', $aparte ) . $tarifa : ' · todo a valor hora' );
+		}
+
+		return Sueldo::soles( $s->honorarioCentimos ) . ' al mes (valor hora ' . Sueldo::soles( $s->valorHora() ) . ')' . $tarifa;
 	}
 
 	/** @return array<string, mixed>|null */
