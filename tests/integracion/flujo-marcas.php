@@ -44,7 +44,7 @@ $api = static function ( string $metodo, string $ruta, array $cuerpo = array() )
 };
 
 // ---- Preparación: tablas vacías, una red autorizada y la IP del "WiFi del taller".
-foreach ( array( 'trabajadores', 'marcas', 'auditoria', 'credenciales', 'dispositivos', 'activaciones', 'redes', 'correcciones', 'pantallas', 'revisiones', 'calendario', 'ausencias', 'sueldos', 'avisos', 'pagos', 'recibos', 'solicitudes_celular', 'llaves_gerencia', 'horario_cambios', 'tardanzas', 'descuentos', 'horas_ajustes' ) as $tabla ) {
+foreach ( array( 'trabajadores', 'marcas', 'auditoria', 'credenciales', 'dispositivos', 'activaciones', 'redes', 'correcciones', 'pantallas', 'revisiones', 'calendario', 'ausencias', 'sueldos', 'avisos', 'pagos', 'recibos', 'solicitudes_celular', 'llaves_gerencia', 'horario_cambios', 'tardanzas', 'descuentos', 'horas_ajustes', 'constancias' ) as $tabla ) {
 	$wpdb->query( 'TRUNCATE TABLE ' . Tablas::nombre( $tabla ) ); // phpcs:ignore
 }
 $wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE '\\_transient\\_pka\\_%' OR option_name LIKE '\\_transient\\_timeout\\_pka\\_%'" ); // phpcs:ignore
@@ -1378,6 +1378,74 @@ $comprobar( 'Sin permiso de gerencia no se ajustan horas ni se registran descuen
 wp_set_current_user( 1 );
 Trabajadores::cesar( (int) $t23, gmdate( 'Y-m-d' ), 'Prueba' );
 Trabajadores::cesar( (int) $t23h, gmdate( 'Y-m-d' ), 'Prueba' );
+
+// ---- 24. Bloque 3 de gerencia (27-11): varias áreas por persona y constancia de retención de 4.ª o 5.ª.
+WP_CLI::line( '24. Áreas y constancias de retención' );
+wp_set_current_user( 1 );
+$FA   = \Pekokis\Asistencia\WordPress\Admin\FiltroArea::class;
+$CO   = \Pekokis\Asistencia\WordPress\Constancias::class;
+$VC   = \Pekokis\Asistencia\Nucleo\ValidacionConstancia::class;
+$hb24 = (int) array_keys( Trabajadores::horarios() )[0];
+$a24  = Trabajadores::guardar( array( 'dni' => '77000025', 'nombres' => 'Ana', 'apellidos' => 'Areas', 'horario_id' => $hb24, 'areas' => array( 'Costura' ), 'area_otra' => 'Estampado, costura', 'cumpleanos_dia' => '1', 'cumpleanos_mes' => '1' ) );
+$b24  = Trabajadores::guardar( array( 'dni' => '77000026', 'nombres' => 'Beto', 'apellidos' => 'Areas', 'horario_id' => $hb24, 'area' => 'Estampado', 'cumpleanos_dia' => '1', 'cumpleanos_mes' => '1' ) );
+$comprobar( 'Áreas: una persona en varias, sin repetir', is_int( $a24 ) && 'Costura, Estampado' === Trabajadores::buscar( (int) $a24 )['area'] && in_array( 'Costura', Trabajadores::areasEnUso(), true ) && in_array( 'Estampado', Trabajadores::areasEnUso(), true ) );
+$enEst = array_map( static fn( $t ) => (int) $t['id'], $FA::aplicar( Trabajadores::listar(), 'Estampado' ) );
+$enCos = array_map( static fn( $t ) => (int) $t['id'], $FA::aplicar( Trabajadores::listar(), 'Costura' ) );
+$comprobar( 'Áreas: el filtro trae a quien está en esa área (aunque tenga otras)', in_array( (int) $a24, $enEst, true ) && in_array( (int) $b24, $enEst, true ) && in_array( (int) $a24, $enCos, true ) && ! in_array( (int) $b24, $enCos, true ) && null === $FA::ids( '' ) );
+$e24 = Trabajadores::guardar( array( 'dni' => '77000025', 'nombres' => 'Ana', 'apellidos' => 'Areas', 'horario_id' => $hb24, 'areas' => array( 'Estampado' ), 'cumpleanos_dia' => '1', 'cumpleanos_mes' => '1' ), (int) $a24, 'Cambio de área' );
+$comprobar( 'Áreas: al editar se puede quitar una', (int) $a24 === $e24 && 'Estampado' === Trabajadores::buscar( (int) $a24 )['area'] );
+$_GET     = array( 'page' => 'pka-trabajadores', 'area' => 'Estampado' );
+$htmlA24  = $dibujar( array( \Pekokis\Asistencia\WordPress\Admin\PantallaTrabajadores::class, 'pintar' ) );
+$_GET     = array( 'page' => 'pka-trabajadores', 'vista' => 'editar', 'id' => (int) $a24 );
+$htmlA24b = $dibujar( array( \Pekokis\Asistencia\WordPress\Admin\PantallaTrabajadores::class, 'pintar' ) );
+$_GET     = array( 'page' => 'pka-pagos', 'area' => 'Estampado' );
+$htmlA24c = $dibujar( array( \Pekokis\Asistencia\WordPress\Admin\PantallaPagos::class, 'pintar' ) );
+$_GET     = array();
+$comprobar( 'Áreas: Perfiles filtra por área, el perfil tiene casillas y la Calculadora muestra "Solo el área"', str_contains( $htmlA24, 'Todas las áreas' ) && str_contains( $htmlA24, 'Areas, Beto' ) && str_contains( $htmlA24b, 'name="areas[]" value="Estampado"  checked' ) && str_contains( $htmlA24b, 'name="area_otra"' ) && str_contains( $htmlA24c, 'Solo el área Estampado' ), wp_json_encode( array( str_contains( $htmlA24, 'Todas las áreas' ), str_contains( $htmlA24, 'Areas, Beto' ), str_contains( $htmlA24b, 'name="areas[]" value="Estampado"  checked' ), str_contains( $htmlA24b, 'name="area_otra"' ), str_contains( $htmlA24c, 'Solo el área Estampado' ) ) ) );
+
+// Constancia: la sube el trabajador desde "Mi recibo" (con el permiso de 15 minutos).
+$ticket24 = \Pekokis\Asistencia\WordPress\Temporales::guardar( 'ticket', array( 'trabajador_id' => (int) $a24 ), 120 );
+[ $st, $mi24 ] = $api( 'POST', 'yo/recibos', array( 'ticket' => $ticket24 ) );
+$comprobar( 'Constancia: "Mi recibo" la trae, sin constancia todavía', 200 === $st && 'falta' === ( $mi24['constancia']['estado'] ?? '' ) && true === $mi24['constancia']['puede_enviar'] && isset( $mi24['constancia']['tipos']['cuarta'] ), wp_json_encode( $mi24['constancia'] ?? null ) );
+$base24 = array( 'token' => $mi24['token'], 'tipo' => 'cuarta', 'numero' => '1609-77', 'vigente_hasta' => substr( $hoy, 0, 4 ) . '-12-31' );
+[ $st, $r ] = $apiArchivo( 'yo/constancia/enviar', array( 'tipo' => 'sexta' ) + $base24, $pdf( "%PDF-1.4\nconstancia" ) );
+$comprobar( 'Constancia: valida el tipo', 400 === $st && isset( $r['data']['errores']['tipo'] ) );
+[ $st, $r ] = $apiArchivo( 'yo/constancia/enviar', array( 'vigente_hasta' => '2020-12-31' ) + $base24, $pdf( "%PDF-1.4\nconstancia" ) );
+$comprobar( 'Constancia: no acepta una vencida', 400 === $st && isset( $r['data']['errores']['vigente_hasta'] ) );
+[ $st, $r ] = $apiArchivo( 'yo/constancia/enviar', $base24, $pdf( "\x89PNG" ) );
+$comprobar( 'Constancia: tiene que ser PDF', 400 === $st && str_contains( (string) ( $r['data']['errores']['archivo'] ?? '' ), 'no es un PDF' ) );
+[ $st, $r ] = $apiArchivo( 'yo/constancia/enviar', $base24, $pdf( "%PDF-1.4\nconstancia" ) );
+$comprobar( 'Constancia: se envía y queda esperando revisión', 200 === $st && 'enviado' === ( $r['constancia']['estado'] ?? '' ) && false === $r['constancia']['puede_enviar'] && true === $r['constancia']['puede_anular'], wp_json_encode( $r ) );
+[ $st ] = $apiArchivo( 'yo/constancia/enviar', $base24, $pdf( "%PDF-1.4\notra" ) );
+$comprobar( 'Constancia: no se manda otra mientras espera revisión', 409 === $st );
+$c24 = $CO::actual( (int) $a24 );
+[ $st, $r ] = $api( 'POST', 'yo/constancia/anular', array( 'token' => $mi24['token'], 'id' => (int) $c24['id'] ) );
+$comprobar( 'Constancia: se puede anular mientras no se revisa', 200 === $st && 'falta' === ( $r['constancia']['estado'] ?? '' ) );
+[ $st, $r ] = $apiArchivo( 'yo/constancia/enviar', $base24, $pdf( "%PDF-1.4\nconstancia bien" ) );
+$c24 = $CO::actual( (int) $a24 );
+$comprobar( 'Constancia: gerencia la ve por revisar (panel y Dashboard)', 1 === $CO::porRevisar() && (bool) array_filter( \Pekokis\Asistencia\WordPress\Admin\PantallaDashboard::itemsAlerta( array(), null, $hoy, null, array(), substr( $hoy, 0, 7 ) ), static fn( $i ) => str_contains( $i[2], 'constancia de retención por revisar' ) ) );
+$comprobar( 'Constancia: observar pide comentario', $CO::observar( (int) $c24['id'], '' ) instanceof WP_Error && true === $CO::observar( (int) $c24['id'], 'Falta la segunda hoja' ) && 'Falta la segunda hoja' === $CO::paraApp( Trabajadores::buscar( (int) $a24 ) )['comentario'] && true === $CO::paraApp( Trabajadores::buscar( (int) $a24 ) )['puede_enviar'] );
+[ $st, $r ] = $apiArchivo( 'yo/constancia/enviar', $base24, $pdf( "%PDF-1.4\nconstancia completa" ) );
+$c24 = $CO::actual( (int) $a24 );
+$comprobar( 'Constancia: corregida y recibida', 200 === $st && true === $CO::recibir( (int) $c24['id'] ) && 'recibido' === $CO::actual( (int) $a24 )['estado'] && 0 === $CO::porRevisar() );
+// Por vencer: se acorta la vigencia a 10 días.
+$wpdb->update( Tablas::nombre( 'constancias' ), array( 'vigente_hasta' => ( new DateTimeImmutable( $hoy ) )->modify( '+10 days' )->format( 'Y-m-d' ) ), array( 'id' => (int) $c24['id'] ) );
+$alertas24 = \Pekokis\Asistencia\WordPress\Admin\PantallaDashboard::itemsAlerta( array(), null, $hoy, null, array(), substr( $hoy, 0, 7 ) );
+$app24     = $CO::paraApp( Trabajadores::buscar( (int) $a24 ) );
+$comprobar( 'Constancia: 30 días antes de vencer avisa en el Dashboard y en la app', (bool) array_filter( $alertas24, static fn( $i ) => str_contains( $i[2], 'Constancia de retención de Ana Areas' ) && str_contains( $i[3], 'Vence en 10 días' ) ) && 'por_vencer' === $app24['vigencia'] && true === $app24['puede_enviar'] );
+$wpdb->update( Tablas::nombre( 'constancias' ), array( 'vigente_hasta' => ( new DateTimeImmutable( $hoy ) )->modify( '-1 day' )->format( 'Y-m-d' ) ), array( 'id' => (int) $c24['id'] ) );
+$comprobar( 'Constancia: vencida sale en rojo y la app dice "Vencida"', (bool) array_filter( \Pekokis\Asistencia\WordPress\Admin\PantallaDashboard::itemsAlerta( array(), null, $hoy, null, array(), substr( $hoy, 0, 7 ) ), static fn( $i ) => 'error' === $i[0] && str_contains( $i[3], 'Venció' ) ) && 'Vencida' === $CO::paraApp( Trabajadores::buscar( (int) $a24 ) )['texto'] );
+$_GET    = array( 'page' => 'pka-recibos', 'vista' => 'constancias' );
+$htmlC24 = $dibujar( array( \Pekokis\Asistencia\WordPress\Admin\PantallaRecibos::class, 'pintar' ) );
+$_GET    = array( 'page' => 'pka-recibos' );
+$htmlR24 = $dibujar( array( \Pekokis\Asistencia\WordPress\Admin\PantallaRecibos::class, 'pintar' ) );
+$_GET    = array();
+$comprobar( 'Constancias en el panel: pestaña en Recibos, con el PDF y la vigencia', str_contains( $htmlC24, 'Constancias de retención' ) && str_contains( $htmlC24, 'Suspensión de retenciones de 4.ª categoría' ) && str_contains( $htmlC24, 'pka_constancia_pdf' ) && str_contains( $htmlC24, 'Venció el' ) && str_contains( $htmlR24, 'Constancias de retención' ) );
+[ $hist24 ] = \Pekokis\Asistencia\WordPress\Historial::buscar( array( 'trabajador' => (int) $a24 ) );
+$acc24 = array_column( $hist24, 'accion' );
+$comprobar( 'Constancias en la Auditoría', in_array( 'constancia.enviar', $acc24, true ) && in_array( 'constancia.anular', $acc24, true ) && in_array( 'constancia.observar', $acc24, true ) && in_array( 'constancia.recibir', $acc24, true ) );
+Trabajadores::cesar( (int) $a24, gmdate( 'Y-m-d' ), 'Prueba' );
+Trabajadores::cesar( (int) $b24, gmdate( 'Y-m-d' ), 'Prueba' );
 
 $comprobar( 'presencia por IP del taller', ( $_SERVER['REMOTE_ADDR'] = '203.0.113.10' ) && Presencia::enRedDelTaller() );
 

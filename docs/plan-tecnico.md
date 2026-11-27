@@ -295,6 +295,21 @@ Decidido el 14-11-2026, siguiendo las maquetas entregadas por Pekokis (`CONTEXTO
 - **Mis horas (T5/T6):** horas, extra y días completos (sin dinero), "Te falta marcar", calendario con cada día tocable y el detalle con sus pasos, otras salidas y correcciones pedidas. "Pedir corrección" manda la hora, qué pasó y un comentario a `POST /correcciones`.
 - **Perfil (T7):** DNI oculto; "Ver" lo trae con `POST /yo/dni` y queda en el historial.
 
+### 6.16 Áreas y constancias de retención (versión 0.23.0)
+
+- Áreas:
+  - `trabajadores.area` (varchar 255, BD v14) guarda varias áreas separadas por coma.
+  - `ValidacionTrabajador::unirAreas()` junta las casillas `areas[]`, `area_otra` o el texto `area`, sin repetir (sin distinguir mayúsculas).
+  - `Trabajadores::areasEnUso()` lista las de las personas activas.
+  - `Admin\FiltroArea` lee `?area=`, filtra listas y da los ids para `Informes::mes( $mes, $alcance )`.
+- Constancias:
+  - Tabla `constancias` (trabajador, tipo cuarta/quinta, número, vigente_hasta, archivo, bytes, sha256, estado, comentario, enviado/revisado/anulado); los estados son los de `ValidacionRecibo`.
+  - `Nucleo\ValidacionConstancia`: datos, `vigencia()` (vigente, por vencer a 30 días, vencida) y `textoVigencia()`.
+  - `WordPress\Constancias`: enviar, anular, recibir, observar, `actuales()`, `porVencer()`, `porRevisar()` y `paraApp()`.
+  - El PDF va a `uploads/pka-recibos/c-*.pdf`.
+  - Panel: `Admin\PantallaConstancias` (pestaña de Recibos, acciones `pka_constancia_revisar` y `pka_constancia_pdf`).
+  - Avisos: `Notificaciones::constanciaEnviada()` y `constanciaObservada()` usan los tipos de aviso de los recibos.
+
 ### 6.15 Pagos: semana completa, madrugada, ajustes, descuentos y modo por horas (versión 0.22.0)
 
 - `CalculoJornada::calcular(…, int $ajuste = 0)` reparte lo trabajado con `partes()`:

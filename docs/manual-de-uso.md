@@ -94,6 +94,12 @@ La app tiene cuatro pestañas abajo: **Marcar**, **Mis horas**, **Mi recibo** y 
 3. Toca **Enviar recibo**. Mientras gerencia no lo revise, se puede **Anular envío** si hubo un error.
 4. Gerencia lo marca como **Recibido** o lo **Observa** con un comentario; si lo observa, se corrige y se vuelve a enviar.
 
+**Constancia de retención** (en *Mi recibo*, debajo de los meses)
+
+- Si tiene la constancia de **suspensión de retenciones de 4.ª categoría** (SUNAT) o el documento de **5.ª categoría**, la sube en PDF: elige qué constancia es, escribe el número (opcional) y hasta cuándo vale (sale el 31 de diciembre de fábrica).
+- Gerencia la marca como **Recibida** o la **Observa**, igual que el recibo. Mientras no la revise, se puede anular el envío.
+- Desde 30 días antes de que venza, la app avisa arriba de *Mi recibo* que suba la nueva.
+
 **Perfil**
 
 - Sus datos (el DNI se ve al tocar **Ver**). Si algún dato está mal, se le pide a RR.HH.
@@ -236,6 +242,12 @@ Si cambia una tarifa o se corrige un registro, el cálculo se actualiza solo. El
 - Abre el **PDF** desde el panel (el archivo no se puede abrir con su dirección directa).
 - **Recibido** lo da por bueno. **Observar** lo devuelve con un comentario para que lo corrija. **Recordar** le avisa a quien todavía no lo envía.
 
+**Constancias de retención** (Recibos por honorarios → pestaña *Constancias de retención*)
+
+- Una fila por persona con su última constancia de 4.ª o 5.ª: el tipo, el número, el **PDF**, hasta cuándo vale (en verde, ámbar si vence en 30 días o menos, rojo si venció) y el estado.
+- **Recibida** la da por buena; **Observar** la devuelve con un comentario. El número sobre la pestaña dice cuántas esperan revisión.
+- El **Dashboard** avisa las constancias por revisar y las que están por vencer o vencidas, para pedir la nueva. En la ficha → *Pagos y recibos* se ve su estado.
+
 ## Informes y exportación
 
 | Pantalla | Para qué sirve |
@@ -256,7 +268,8 @@ Estas pantallas las usa RR.HH. o el administrador para preparar el sistema y man
 
 **Perfiles** (las personas)
 
-- **+ Nuevo trabajador:** nombre, DNI, cumpleaños, teléfono, horario, jefe que aprueba y honorario mensual. Con el cumpleaños registrado, la persona puede activar su celular sola en el taller.
+- **+ Nuevo trabajador:** nombre, DNI, cumpleaños, teléfono, horario, áreas y honorario mensual. Con el cumpleaños registrado, la persona puede activar su celular sola en el taller.
+- **Áreas:** una persona puede estar en **varias** (casillas, y *Otra área* para crear una nueva). Ninguna área tiene jefe: todo lo aprueba gerencia. En **Perfiles**, **Asistencia de hoy**, la **Calculadora de pagos** y la **Contabilidad de horas** hay un selector *Todas las áreas* para ver solo un área (en la Calculadora, los totales también son del área).
 - La **ficha** de cada persona tiene pestañas: **Resumen**, **Asistencia**, **Pagos y recibos** (cálculo del mes, descuentos e historial de pagos), **Tardanzas**, **Celular** y **Cambios**. El DNI se ve con **Mostrar**, y eso queda en la Auditoría.
 - Si un jefe o alguien de RR.HH. también marca, se enlaza su perfil con su usuario del panel, para que no pueda aprobar sus propias marcas.
 - **Cesar** a una persona desactiva su celular y su llave; su historial se conserva.

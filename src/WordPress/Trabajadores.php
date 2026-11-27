@@ -28,6 +28,24 @@ final class Trabajadores {
 		return $fila ? $fila : null;
 	}
 
+	/** @return string[] Las áreas de las personas activas, sin repetir y en orden alfabético. */
+	public static function areasEnUso(): array {
+		global $wpdb;
+
+		$tabla = Tablas::nombre( 'trabajadores' );
+		$areas = array();
+
+		foreach ( (array) $wpdb->get_col( "SELECT area FROM {$tabla} WHERE estado = 'activo' AND area <> ''" ) as $texto ) { // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			foreach ( \Pekokis\Asistencia\Nucleo\ValidacionTrabajador::areas( (string) $texto ) as $a ) {
+				$areas[ mb_strtolower( $a ) ] ??= $a;
+			}
+		}
+
+		natcasesort( $areas );
+
+		return array_values( $areas );
+	}
+
 	/** @return array<int, array<string, mixed>> Con la columna extra "celulares" (passkeys activas). */
 	public static function listar( string $estado = self::ACTIVO, string $busqueda = '' ): array {
 		global $wpdb;

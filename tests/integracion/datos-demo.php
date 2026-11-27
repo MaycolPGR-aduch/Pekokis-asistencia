@@ -20,7 +20,7 @@ if ( 'local' !== wp_get_environment_type() ) {
 
 global $wpdb;
 
-foreach ( array( 'trabajadores', 'marcas', 'auditoria', 'credenciales', 'dispositivos', 'activaciones', 'redes', 'correcciones', 'pantallas', 'revisiones', 'calendario', 'ausencias', 'sueldos', 'avisos', 'pagos', 'recibos', 'solicitudes_celular', 'llaves_gerencia', 'horario_cambios', 'tardanzas', 'descuentos', 'horas_ajustes' ) as $tabla ) {
+foreach ( array( 'trabajadores', 'marcas', 'auditoria', 'credenciales', 'dispositivos', 'activaciones', 'redes', 'correcciones', 'pantallas', 'revisiones', 'calendario', 'ausencias', 'sueldos', 'avisos', 'pagos', 'recibos', 'solicitudes_celular', 'llaves_gerencia', 'horario_cambios', 'tardanzas', 'descuentos', 'horas_ajustes', 'constancias' ) as $tabla ) {
 	$wpdb->query( 'TRUNCATE TABLE ' . Tablas::nombre( $tabla ) ); // phpcs:ignore
 }
 
@@ -133,6 +133,25 @@ foreach ( array( 1 => array( 'E001-120', '1619.62' ), 2 => array( 'E001-077', '1
 
 	if ( 2 === $i && is_int( $idRecibo ) ) {
 		\Pekokis\Asistencia\WordPress\Recibos::observar( $idRecibo, 'El monto no coincide con el cálculo del mes' );
+	}
+}
+
+// Áreas (una persona puede estar en varias) y constancias de retención: Carlos la tiene por vencer y Jorge la envió.
+foreach ( array( 0 => 'Costura', 1 => 'Estampado, Costura', 2 => 'Atención al cliente', 3 => 'Estampado', 4 => 'Costura, Empaque' ) as $i => $areas ) {
+	if ( isset( $ids[ $i ] ) ) {
+		$wpdb->update( \Pekokis\Asistencia\WordPress\Tablas::nombre( 'trabajadores' ), array( 'area' => $areas ), array( 'id' => (int) $ids[ $i ] ) );
+	}
+}
+foreach ( array( 1 => '+20 days', 3 => '+1 year' ) as $i => $vence ) {
+	$tmp = wp_tempnam( 'constancia-demo.pdf' );
+	file_put_contents( $tmp, "%PDF-1.4
+% Constancia de demostración
+" ); // phpcs:ignore
+	$idC = \Pekokis\Asistencia\WordPress\Constancias::enviar( (int) $ids[ $i ], array( 'tipo' => 'cuarta', 'numero' => '1609-' . ( 100 + $i ), 'vigente_hasta' => min( ( new DateTimeImmutable( $hoy ) )->modify( $vence )->format( 'Y-m-d' ), substr( $hoy, 0, 4 ) + 1 . '-12-31' ) ), array( 'tmp_name' => $tmp ) );
+	wp_delete_file( $tmp );
+
+	if ( 1 === $i && is_int( $idC ) ) {
+		\Pekokis\Asistencia\WordPress\Constancias::recibir( $idC );
 	}
 }
 

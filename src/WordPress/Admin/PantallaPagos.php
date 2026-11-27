@@ -50,7 +50,8 @@ final class PantallaPagos {
 		}
 
 		$mes      = self::mesPedido();
-		$datos    = Informes::mes( $mes, null );
+		$area     = FiltroArea::actual();
+		$datos    = Informes::mes( $mes, FiltroArea::ids( $area ) );
 		$total    = $datos['total'];
 		$pagos    = Pagos::delMes( $mes );
 		$recibos  = Recibos::delMes( $mes );
@@ -93,8 +94,12 @@ final class PantallaPagos {
 						<option value="<?php echo esc_attr( $m ); ?>" <?php selected( $m, $mes ); ?>><?php echo esc_html( PantallaResumen::nombreMes( $m ) ); ?></option>
 					<?php endforeach; ?>
 				</select>
+				<?php FiltroArea::selector( $area, 'pka-p-area' ); ?>
 				<noscript><button class="button">Ver</button></noscript>
 			</form>
+			<?php if ( '' !== $area ) : ?>
+				<p><span class="pk-chip info"><?php echo esc_html( 'Solo el área ' . $area ); ?></span> <a href="<?php echo esc_url( self::url( $mes ) ); ?>">Ver todas</a></p>
+			<?php endif; ?>
 			<p class="description">Las horas vienen de la asistencia (días terminados hasta <?php echo esc_html( min( wp_date( 'Y-m-t', strtotime( $mes . '-15' ) ), Jornadas::ayer() ) ); ?>). Si cambia una tarifa o un registro, el cálculo se actualiza solo. El recibo por honorarios no frena el pago: puede llegar después.</p>
 
 			<div class="pk-kpis tres pk-max">
@@ -129,7 +134,7 @@ final class PantallaPagos {
 					$pago   = $pagos[ $id ] ?? null;
 					?>
 					<tr>
-						<td><strong><?php echo esc_html( $p['apellidos'] . ', ' . $p['nombres'] ); ?></strong><br><span class="description"><?php echo esc_html( $p['area'] ); ?></span></td>
+						<td><strong><?php echo esc_html( $p['apellidos'] . ', ' . $p['nombres'] ); ?></strong><br><?php echo FiltroArea::chips( (string) $p['area'] ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- chips() escapa. ?></td>
 						<td><?php echo $f->sueldoFinal ? ( $f->porHoras() ? '<span class="pk-chip info">Por horas</span>' : esc_html( Sueldo::soles( $f->montos['honorario'] ) ) ) : '—'; ?></td>
 						<td><?php echo esc_html( PrePlanilla::horas( $f->minutosAdicionales() ) . ' h' ); ?><?php echo $f->costoExtra() ? '<br><span class="description">' . esc_html( Sueldo::soles( $f->costoExtra() ) ) . '</span>' : ''; ?></td>
 						<td><strong><?php echo $f->sueldoFinal ? esc_html( Sueldo::soles( $f->montos['total'] ) ) : '—'; ?></strong><?php echo $f->montos['descuentos'] ? '<br><span class="description">' . esc_html( 'desc. − ' . Sueldo::soles( $f->montos['descuentos'] ) ) . '</span>' : ''; ?></td>

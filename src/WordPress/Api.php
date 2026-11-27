@@ -71,6 +71,8 @@ final class Api {
 		register_rest_route( self::ESPACIO, '/yo/recibos', array( 'methods' => 'POST', 'callback' => array( self::class, 'misRecibos' ), 'permission_callback' => $publica ) );
 		register_rest_route( self::ESPACIO, '/yo/recibos/enviar', array( 'methods' => 'POST', 'callback' => array( self::class, 'enviarRecibo' ), 'permission_callback' => $publica ) );
 		register_rest_route( self::ESPACIO, '/yo/recibos/anular', array( 'methods' => 'POST', 'callback' => array( self::class, 'anularRecibo' ), 'permission_callback' => $publica ) );
+		register_rest_route( self::ESPACIO, '/yo/constancia/enviar', array( 'methods' => 'POST', 'callback' => array( self::class, 'enviarConstancia' ), 'permission_callback' => $publica ) );
+		register_rest_route( self::ESPACIO, '/yo/constancia/anular', array( 'methods' => 'POST', 'callback' => array( self::class, 'anularConstancia' ), 'permission_callback' => $publica ) );
 		register_rest_route( self::ESPACIO, '/correcciones', array( 'methods' => 'POST', 'callback' => array( self::class, 'solicitarCorreccion' ), 'permission_callback' => $publica ) );
 		register_rest_route( self::ESPACIO, '/presencia/codigo', array( 'methods' => 'POST', 'callback' => array( self::class, 'presenciaCodigo' ), 'permission_callback' => $publica ) );
 		register_rest_route( self::ESPACIO, '/pantalla/codigo', array( 'methods' => 'GET', 'callback' => array( self::class, 'pantallaCodigo' ), 'permission_callback' => $publica ) );
@@ -988,7 +990,49 @@ final class Api {
 
 		$token = Temporales::guardar( 'recibo', array( 'trabajador_id' => (int) $t['id'] ), self::SEGUNDOS_RECIBO );
 
-		return self::respuesta( array( 'token' => $token, 'segundos' => self::SEGUNDOS_RECIBO, 'meses' => Recibos::paraApp( $t ) ) );
+		return self::respuesta( array( 'token' => $token, 'segundos' => self::SEGUNDOS_RECIBO, 'meses' => Recibos::paraApp( $t ), 'constancia' => Constancias::paraApp( $t ) ) );
+	}
+
+	/** La constancia de retención de 4.ª o 5.ª (con el mismo permiso de 15 minutos de "Mi recibo"). */
+	public static function enviarConstancia( WP_REST_Request $peticion ): WP_REST_Response|WP_Error {
+		$t = self::trabajadorDelRecibo( $peticion );
+
+		if ( $t instanceof WP_Error ) {
+			return $t;
+		}
+
+		$archivo = $peticion->get_file_params()['archivo'] ?? null;
+
+		if ( ! is_array( $archivo ) || UPLOAD_ERR_OK !== (int) ( $archivo['error'] ?? UPLOAD_ERR_NO_FILE ) ) {
+			$errorSubida = is_array( $archivo ) ? (int) ( $archivo['error'] ?? 0 ) : UPLOAD_ERR_NO_FILE;
+			$mensaje     = in_array( $errorSubida, array( UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE ), true ) ? 'El archivo pesa demasiado.' : 'Elige el PDF de la constancia.';
+
+			return new WP_Error( 'pka_constancia', 'Revisa la constancia.', array( 'status' => 400, 'errores' => array( 'archivo' => $mensaje ) ) );
+		}
+
+		$id = Constancias::enviar( (int) $t['id'], array( 'tipo' => $peticion->get_param( 'tipo' ), 'numero' => $peticion->get_param( 'numero' ), 'vigente_hasta' => $peticion->get_param( 'vigente_hasta' ) ), $archivo );
+
+		if ( $id instanceof WP_Error ) {
+			return $id;
+		}
+
+		return self::respuesta( array( 'mensaje' => 'Constancia enviada. Gerencia la revisará.', 'meses' => Recibos::paraApp( $t ), 'constancia' => Constancias::paraApp( $t ) ) );
+	}
+
+	public static function anularConstancia( WP_REST_Request $peticion ): WP_REST_Response|WP_Error {
+		$t = self::trabajadorDelRecibo( $peticion );
+
+		if ( $t instanceof WP_Error ) {
+			return $t;
+		}
+
+		$r = Constancias::anular( (int) $peticion->get_param( 'id' ), (int) $t['id'] );
+
+		if ( $r instanceof WP_Error ) {
+			return $r;
+		}
+
+		return self::respuesta( array( 'mensaje' => 'Envío anulado. Puedes subirla otra vez.', 'meses' => Recibos::paraApp( $t ), 'constancia' => Constancias::paraApp( $t ) ) );
 	}
 
 	public static function enviarRecibo( WP_REST_Request $peticion ): WP_REST_Response|WP_Error {

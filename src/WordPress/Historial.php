@@ -19,7 +19,7 @@ final class Historial {
 	public const GRUPOS = array(
 		'trabajadores' => array( 'Trabajadores, celulares, ausencias y tardanzas', array( 'trabajador.', 'activacion.', 'passkey.', 'celular.', 'permiso.', 'ausencia.', 'aviso.', 'tardanza.' ) ),
 		'marcas'       => array( 'Marcas y correcciones', array( 'marca.', 'correccion.' ) ),
-		'pagos'        => array( 'Pagos, honorarios, descuentos y horas', array( 'sobretiempo.', 'sueldo.', 'preplanilla.', 'pago.', 'recibo.', 'simulador.', 'descuento.', 'horas.' ) ),
+		'pagos'        => array( 'Pagos, honorarios, descuentos, horas y constancias', array( 'sobretiempo.', 'sueldo.', 'preplanilla.', 'pago.', 'recibo.', 'simulador.', 'descuento.', 'horas.', 'constancia.' ) ),
 		'ajustes'      => array( 'Ajustes, horarios, calendario, redes y pantallas', array( 'ajustes.', 'horario.', 'calendario.', 'red.', 'pantalla.' ) ),
 		'exportes'     => array( 'Descargas y respaldos', array( 'registro.', 'respaldo.', 'historial.', 'informe.', 'reporte.' ) ),
 	);
@@ -81,6 +81,11 @@ final class Historial {
 		'sobretiempo.anular'     => 'Horas extra anuladas',
 		'sueldo.agregar'         => 'Sueldo registrado',
 		'sueldo.anular'          => 'Sueldo anulado',
+		'constancia.enviar'      => 'Constancia de retención enviada',
+		'constancia.anular'      => 'Envío de constancia anulado',
+		'constancia.recibir'     => 'Constancia marcada como recibida',
+		'constancia.observar'    => 'Constancia observada',
+		'constancia.ver'         => 'PDF de constancia abierto',
 		'descuento.crear'        => 'Descuento registrado',
 		'descuento.anular'       => 'Descuento anulado',
 		'horas.ajustar'          => 'Horas de un día ajustadas',
@@ -117,6 +122,7 @@ final class Historial {
 		'sobretiempo.' => array( 'Tarifa', 'aviso' ),
 		'pago.'        => array( 'Pago', 'aviso' ),
 		'descuento.'   => array( 'Pago', 'aviso' ),
+		'constancia.'  => array( 'Recibo', 'aviso' ),
 		'horas.'       => array( 'Horas', 'info' ),
 		'preplanilla.' => array( 'Pago', 'aviso' ),
 		'recibo.'      => array( 'Recibo', 'aviso' ),
@@ -148,7 +154,7 @@ final class Historial {
 		'telefono'                    => 'Teléfono',
 		'correo'                      => 'Correo',
 		'cargo'                       => 'Cargo',
-		'area'                        => 'Área',
+		'area'                        => 'Áreas',
 		'jefe_user_id'                => 'Jefe',
 		'horario_id'                  => 'Horario',
 		'fecha_ingreso'               => 'Ingreso',
@@ -200,6 +206,7 @@ final class Historial {
 		'descontar_no_trabajado'      => 'Descontar lo no trabajado',
 		'tardanza_desde'              => 'Tardanza desde',
 		'madrugada_multiplicador'     => 'Multiplicador de madrugada',
+		'tipo'                        => 'Tipo',
 		'minutos'                     => 'Horas',
 		'dia'                         => 'Día',
 		'aviso_permanencia_min'       => 'Aviso de permanencia (min)',
@@ -298,7 +305,7 @@ final class Historial {
 
 		// Los sueldos solo los ve quien puede ver sueldos (Gerencia y jefes, no).
 		if ( ! current_user_can( Capacidades::VER_SUELDOS ) ) {
-			$c[] = $wpdb->prepare( 'accion NOT LIKE %s AND accion NOT LIKE %s AND accion NOT LIKE %s AND accion NOT LIKE %s AND accion NOT LIKE %s', 'sueldo.%', 'pago.%', 'recibo.%', 'simulador.%', 'descuento.%' );
+			$c[] = $wpdb->prepare( 'accion NOT LIKE %s AND accion NOT LIKE %s AND accion NOT LIKE %s AND accion NOT LIKE %s AND accion NOT LIKE %s AND accion NOT LIKE %s', 'sueldo.%', 'pago.%', 'recibo.%', 'simulador.%', 'descuento.%', 'constancia.%' );
 		}
 		$utc  = new DateTimeZone( 'UTC' );
 

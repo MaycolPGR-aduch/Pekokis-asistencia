@@ -321,6 +321,19 @@ final class PantallaDashboard {
 			}
 		}
 
+		if ( current_user_can( Capacidades::RECIBOS ) ) {
+			$urlC = admin_url( 'admin.php?page=' . PantallaRecibos::SLUG . '&vista=constancias' );
+			$porR = \Pekokis\Asistencia\WordPress\Constancias::porRevisar();
+
+			if ( $porR ) {
+				$items[] = array( 'info', 'media-document', $porR . ( 1 === $porR ? ' constancia de retención por revisar' : ' constancias de retención por revisar' ), 'De 4.ª o 5.ª categoría', 'Ver', $urlC );
+			}
+
+			foreach ( \Pekokis\Asistencia\WordPress\Constancias::porVencer() as $v ) {
+				$items[] = array( \Pekokis\Asistencia\Nucleo\ValidacionConstancia::VENCIDA === $v['vigencia'] ? 'error' : 'aviso', 'media-document', 'Constancia de retención de ' . Trabajadores::nombreCompleto( $v['t'] ), $v['texto'] . '. Pídele la nueva', 'Ver', $urlC );
+			}
+		}
+
 		if ( current_user_can( Capacidades::AJUSTES ) ) {
 			foreach ( Pantallas::sinConexion() as $p ) {
 				$items[] = array( 'error', 'desktop', 'La pantalla "' . $p['nombre'] . '" no se conecta', 'Sin ella solo se marca con el WiFi del taller', 'Ver', admin_url( 'admin.php?page=' . PantallaAjustes::SLUG ) );

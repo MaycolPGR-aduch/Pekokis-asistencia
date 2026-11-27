@@ -49,7 +49,8 @@ final class PantallaHoras {
 		$tid   = isset( $_GET['t'] ) ? absint( $_GET['t'] ) : 0;
 		// phpcs:enable
 
-		$personas = Informes::personas( $mes, null );
+		$area     = FiltroArea::actual();
+		$personas = FiltroArea::aplicar( Informes::personas( $mes, null ), $area );
 		$persona  = $tid ? ( array_values( array_filter( $personas, static fn( array $t ): bool => (int) $t['id'] === $tid ) )[0] ?? null ) : null;
 		?>
 		<div class="wrap pk-horas">
@@ -72,6 +73,9 @@ final class PantallaHoras {
 						<option value="<?php echo (int) $t['id']; ?>" <?php selected( $tid, (int) $t['id'] ); ?>><?php echo esc_html( Trabajadores::nombreCompleto( $t ) ); ?></option>
 					<?php endforeach; ?>
 				</select>
+				<?php if ( ! $persona ) : ?>
+					<?php FiltroArea::selector( $area, 'pk-h-area' ); ?>
+				<?php endif; ?>
 				<noscript><button class="button">Ver</button></noscript>
 			</form>
 

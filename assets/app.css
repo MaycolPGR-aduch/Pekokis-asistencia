@@ -213,7 +213,7 @@ button.cuad {
 .formulario { display: grid; gap: 12px; }
 label { font-weight: 600; display: block; margin-bottom: 4px; font-size: 13px; color: var(--pk-muted); }
 
-input[type="text"], input[type="time"], select, textarea {
+input[type="text"], input[type="time"], input[type="date"], select, textarea {
 	width: 100%;
 	min-height: 48px;
 	font: inherit;

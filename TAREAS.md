@@ -273,6 +273,24 @@ Vienen de la sección 16 del plan; se resuelven con gerencia y el contador.
 
 ## Bitácora
 
+### 27-11-2026 — versión 0.23.0: áreas y constancias de retención (bloque 3 de los cambios de gerencia)
+- **Varias áreas por persona**, sin jefe:
+  - `trabajadores.area` guarda la lista separada por coma (varchar 255, BD v14).
+  - `ValidacionTrabajador::unirAreas()` y `areas()`.
+  - Perfil con casillas y *Otra área*.
+  - Filtro *Todas las áreas* (`Admin\FiltroArea`) en Perfiles, Asistencia de hoy, Calculadora de pagos (totales del área) y Contabilidad de horas.
+  - En las listas, las áreas salen como chips.
+- **Constancia de retención de 4.ª o 5.ª:**
+  - Tabla `constancias` (tipo, número, vigente hasta, PDF en la carpeta privada de los recibos y estado como los recibos).
+  - El trabajador la sube en la app, en *Mi recibo* (API `yo/constancia/enviar` y `anular`, con el permiso de 15 minutos).
+  - Gerencia la revisa en Recibos → pestaña **Constancias de retención** (Recibida u Observar, ver PDF auditado).
+  - Avisos: por revisar y por vencer (30 días) o vencida en el Dashboard; aviso en la app; correo o WhatsApp con los mismos interruptores que los recibos.
+  - El estado sale en la ficha → *Pagos y recibos*.
+- **Auditoría:** `constancia.*`, oculto para quien no ve sueldos.
+- **Pruebas:** pasan 174 unitarias y las 339 comprobaciones de punta a punta (sección 24 nueva).
+- **Con esto quedan hechos los 4 bloques de cambios de gerencia.**
+- **Siguiente:** subir la 0.23.0 a producción (incluye 0.21.0 y 0.22.0) y probar las filas 37–42 de la guía de despliegue.
+
 ### 27-11-2026 — versión 0.22.0: pagos (bloque 2 de los cambios de gerencia)
 - **Valor hora** = honorario ÷ 192. Sale en Sueldos y tarifas (se recalcula al escribir), en el perfil, en la ficha y en la Contabilidad de horas.
 - **Cálculo del día** (`CalculoJornada`):
@@ -333,7 +351,7 @@ Vienen de la sección 16 del plan; se resuelven con gerencia y el contador.
   - Descuentos de monto libre.
   - Historial de pagos por persona.
   - Modo opcional "pago por horas" (horas × honorario ÷ 192, con extra, madrugada y domingo o feriado opcionales).
-- [ ] **Bloque 3:** varias áreas por persona (sin jefe); documento de retención de 4.ª o 5.ª que sube el trabajador, aprobado como los recibos y con aviso de vencimiento.
+- [x] **Bloque 3**, en la 0.23.0: varias áreas por persona (sin jefe) con filtros; constancia de retención de 4.ª o 5.ª que sube el trabajador, aprobada como los recibos y con aviso de vencimiento.
 - [x] **Bloque 4:** la comida flexible ya funciona así; no hay cambios.
 
 ### 24-11-2026 — revisión general antes de la presentación

@@ -13,7 +13,7 @@ defined( 'ABSPATH' ) || exit;
  * lo que RR.HH. haya cambiado.
  */
 final class Instalador {
-	public const VERSION_BD = '13';
+	public const VERSION_BD = '14';
 
 	private const OPCION_VERSION = 'pka_version_bd';
 
@@ -69,7 +69,7 @@ final class Instalador {
 		$c = $wpdb->get_charset_collate();
 		$t = array();
 
-		foreach ( array( 'trabajadores', 'horarios', 'horario_dias', 'motivos', 'marcas', 'revisiones', 'correcciones', 'credenciales', 'dispositivos', 'activaciones', 'redes', 'pantallas', 'auditoria', 'calendario', 'ausencias', 'sueldos', 'sobretiempo', 'avisos', 'pagos', 'recibos', 'solicitudes_celular', 'llaves_gerencia', 'horario_cambios', 'tardanzas', 'descuentos', 'horas_ajustes' ) as $tabla ) {
+		foreach ( array( 'trabajadores', 'horarios', 'horario_dias', 'motivos', 'marcas', 'revisiones', 'correcciones', 'credenciales', 'dispositivos', 'activaciones', 'redes', 'pantallas', 'auditoria', 'calendario', 'ausencias', 'sueldos', 'sobretiempo', 'avisos', 'pagos', 'recibos', 'solicitudes_celular', 'llaves_gerencia', 'horario_cambios', 'tardanzas', 'descuentos', 'horas_ajustes', 'constancias' ) as $tabla ) {
 			$t[ $tabla ] = Tablas::nombre( $tabla );
 		}
 
@@ -83,7 +83,7 @@ final class Instalador {
 				telefono varchar(32) NOT NULL DEFAULT '',
 				correo varchar(190) NOT NULL DEFAULT '',
 				cargo varchar(120) NOT NULL DEFAULT '',
-				area varchar(120) NOT NULL DEFAULT '',
+				area varchar(255) NOT NULL DEFAULT '',
 				jefe_user_id bigint(20) unsigned NULL,
 				horario_id bigint(20) unsigned NOT NULL,
 				fecha_ingreso date NULL,
@@ -409,6 +409,26 @@ final class Instalador {
 				PRIMARY KEY  (id),
 				KEY trabajador_mes (trabajador_id,mes,estado),
 				KEY mes (mes,estado)
+			) {$c};",
+
+			// Constancias de retención de 4.ª o 5.ª categoría (versión 14). El PDF va a la carpeta de los recibos.
+			"CREATE TABLE {$t['constancias']} (
+				id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+				trabajador_id bigint(20) unsigned NOT NULL,
+				tipo varchar(10) NOT NULL,
+				numero varchar(40) NOT NULL DEFAULT '',
+				vigente_hasta date NOT NULL,
+				archivo varchar(64) NOT NULL,
+				archivo_bytes int(10) unsigned NOT NULL DEFAULT 0,
+				archivo_sha256 char(64) NOT NULL DEFAULT '',
+				estado varchar(12) NOT NULL DEFAULT 'enviado',
+				comentario varchar(500) NOT NULL DEFAULT '',
+				enviado_en datetime NOT NULL,
+				revisado_por bigint(20) unsigned NULL,
+				revisado_en datetime NULL,
+				anulado_en datetime NULL,
+				PRIMARY KEY  (id),
+				KEY trabajador (trabajador_id,estado)
 			) {$c};",
 
 			// Ajustes de gerencia a las horas de un día (versión 13): minutos + o −, con motivo.

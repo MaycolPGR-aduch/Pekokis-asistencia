@@ -64,6 +64,12 @@ final class PantallaRecibos {
 			return;
 		}
 
+		if ( isset( $_GET['vista'] ) && 'constancias' === $_GET['vista'] ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			PantallaConstancias::pintar();
+			echo '</div>';
+			return;
+		}
+
 		$datos    = Informes::mes( $mes, null );
 		$recibos  = Recibos::delMes( $mes );
 		$personas = $datos['personas'];
@@ -71,6 +77,7 @@ final class PantallaRecibos {
 		usort( $personas, static fn( $a, $b ) => strcmp( $a['apellidos'] . $a['nombres'], $b['apellidos'] . $b['nombres'] ) );
 		?>
 		<h1>Recibos por honorarios</h1>
+		<?php PantallaConstancias::pestanas( 'recibos' ); ?>
 		<nav class="nav-tab-wrapper pk-mb">
 			<?php foreach ( $meses as $m ) : ?>
 				<a class="nav-tab <?php echo $m === $mes ? 'nav-tab-active' : ''; ?>" href="<?php echo esc_url( self::url( $m ) ); ?>"><?php echo esc_html( PantallaResumen::nombreMes( $m ) ); ?></a>

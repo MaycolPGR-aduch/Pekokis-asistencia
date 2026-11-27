@@ -21,7 +21,7 @@ final class PantallaTrabajadores {
 		'nombres'       => 'Nombres',
 		'apellidos'     => 'Apellidos',
 		'cargo'         => 'Cargo',
-		'area'          => 'Área',
+		'area'          => 'Áreas',
 		'telefono'      => 'Teléfono',
 		'correo'        => 'Correo',
 		'fecha_ingreso' => 'Fecha de ingreso',
@@ -62,7 +62,8 @@ final class PantallaTrabajadores {
 	private static function lista(): void {
 		$estado   = isset( $_GET['estado'] ) && Trabajadores::CESADO === $_GET['estado'] ? Trabajadores::CESADO : Trabajadores::ACTIVO; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$busqueda = isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		$filas    = Trabajadores::listar( $estado, $busqueda );
+		$area     = FiltroArea::actual();
+		$filas    = FiltroArea::aplicar( Trabajadores::listar( $estado, $busqueda ), $area );
 		$base     = admin_url( 'admin.php?page=' . self::SLUG );
 		?>
 		<h1>Perfiles de trabajadores <a href="<?php echo esc_url( add_query_arg( 'vista', 'editar', $base ) ); ?>" class="page-title-action">+ Nuevo trabajador</a></h1>
@@ -77,6 +78,7 @@ final class PantallaTrabajadores {
 			<input type="hidden" name="page" value="<?php echo esc_attr( self::SLUG ); ?>">
 			<input type="hidden" name="estado" value="<?php echo esc_attr( $estado ); ?>">
 			<label class="screen-reader-text" for="pka-buscar">Buscar trabajador</label>
+			<?php FiltroArea::selector( $area ); ?>
 			<input type="search" id="pka-buscar" name="s" value="<?php echo esc_attr( $busqueda ); ?>" placeholder="Nombre, DNI o área">
 			<button class="button">Buscar</button>
 		</form>
@@ -91,7 +93,7 @@ final class PantallaTrabajadores {
 			<?php endif; ?>
 			<?php foreach ( $filas as $t ) : ?>
 				<tr>
-					<td><span class="pk-av"><?php echo esc_html( mb_strtoupper( mb_substr( (string) $t['nombres'], 0, 1 ) . mb_substr( (string) $t['apellidos'], 0, 1 ) ) ); ?></span><a href="<?php echo esc_url( PantallaFicha::url( (int) $t['id'] ) ); ?>"><strong><?php echo esc_html( $t['apellidos'] . ', ' . $t['nombres'] ); ?></strong></a><?php echo '' !== trim( $t['cargo'] . $t['area'] ) ? '<br><span class="description">' . esc_html( trim( $t['cargo'] . ' · ' . $t['area'], ' ·' ) ) . '</span>' : ''; ?></td>
+					<td><span class="pk-av"><?php echo esc_html( mb_strtoupper( mb_substr( (string) $t['nombres'], 0, 1 ) . mb_substr( (string) $t['apellidos'], 0, 1 ) ) ); ?></span><a href="<?php echo esc_url( PantallaFicha::url( (int) $t['id'] ) ); ?>"><strong><?php echo esc_html( $t['apellidos'] . ', ' . $t['nombres'] ); ?></strong></a><?php echo '' !== trim( (string) $t['cargo'] ) ? '<br><span class="description">' . esc_html( (string) $t['cargo'] ) . '</span>' : ''; ?><?php echo '' !== trim( (string) $t['area'] ) ? '<br>' . FiltroArea::chips( (string) $t['area'] ) : ''; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- chips() escapa. ?></td>
 					<td><?php echo esc_html( '' !== (string) $t['telefono'] ? (string) $t['telefono'] : '—' ); ?></td>
 					<td><?php echo esc_html( PantallaCelulares::dniOculto( (string) $t['dni'] ) ); ?></td>
 					<td><?php echo '' !== (string) $t['cumpleanos'] ? esc_html( wp_date( 'j M', strtotime( '2024-' . $t['cumpleanos'] . ' 12:00:00' ) ) ) : '<span class="description">—</span>'; ?></td>
@@ -136,6 +138,28 @@ final class PantallaTrabajadores {
 			<?php wp_nonce_field( 'pka_guardar_trabajador' ); ?>
 			<table class="form-table" role="presentation">
 				<?php foreach ( self::CAMPOS as $campo => $etiqueta ) : ?>
+					<?php if ( 'area' === $campo ) : ?>
+						<?php
+						$mias  = \Pekokis\Asistencia\Nucleo\ValidacionTrabajador::areas( \Pekokis\Asistencia\Nucleo\ValidacionTrabajador::unirAreas( $valores ) );
+						$todas = array_values( array_unique( array_merge( Trabajadores::areasEnUso(), $mias ) ) );
+						?>
+						<tr>
+							<th scope="row">Áreas</th>
+							<td>
+								<fieldset>
+									<legend class="screen-reader-text">Áreas</legend>
+									<?php foreach ( $todas as $i => $a ) : ?>
+										<label class="pk-casilla-area"><input type="checkbox" name="areas[]" value="<?php echo esc_attr( $a ); ?>" <?php checked( in_array( $a, $mias, true ) ); ?>> <?php echo esc_html( $a ); ?></label>
+									<?php endforeach; ?>
+								</fieldset>
+								<label class="screen-reader-text" for="pka-area-otra">Otra área</label>
+								<input type="text" id="pka-area-otra" name="area_otra" class="regular-text pk-mt-xs" placeholder="<?php echo $todas ? 'Otra área (por ejemplo: Corte)' : 'Áreas separadas por coma (por ejemplo: Costura, Estampado)'; ?>">
+								<p class="description">Puede estar en varias. Ninguna área tiene jefe: todo lo aprueba gerencia.</p>
+								<?php self::error( $errores, 'area' ); ?>
+							</td>
+						</tr>
+						<?php continue; ?>
+					<?php endif; ?>
 					<tr>
 						<th scope="row"><label for="pka-<?php echo esc_attr( $campo ); ?>"><?php echo esc_html( $etiqueta ); ?></label></th>
 						<td>
@@ -392,7 +416,7 @@ final class PantallaTrabajadores {
 		if ( $result instanceof WP_Error ) {
 			set_transient(
 				'pka_form_' . get_current_user_id(),
-				array( 'errores' => $result->get_error_data()['errores'] ?? array(), 'valores' => array_map( 'sanitize_text_field', $entrada ) ),
+				array( 'errores' => $result->get_error_data()['errores'] ?? array(), 'valores' => map_deep( $entrada, 'sanitize_text_field' ) ),
 				5 * MINUTE_IN_SECONDS
 			);
 			Avisos::agregar( 'error', esc_html( $result->get_error_message() ) );

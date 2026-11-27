@@ -310,6 +310,33 @@ final class Notificaciones {
 		);
 	}
 
+	/** Llegó una constancia de retención (mismo interruptor que "Llegó un recibo"). */
+	public static function constanciaEnviada( int $id ): void {
+		self::seguro(
+			static function () use ( $id ): void {
+				$c = Constancias::buscar( $id );
+
+				if ( $c ) {
+					$t = Trabajadores::buscar( (int) $c['trabajador_id'] );
+					self::encolar( ReglasAvisos::RECIBO_ENVIADO, 'constancia_enviada|' . $id, $t, sprintf( '%s envió su constancia de retención (%s), válida hasta el %s.', Trabajadores::nombreCompleto( $t ), \Pekokis\Asistencia\Nucleo\ValidacionConstancia::TIPOS[ $c['tipo'] ] ?? $c['tipo'], wp_date( 'd/m/Y', strtotime( $c['vigente_hasta'] . ' 12:00:00' ) ) ), admin_url( 'admin.php?page=pka-recibos&vista=constancias' ) );
+				}
+			}
+		);
+	}
+
+	/** Gerencia observó una constancia (mismo interruptor que los recibos observados). */
+	public static function constanciaObservada( int $id ): void {
+		self::seguro(
+			static function () use ( $id ): void {
+				$c = Constancias::buscar( $id );
+
+				if ( $c ) {
+					self::encolar( ReglasAvisos::RECIBO_OBSERVADO, 'constancia_observada|' . $id, Trabajadores::buscar( (int) $c['trabajador_id'] ), sprintf( 'Tu constancia de retención tiene una observación: "%s". Entra a la app, en "Mi recibo", para subirla otra vez.', $c['comentario'] ), home_url( '/' ) );
+				}
+			}
+		);
+	}
+
 	/** Gerencia observó un recibo: se avisa al trabajador con el comentario. */
 	public static function reciboObservado( int $reciboId ): void {
 		self::seguro(

@@ -33,6 +33,7 @@ final class Menu {
 		PantallaHoras::registrar();
 		PantallaDescuentos::registrar();
 		PantallaRecibos::registrar();
+		PantallaConstancias::registrar();
 		PantallaCalendario::registrar();
 		PantallaTrabajadores::registrar();
 		PantallaCelulares::registrar();

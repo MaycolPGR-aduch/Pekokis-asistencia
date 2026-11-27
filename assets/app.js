@@ -1777,7 +1777,7 @@
 		cargando( 'Cargando tus recibos…' );
 
 		api( 'yo/recibos', {} ).then( function ( r ) {
-			listaRecibos( { token: r.token, vence: Date.now() + r.segundos * 1000, meses: r.meses }, mensaje );
+			listaRecibos( { token: r.token, vence: Date.now() + r.segundos * 1000, meses: r.meses, constancia: r.constancia }, mensaje );
 		} ).catch( function ( error ) {
 			if ( sesionVencida( error ) ) {
 				return;
@@ -1817,7 +1817,147 @@
 			el( 'h1', {}, [ 'Mi ', el( 'em', { texto: 'recibo' } ) ] ),
 			el( 'p', { class: 'ayuda', texto: 'Cada mes envía tu recibo por honorarios: el número, el monto y el PDF. Gerencia lo revisa.' } ),
 			mensaje || null,
-			estado.meses.length ? lista : el( 'div', { class: 'vacio' }, [ el( 'b', { texto: 'Todavía no hay meses' } ), el( 'span', { class: 'ayuda', texto: 'Cuando cierre tu primer mes, aquí podrás enviar tu recibo.' } ) ] )
+			avisoConstancia( estado.constancia ),
+			estado.meses.length ? lista : el( 'div', { class: 'vacio' }, [ el( 'b', { texto: 'Todavía no hay meses' } ), el( 'span', { class: 'ayuda', texto: 'Cuando cierre tu primer mes, aquí podrás enviar tu recibo.' } ) ] ),
+			tarjetaConstancia( estado )
+		);
+	}
+
+	// ---------- constancia de retención de 4.ª o 5.ª (pedido de gerencia, 0.23.0) ----------
+
+	function claseConstancia( c ) {
+		if ( 'observado' === c.estado || 'vencida' === c.vigencia ) {
+			return 'error';
+		}
+		if ( 'enviado' === c.estado || 'por_vencer' === c.vigencia ) {
+			return 'aviso';
+		}
+		return 'recibido' === c.estado ? 'ok' : 'gris';
+	}
+
+	/** Aviso arriba si la constancia recibida está por vencer o venció. */
+	function avisoConstancia( c ) {
+		if ( ! c || 'recibido' !== c.estado || ( 'por_vencer' !== c.vigencia && 'vencida' !== c.vigencia ) ) {
+			return null;
+		}
+		return aviso( 'vencida' === c.vigencia ? 'error' : 'espera', 'Tu constancia de retención: ' + c.vigencia_texto.charAt( 0 ).toLowerCase() + c.vigencia_texto.slice( 1 ) + '. Sube la nueva aquí abajo.' );
+	}
+
+	function tarjetaConstancia( estado ) {
+		var c = estado.constancia;
+		if ( ! c ) {
+			return null;
+		}
+		return el( 'div', { class: 'pk-mt' }, [
+			el( 'h2', { texto: 'Constancia de retención' } ),
+			el( 'ul', { class: 'lista-mes' }, [ el( 'li', { class: 'aviso' === claseConstancia( c ) || 'error' === claseConstancia( c ) ? 'destacado' : '' }, [
+				el( 'button', { class: 'enlace-fila', type: 'button', alHacerClic: function () {
+					vistaConstancia( estado );
+				} }, [
+					el( 'span', { class: 'dia', texto: c.tipo_texto || '4.ª o 5.ª categoría' } ),
+					el( 'span', { class: 'pk-chip ' + claseConstancia( c ), texto: c.texto } ),
+					el( 'span', { class: 'horas', texto: c.vigencia_texto || 'Si tienes la constancia de 4.ª o 5.ª categoría, súbela aquí' } ),
+				] ),
+			] ) ] ),
+		] );
+	}
+
+	function vistaConstancia( estado, mensaje ) {
+		mostrarPestanas( 'recibo' );
+		var c = estado.constancia;
+		var volver = boton( 'simple', 'Volver a mis recibos', function () {
+			listaRecibos( estado );
+		} );
+		var titulo = el( 'h1', {}, [ 'Constancia de ', el( 'em', { texto: 'retención' } ) ] );
+		var datos = 'falta' !== c.estado ? el( 'div', { class: 'pk-caja lista pk-datos' }, [
+			el( 'div', {}, [ el( 'span', { texto: 'Estado' } ), el( 'b', { texto: c.texto } ) ] ),
+			el( 'div', {}, [ el( 'span', { texto: 'Tipo' } ), el( 'b', { texto: c.tipo_texto } ) ] ),
+			c.numero ? el( 'div', {}, [ el( 'span', { texto: 'Número' } ), el( 'b', { texto: c.numero } ) ] ) : null,
+			el( 'div', {}, [ el( 'span', { texto: 'Vigencia' } ), el( 'b', { texto: c.vigencia_texto } ) ] ),
+		] ) : null;
+
+		if ( ! c.puede_enviar ) {
+			var anular = c.puede_anular ? boton( 'secundario', 'Anular envío', function () {
+				api( 'yo/constancia/anular', { token: estado.token, id: c.id } ).then( function ( r ) {
+					estado.meses = r.meses;
+					estado.constancia = r.constancia;
+					listaRecibos( estado, aviso( 'ok', r.mensaje ) );
+				} ).catch( function ( error ) {
+					if ( errorRecibo( error ) ) {
+						return;
+					}
+					vistaConstancia( estado, aviso( 'error', error.message ) );
+				} );
+			} ) : null;
+			pintar( titulo, mensaje || null, datos, c.puede_anular ? el( 'p', { class: 'ayuda', texto: 'Mientras gerencia no la revise, puedes anular el envío si te equivocaste.' } ) : null, anular, volver );
+			return;
+		}
+
+		var tipo = el( 'select', { id: 'const-tipo' }, [ el( 'option', { value: '', texto: 'Elige' } ) ].concat( Object.keys( c.tipos ).map( function ( clave ) {
+			return el( 'option', { value: clave, texto: c.tipos[ clave ] } );
+		} ) ) );
+		var numero = el( 'input', { type: 'text', id: 'const-numero', autocomplete: 'off', placeholder: 'Número de la constancia (opcional)' } );
+		var hasta = el( 'input', { type: 'date', id: 'const-hasta', value: c.sugerida } );
+		var archivo = el( 'input', { type: 'file', id: 'const-archivo', accept: 'application/pdf,.pdf' } );
+		var errores = { tipo: el( 'p', { class: 'error-campo' } ), vigente_hasta: el( 'p', { class: 'error-campo' } ), archivo: el( 'p', { class: 'error-campo' } ) };
+		var enviar = boton( 'principal', 'Enviar constancia' );
+		enviar.disabled = true;
+
+		function revisar() {
+			var pdf = archivo.files && archivo.files[ 0 ];
+			var problemaPdf = pdf && ( 0 === pdf.size ? 'El archivo está vacío.' : ( 'application/pdf' !== pdf.type && ! /\.pdf$/i.test( pdf.name ) ? 'Elige un PDF.' : '' ) );
+			errores.archivo.textContent = problemaPdf || '';
+			enviar.disabled = ! ( tipo.value && hasta.value && pdf && ! problemaPdf );
+		}
+
+		tipo.addEventListener( 'change', revisar );
+		hasta.addEventListener( 'input', revisar );
+		archivo.addEventListener( 'change', revisar );
+
+		enviar.addEventListener( 'click', function () {
+			var formulario = new FormData();
+			formulario.append( 'token', estado.token );
+			formulario.append( 'tipo', tipo.value );
+			formulario.append( 'numero', numero.value );
+			formulario.append( 'vigente_hasta', hasta.value );
+			formulario.append( 'archivo', archivo.files[ 0 ] );
+			enviar.disabled = true;
+			enviar.lastChild.textContent = 'Enviando…';
+
+			apiArchivo( 'yo/constancia/enviar', formulario ).then( function ( r ) {
+				estado.meses = r.meses;
+				estado.constancia = r.constancia;
+				listaRecibos( estado, aviso( 'ok', r.mensaje ) );
+			} ).catch( function ( error ) {
+				if ( errorRecibo( error ) ) {
+					return;
+				}
+				var porCampo = error.datos.errores || {};
+				Object.keys( errores ).forEach( function ( clave ) {
+					errores[ clave ].textContent = porCampo[ clave ] || '';
+				} );
+				enviar.lastChild.textContent = 'Enviar constancia';
+				revisar();
+				if ( ! Object.keys( porCampo ).length ) {
+					vistaConstancia( estado, aviso( 'error', error.message ) );
+				}
+			} );
+		} );
+
+		pintar(
+			titulo,
+			mensaje || null,
+			'observado' === c.estado ? aviso( 'error', 'Gerencia observó tu constancia: ' + c.comentario ) : null,
+			datos,
+			el( 'p', { class: 'ayuda pk-mt-s', texto: 'recibido' === c.estado ? 'Cuando tengas la nueva (por ejemplo, la del año siguiente), súbela aquí.' : 'Si tienes la constancia de suspensión de retenciones de 4.ª categoría (SUNAT) o el documento de 5.ª, súbela en PDF. Gerencia la revisa.' } ),
+			el( 'div', { class: 'formulario' }, [
+				el( 'div', {}, [ el( 'label', { for: 'const-tipo', texto: 'Qué constancia es' } ), tipo, errores.tipo ] ),
+				el( 'div', {}, [ el( 'label', { for: 'const-numero', texto: 'Número (opcional)' } ), numero ] ),
+				el( 'div', {}, [ el( 'label', { for: 'const-hasta', texto: 'Vale hasta' } ), hasta, errores.vigente_hasta ] ),
+				el( 'div', {}, [ el( 'label', { for: 'const-archivo', texto: 'PDF de la constancia' } ), archivo, errores.archivo ] ),
+			] ),
+			el( 'div', { class: 'pie-fila' }, [ enviar ] ),
+			volver
 		);
 	}
 

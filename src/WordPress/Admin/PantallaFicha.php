@@ -243,6 +243,7 @@ final class PantallaFicha {
 				<?php if ( current_user_can( Capacidades::RECIBOS ) ) : ?>
 					<div class="pk-caja">
 						<h2>Recibos por honorarios</h2>
+						<p><?php echo esc_html( PantallaConstancias::resumen( $id ) ); ?> <a href="<?php echo esc_url( PantallaConstancias::url() ); ?>">Constancias</a></p>
 						<?php self::recibosCortos( $id, 12 ); ?>
 					</div>
 				<?php endif; ?>

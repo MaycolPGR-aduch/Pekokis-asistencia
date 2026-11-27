@@ -106,6 +106,16 @@ final class PantallaHoy {
 
 		[ 'ahora' => $ahora, 'dia' => $dia, 'alcance' => $alcance, 'filas' => $filas, 'cuentas' => $cuentas ] = self::datos();
 
+		$area = FiltroArea::actual();
+
+		if ( '' !== $area ) {
+			$filas   = array_values( array_filter( $filas, static fn( array $f ): bool => (bool) FiltroArea::aplicar( array( $f['t'] ), $area ) ) );
+			$cuentas = array_fill_keys( array_keys( $cuentas ), 0 );
+			foreach ( $filas as $f ) {
+				++$cuentas[ $f['r']->situacion ];
+			}
+		}
+
 		$zona   = Ajustes::zona();
 		$total  = count( $filas );
 		$filtro = isset( $_GET['filtro'] ) ? sanitize_key( wp_unslash( $_GET['filtro'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
@@ -115,7 +125,7 @@ final class PantallaHoy {
 			$filas = array_values( array_filter( $filas, static fn( array $f ): bool => $f['r']->situacion === $filtro ) );
 		}
 
-		$base = admin_url( 'admin.php?page=' . Menu::SLUG );
+		$base = add_query_arg( array_filter( array( 'page' => Menu::SLUG, 'area' => $area ) ), admin_url( 'admin.php' ) );
 		$hora = static fn( ?DateTimeImmutable $m ): string => $m ? $m->setTimezone( $zona )->format( 'H:i' ) : '—';
 		?>
 		<div class="wrap">
@@ -129,6 +139,13 @@ final class PantallaHoy {
 
 			<?php self::alertas(); ?>
 
+			<?php if ( Trabajadores::areasEnUso() ) : ?>
+				<form method="get" class="pk-fila pk-mt-s">
+					<input type="hidden" name="page" value="<?php echo esc_attr( Menu::SLUG ); ?>">
+					<?php FiltroArea::selector( $area ); ?>
+					<noscript><button class="button">Ver</button></noscript>
+				</form>
+			<?php endif; ?>
 			<nav class="pk-pestanas pk-filtros" aria-label="Filtrar por situación">
 				<a href="<?php echo esc_url( $base ); ?>" class="<?php echo '' === $filtro ? 'activa' : ''; ?>" <?php echo '' === $filtro ? 'aria-current="page"' : ''; ?>>Todos <span class="pk-cuenta"><?php echo (int) $total; ?></span></a>
 				<?php foreach ( self::SITUACIONES as $clave => [ $etiqueta, $tipo ] ) : ?>
@@ -148,7 +165,7 @@ final class PantallaHoy {
 				<?php foreach ( $filas as [ 't' => $t, 'r' => $r, 'dia' => $diaT ] ) : ?>
 					<?php [ $etiqueta, $tipo ] = self::SITUACIONES[ $r->situacion ]; ?>
 					<tr>
-						<td><strong><a href="<?php echo esc_url( PantallaDia::url( (int) $t['id'], $diaT ) ); ?>"><?php echo esc_html( $t['apellidos'] . ', ' . $t['nombres'] ); ?></a></strong><br><span class="description"><?php echo esc_html( $t['area'] ); ?></span></td>
+						<td><strong><a href="<?php echo esc_url( PantallaDia::url( (int) $t['id'], $diaT ) ); ?>"><?php echo esc_html( $t['apellidos'] . ', ' . $t['nombres'] ); ?></a></strong><br><?php echo FiltroArea::chips( (string) $t['area'] ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- chips() escapa. ?></td>
 						<td><span class="pk-chip <?php echo esc_attr( $tipo ); ?>"><?php echo esc_html( $etiqueta ); ?></span></td>
 						<td><?php echo esc_html( $hora( $r->primeraEntrada ) ); ?><?php echo $r->minutosTardanza ? ' <span class="pk-txt-aviso">(+' . (int) $r->minutosTardanza . ' min)</span>' : ''; ?><?php echo ! empty( $conteosT[ (int) $t['id'] ] ) && $r->minutosTardanza ? '<br><a class="pk-chip ' . ( $conteosT[ (int) $t['id'] ] >= \Pekokis\Asistencia\WordPress\Tardanzas::CONVERSAR ? 'error' : 'aviso' ) . '" href="' . esc_url( PantallaFicha::url( (int) $t['id'], 'tardanzas' ) ) . '">' . esc_html( \Pekokis\Asistencia\WordPress\Tardanzas::ordinal( $conteosT[ (int) $t['id'] ] ) . ' tardanza' ) . '</a>' : ''; ?></td>
 						<td><?php echo Estado::FUERA !== $r->estado || $r->desde ? esc_html( $hora( $r->desde ) ) : '—'; ?></td>

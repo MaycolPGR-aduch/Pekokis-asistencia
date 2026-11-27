@@ -22,7 +22,7 @@ final class ValidacionTrabajador {
 			'telefono'      => preg_replace( '/[^\d+]/', '', (string) ( $datos['telefono'] ?? '' ) ),
 			'correo'        => strtolower( trim( (string) ( $datos['correo'] ?? '' ) ) ),
 			'cargo'         => $texto( 'cargo' ),
-			'area'          => $texto( 'area' ),
+			'area'          => self::unirAreas( $datos ),
 			'fecha_ingreso' => trim( (string) ( $datos['fecha_ingreso'] ?? '' ) ),
 			'horario_id'    => (int) ( $datos['horario_id'] ?? 0 ),
 			'jefe_user_id'  => (int) ( $datos['jefe_user_id'] ?? 0 ),
@@ -65,13 +65,47 @@ final class ValidacionTrabajador {
 			$errores['horario_id'] = 'Elige un horario.';
 		}
 
-		foreach ( array( 'cargo', 'area' ) as $campo ) {
-			if ( mb_strlen( $datos[ $campo ] ) > 120 ) {
-				$errores[ $campo ] = 'Máximo 120 caracteres.';
-			}
+		if ( mb_strlen( $datos['cargo'] ) > 120 ) {
+			$errores['cargo'] = 'Máximo 120 caracteres.';
+		}
+
+		if ( mb_strlen( $datos['area'] ) > 255 ) {
+			$errores['area'] = 'Demasiadas áreas: máximo 255 caracteres en total.';
 		}
 
 		return $errores;
+	}
+
+	/**
+	 * Varias áreas (pedido de gerencia, 0.23.0): las casillas ("areas") más las
+	 * nuevas escritas en "area_otra", o el texto "area" separado por comas. Se
+	 * guardan juntas, sin repetir, como "Costura, Estampado".
+	 *
+	 * @param array<string, mixed> $datos
+	 */
+	public static function unirAreas( array $datos ): string {
+		$lista = isset( $datos['areas'] ) && is_array( $datos['areas'] ) ? $datos['areas'] : explode( ',', (string) ( $datos['area'] ?? '' ) );
+		$lista = array_merge( $lista, explode( ',', (string) ( $datos['area_otra'] ?? '' ) ) );
+		$vistas = array();
+		$areas  = array();
+
+		foreach ( $lista as $a ) {
+			$a = trim( (string) preg_replace( '/\s+/u', ' ', (string) $a ) );
+
+			if ( '' === $a || isset( $vistas[ mb_strtolower( $a ) ] ) ) {
+				continue;
+			}
+
+			$vistas[ mb_strtolower( $a ) ] = true;
+			$areas[]                       = $a;
+		}
+
+		return implode( ', ', $areas );
+	}
+
+	/** "Costura, Estampado" → ["Costura", "Estampado"]. @return string[] */
+	public static function areas( string $area ): array {
+		return array_values( array_filter( array_map( 'trim', explode( ',', $area ) ), static fn( string $a ): bool => '' !== $a ) );
 	}
 
 	public static function esFecha( string $fecha ): bool {
