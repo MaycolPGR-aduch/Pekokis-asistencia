@@ -278,7 +278,7 @@ Vienen de la sección 16 del plan; se resuelven con gerencia y el contador.
 - Lo verificado:
   - sw.js dice pka-0.23.0 y "Estado del sistema" está en orden.
   - Sin errores en: Contabilidad de horas, Constancias de retención, Sueldos y tarifas (valor hora), Calculadora, Reglas (multiplicador de madrugada) y Dashboard.
-- Para corregir en los perfiles: hay dos áreas que son la misma, "Produccion" y "Producción". Dejar una sola.
+- Áreas unificadas el 28-11: Marcos pasó de "Produccion" a "Producción" (motivo en el historial). Ahora las áreas son Producción, TI y Ventas.
 - Ya hay 3 redes del WiFi del taller. La pantalla del QR sigue sin conexión desde el 26/11.
 - Brigitte sigue sin honorario.
 - Siguen los datos de prueba (Julia, Ana, Beto, Carla y la red "Casa de Maycol"). Borrarlos antes del piloto.
