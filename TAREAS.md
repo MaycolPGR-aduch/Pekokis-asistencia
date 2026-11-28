@@ -273,6 +273,16 @@ Vienen de la sección 16 del plan; se resuelven con gerencia y el contador.
 
 ## Bitácora
 
+### 28-11-2026 — 0.23.2 en producción
+- Maycol la subió. Verificado:
+  - sw.js dice pka-0.23.2 y "Estado del sistema" está en orden.
+  - Cargan sin errores 102 páginas (panel, fichas de las 7 personas y /gerencia/).
+  - El filtro de área con "produccion" (sin tilde) encuentra a quienes están en Producción.
+- **Correo (SMTP), revisado en otra sesión:**
+  - Sirve un buzón del cPanel de Bluehost: servidor box5347.bluehost.com, puertos 465/587.
+  - pekokis.com ya publica DKIM, y el DMARC es p=none.
+  - En el cPanel hay que poner el enrutamiento de correo en "Remote" para que lo que llega a @pekokis.com siga yendo a Google.
+
 ### 28-11-2026 — revisión general y versión 0.23.2
 - **Pruebas automáticas:** pasan 176 unitarias y las 354 comprobaciones de punta a punta (sección 26 nueva).
 - **Producción (0.23.1), solo lectura:** cargan sin errores 114 páginas del panel, 96 de la versión celular de gerencia, la app, `/activar/` y `/privacidad/`.
