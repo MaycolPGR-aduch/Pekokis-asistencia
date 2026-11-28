@@ -70,6 +70,8 @@ final class Calendario {
 		Horarios::limpiarCache();
 		Auditoria::registrar( 'calendario.agregar', 'calendario', null, null, array( 'fecha' => $fecha, 'nombre' => $nombre, 'tipo' => $tipo ) );
 
+		Tardanzas::resincronizar( null, $fecha, $fecha );
+
 		return true;
 	}
 
@@ -102,6 +104,8 @@ final class Calendario {
 		Horarios::limpiarCache();
 		Auditoria::registrar( 'calendario.editar', 'calendario', null, array( 'fecha' => $fecha ) + $antes, array( 'fecha' => $fecha, 'nombre' => $nombre, 'tipo' => $tipo ) );
 
+		Tardanzas::resincronizar( null, $fecha, $fecha );
+
 		return true;
 	}
 
@@ -119,6 +123,8 @@ final class Calendario {
 		self::$cache = null;
 		Horarios::limpiarCache();
 		Auditoria::registrar( 'calendario.quitar', 'calendario', null, array( 'fecha' => $fecha ) + $antes, null );
+
+		Tardanzas::resincronizar( null, $fecha, $fecha );
 
 		return true;
 	}

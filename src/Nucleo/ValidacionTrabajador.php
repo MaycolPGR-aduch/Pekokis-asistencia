@@ -88,19 +88,31 @@ final class ValidacionTrabajador {
 		$lista = array_merge( $lista, explode( ',', (string) ( $datos['area_otra'] ?? '' ) ) );
 		$vistas = array();
 		$areas  = array();
+		$conocidas = array();
+
+		// Si ya existe con otra forma ("produccion" y "Producción"), se usa la que ya existe.
+		foreach ( (array) ( $datos['areas_conocidas'] ?? array() ) as $c ) {
+			$conocidas[ self::claveArea( (string) $c ) ] ??= (string) $c;
+		}
 
 		foreach ( $lista as $a ) {
-			$a = trim( (string) preg_replace( '/\s+/u', ' ', (string) $a ) );
+			$a     = trim( (string) preg_replace( '/\s+/u', ' ', (string) $a ) );
+			$clave = self::claveArea( $a );
 
-			if ( '' === $a || isset( $vistas[ mb_strtolower( $a ) ] ) ) {
+			if ( '' === $a || isset( $vistas[ $clave ] ) ) {
 				continue;
 			}
 
-			$vistas[ mb_strtolower( $a ) ] = true;
-			$areas[]                       = $a;
+			$vistas[ $clave ] = true;
+			$areas[]          = $conocidas[ $clave ] ?? $a;
 		}
 
 		return implode( ', ', $areas );
+	}
+
+	/** "Producción" y "produccion" son la misma área. */
+	public static function claveArea( string $area ): string {
+		return strtr( mb_strtolower( trim( $area ) ), array( 'á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u', 'ü' => 'u', 'ñ' => 'n' ) );
 	}
 
 	/** "Costura, Estampado" → ["Costura", "Estampado"]. @return string[] */

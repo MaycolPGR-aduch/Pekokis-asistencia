@@ -175,7 +175,7 @@ a.pk-cal-dia:hover, button.pk-cal-dia:hover { border-color: var(--pk-rosa); }
 .pk-max { max-width: 1100px; }
 .pk-max-m { max-width: 760px; }
 .pk-max-s { max-width: 640px; }
-.pk-desplaza { overflow-x: auto; }
+.pk-desplaza { overflow-x: auto; position: relative; } /* relative: las etiquetas ocultas (screen-reader-text) no ensanchan la página. */
 .pk-atenuado { opacity: .6; }
 .pk-tachado { text-decoration: line-through; color: var(--pk-apagado); }
 .pk-negrita { font-weight: 600; }

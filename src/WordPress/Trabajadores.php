@@ -37,7 +37,7 @@ final class Trabajadores {
 
 		foreach ( (array) $wpdb->get_col( "SELECT area FROM {$tabla} WHERE estado = 'activo' AND area <> ''" ) as $texto ) { // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			foreach ( \Pekokis\Asistencia\Nucleo\ValidacionTrabajador::areas( (string) $texto ) as $a ) {
-				$areas[ mb_strtolower( $a ) ] ??= $a;
+				$areas[ \Pekokis\Asistencia\Nucleo\ValidacionTrabajador::claveArea( $a ) ] ??= $a;
 			}
 		}
 
@@ -76,7 +76,7 @@ final class Trabajadores {
 	public static function guardar( array $entrada, ?int $id = null, string $motivo = '' ): int|WP_Error {
 		global $wpdb;
 
-		$datos   = ValidacionTrabajador::normalizar( $entrada );
+		$datos   = ValidacionTrabajador::normalizar( $entrada + array( 'areas_conocidas' => self::areasEnUso() ) );
 		$errores = ValidacionTrabajador::errores( $datos );
 		$tabla   = Tablas::nombre( 'trabajadores' );
 

@@ -113,6 +113,10 @@ final class HorasAjustes {
 			return new WP_Error( 'pka_no_existe', 'Ese ajuste no existe o ya está anulado.' );
 		}
 
+		if ( Trabajadores::esPropio( (int) $fila['trabajador_id'] ) ) {
+			return new WP_Error( 'pka_propio', 'No puedes anular un ajuste de tus propias horas.' );
+		}
+
 		if ( '' === trim( $motivo ) ) {
 			return new WP_Error( 'pka_motivo', 'Escribe por qué se anula.' );
 		}

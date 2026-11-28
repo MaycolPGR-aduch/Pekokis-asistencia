@@ -54,6 +54,9 @@ final class ValidacionConstanciaTest extends TestCase {
 		$this->assertSame( 'Costura, Corte, Empaque', ValidacionTrabajador::unirAreas( array( 'areas' => array( 'Costura' ), 'area_otra' => 'Corte,  Empaque ,' ) ) );
 		$this->assertSame( 'Ventas, Taller', ValidacionTrabajador::unirAreas( array( 'area' => 'Ventas ,Taller' ) ), 'También el texto con comas' );
 		$this->assertSame( '', ValidacionTrabajador::unirAreas( array() ) );
+		$this->assertSame( 'Producción, Ventas', ValidacionTrabajador::unirAreas( array( 'area_otra' => 'produccion, VENTAS', 'areas_conocidas' => array( 'Producción', 'Ventas' ) ) ), 'Una nueva que ya existe con otra forma usa la existente' );
+		$this->assertSame( 'Producción', ValidacionTrabajador::unirAreas( array( 'areas' => array( 'Producción' ), 'area_otra' => 'Produccion' ) ), 'No se repite aunque cambie la tilde' );
+		$this->assertSame( ValidacionTrabajador::claveArea( 'Producción' ), ValidacionTrabajador::claveArea( ' PRODUCCION ' ) );
 		$this->assertSame( array( 'Costura', 'Estampado' ), ValidacionTrabajador::areas( 'Costura, Estampado' ) );
 		$this->assertSame( array(), ValidacionTrabajador::areas( '' ) );
 

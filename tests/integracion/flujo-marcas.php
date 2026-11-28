@@ -1511,6 +1511,65 @@ update_option( \Pekokis\Asistencia\WordPress\Ajustes::OPCION, $aj25 );
 $wpdb->query( 'TRUNCATE TABLE ' . Tablas::nombre( 'avisos' ) ); // phpcs:ignore
 Trabajadores::cesar( (int) $t25, gmdate( 'Y-m-d' ), 'Prueba' );
 
+// ---- 26. Revisión general (28-11): lo que encontró la revisión del código.
+WP_CLI::line( '26. Revisión: propio registro, cambios de horario, constancias y áreas' );
+wp_set_current_user( 1 );
+$TA26 = \Pekokis\Asistencia\WordPress\Tardanzas::class;
+$hb26 = (int) array_keys( Trabajadores::horarios() )[0];
+$t26  = Trabajadores::guardar( array( 'dni' => '77000028', 'nombres' => 'Gerente', 'apellidos' => 'Que Marca', 'horario_id' => $hb26, 'area' => 'Producción', 'cumpleanos_dia' => '1', 'cumpleanos_mes' => '1' ) );
+$wpdb->update( Tablas::nombre( 'trabajadores' ), array( 'creado_en' => '2026-01-05 12:00:00', 'user_id' => 1 ), array( 'id' => (int) $t26 ) );
+$dia26 = null;
+for ( $d = ( new DateTimeImmutable( $hoy ) )->modify( '-1 day' ); null === $dia26; $d = $d->modify( '-1 day' ) ) {
+	if ( (int) $d->format( 'N' ) <= 5 && '' === \Pekokis\Asistencia\WordPress\Calendario::descripcion( $d->format( 'Y-m-d' ) ) ) {
+		$dia26 = $d->format( 'Y-m-d' );
+	}
+}
+$CM::marcaManual( (int) $t26, $dia26, '09:30', $A::ENTRADA, null, 'Prueba 26' );
+$f26 = $TA26::delDia( (int) $t26, $dia26 );
+$aj26 = $wpdb->insert( Tablas::nombre( 'horas_ajustes' ), array( 'trabajador_id' => (int) $t26, 'dia' => $dia26, 'minutos' => -60, 'motivo' => 'Puesto por otra persona', 'estado' => 'vigente', 'creado_por' => 2, 'creado_en' => gmdate( 'Y-m-d H:i:s' ) ) ) ? (int) $wpdb->insert_id : 0;
+$comprobar( 'Gerencia no actúa sobre su propio registro: no justifica ni reinicia sus tardanzas, no anula ajustes de sus horas ni registra sus ausencias',
+	$f26 && $TA26::justificar( (int) $f26['id'], 'x' ) instanceof WP_Error
+	&& $TA26::reiniciar( (int) $t26, 'x' ) instanceof WP_Error
+	&& \Pekokis\Asistencia\WordPress\HorasAjustes::anular( $aj26, 'x' ) instanceof WP_Error
+	&& \Pekokis\Asistencia\WordPress\Ausencias::crear( array( 'trabajador_id' => (int) $t26, 'tipo' => 'falta', 'desde' => $dia26, 'hasta' => $dia26, 'nota' => 'x' ) ) instanceof WP_Error
+);
+$wpdb->update( Tablas::nombre( 'trabajadores' ), array( 'user_id' => 0 ), array( 'id' => (int) $t26 ) );
+
+// Si después se cambia su horario de ese día (entra a las 10), ya no fue tarde.
+$cambio26 = \Pekokis\Asistencia\WordPress\Horarios::crearCambio( array( 'trabajador_id' => (int) $t26, 'desde' => $dia26, 'hasta' => $dia26, 'entrada' => '10:00', 'salida' => '19:30', 'motivo' => 'Entraba a las 10 ese día' ) );
+$comprobar( 'Tardanzas: al cambiar el horario de ese día se vuelve a revisar ("ya no fue tarde")', is_int( $cambio26 ) && $TA26::ANULADA === $TA26::delDia( (int) $t26, $dia26 )['estado'], wp_json_encode( array( $cambio26, $TA26::delDia( (int) $t26, $dia26 ) ) ) );
+\Pekokis\Asistencia\WordPress\Horarios::anularCambio( (int) $cambio26, 'Era un error' );
+$comprobar( 'Tardanzas: al anular el cambio vuelve a contar', $TA26::VIGENTE === $TA26::delDia( (int) $t26, $dia26 )['estado'] );
+\Pekokis\Asistencia\WordPress\Calendario::agregar( $dia26, 'Feriado de prueba', 'feriado' );
+$comprobar( 'Tardanzas: si ese día pasa a ser feriado, ya no cuenta', $TA26::ANULADA === $TA26::delDia( (int) $t26, $dia26 )['estado'] );
+\Pekokis\Asistencia\WordPress\Calendario::quitar( $dia26 );
+
+// Constancia: la recibida sigue avisando su vencimiento aunque haya otra nueva observada.
+$pdf26 = static function (): array {
+	$ruta = wp_tempnam( 'c26.pdf' );
+	file_put_contents( $ruta, "%PDF-1.4\nc26" ); // phpcs:ignore
+	return array( 'tmp_name' => $ruta );
+};
+$CO26 = \Pekokis\Asistencia\WordPress\Constancias::class;
+$v26  = $CO26::enviar( (int) $t26, array( 'tipo' => 'cuarta', 'vigente_hasta' => ( new DateTimeImmutable( $hoy ) )->modify( '+10 days' )->format( 'Y-m-d' ) ), $pdf26() );
+$CO26::recibir( (int) $v26 );
+$n26 = $CO26::enviar( (int) $t26, array( 'tipo' => 'cuarta', 'vigente_hasta' => ( (int) substr( $hoy, 0, 4 ) + 1 ) . '-12-31' ), $pdf26() );
+$CO26::observar( (int) $n26, 'Ilegible' );
+$pv26 = array_filter( $CO26::porVencer(), static fn( $v ) => (int) $v['t']['id'] === (int) $t26 );
+$app26 = $CO26::paraApp( Trabajadores::buscar( (int) $t26 ) );
+$comprobar( 'Constancias: la recibida avisa que vence aunque la nueva esté observada; la app muestra las dos', 1 === count( $pv26 ) && 'observado' === $app26['estado'] && 'por_vencer' === $app26['vigencia'] && str_contains( $app26['vigente_texto'], 'vence en 10 días' ), wp_json_encode( $app26 ) );
+
+// Áreas: el filtro no distingue mayúsculas ni tildes, y una nueva con otra forma usa la existente.
+$o26 = Trabajadores::guardar( array( 'dni' => '77000029', 'nombres' => 'Otra', 'apellidos' => 'Forma', 'horario_id' => $hb26, 'area_otra' => 'PRODUCCION', 'cumpleanos_dia' => '1', 'cumpleanos_mes' => '1' ) );
+$FA26 = \Pekokis\Asistencia\WordPress\Admin\FiltroArea::class;
+$_GET = array( 'area' => 'produccion' );
+$act26 = $FA26::actual();
+$_GET = array();
+$comprobar( 'Áreas: "PRODUCCION" se guarda como la existente "Producción" y el filtro las junta', is_int( $o26 ) && 'Producción' === Trabajadores::buscar( (int) $o26 )['area'] && 'Producción' === $act26 && 2 <= count( $FA26::aplicar( Trabajadores::listar(), 'produccion' ) ) );
+Trabajadores::cesar( (int) $t26, gmdate( 'Y-m-d' ), 'Prueba' );
+Trabajadores::cesar( (int) $o26, gmdate( 'Y-m-d' ), 'Prueba' );
+$comprobar( 'Áreas: quien cesó sigue entrando en el filtro del mes (Calculadora)', in_array( (int) $t26, (array) $FA26::ids( 'Producción' ), true ) );
+
 $comprobar( 'presencia por IP del taller', ( $_SERVER['REMOTE_ADDR'] = '203.0.113.10' ) && Presencia::enRedDelTaller() );
 
 // Deja los ajustes como estaban (la prueba cambia el aviso y el webhook).

@@ -263,6 +263,8 @@ body.pk-pagina .pk-filtros a.pk-filtro-aviso:not(.activa) .pk-cuenta { backgroun
 /* ---------- Componentes propios ---------- */
 
 .pk-dos { display: grid; grid-template-columns: 1.25fr 1fr; gap: 12px; align-items: start; }
+/* Que una tabla ancha dentro de una columna no ensanche la página (se desplaza dentro). */
+.pk-dos > *, .pk-tres > *, .pk-sim-campos > *, .pk-kpis > * { min-width: 0; }
 .pk-tres { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-items: start; }
 .pk-alertas { list-style: none; margin: 6px 0 0; padding: 0; }
 .pk-alertas li { display: flex; gap: 10px; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--pk-line); margin: 0; }
@@ -524,4 +526,13 @@ td.pk-sim-igual { color: var(--pk-muted); }
 }
 @media (min-width: 600px) and (max-width: 782px) {
 	.pk-riel { top: 46px; }
+}
+
+/* Celular (hasta 600 px): nada ensancha la página; las tablas se desplazan dentro. */
+@media (max-width: 600px) {
+	body.pk-pagina .wrap table.widefat { display: block; overflow-x: auto; position: relative; }
+	body.pk-pagina .wrap .pk-fila { flex-wrap: wrap; }
+	body.pk-pagina .wrap .pk-fila > * { min-width: 0; max-width: 100%; }
+	body.pk-pagina .wrap input.regular-text, body.pk-pagina .wrap select, body.pk-pagina .wrap textarea, body.pk-pagina .wrap input[type="text"] { max-width: 100%; }
+	body.pk-pagina .wrap .pk-caja, body.pk-pagina .wrap .pk-fila { min-width: 0; }
 }

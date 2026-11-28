@@ -73,6 +73,7 @@ final class CalculoJornada {
 		public readonly int $minutosMadrugada = 0,
 		public readonly int $minutosTemprano = 0,   // Antes de la entrada (sin madrugada), aunque no cuenten como extra.
 		public readonly int $minutosAjuste = 0,     // Ajuste de gerencia (+ o −).
+		public readonly bool $conAusencia = false,  // Día con ausencia justificada (aunque tenga marcas).
 	) {
 	}
 
@@ -106,7 +107,7 @@ final class CalculoJornada {
 			};
 
 			if ( 0 === $ajuste ) {
-				return new self( $estado, $horario->laborable, $tipo, $esperan, 0, 0, 0, 0, 0, 0, 0, $noTrabajado, 0, 0, 0, 0, 0, $ausencia ?? $horario->descanso );
+				return new self( $estado, $horario->laborable, $tipo, $esperan, 0, 0, 0, 0, 0, 0, 0, $noTrabajado, 0, 0, 0, 0, 0, $ausencia ?? $horario->descanso, 0, 0, 0, null !== $ausencia );
 			}
 
 			// Sin marcas pero con un ajuste de gerencia: si le reconoce horas, el día no queda como falta.
@@ -189,9 +190,12 @@ final class CalculoJornada {
 			if ( $ajuste >= 0 ) {
 				$despues += $ajuste;
 			} else {
-				$saca     = min( $despues, -$ajuste );
-				$despues -= $saca;
-				$faltan  += -$ajuste - $saca;
+				// Si resta: primero lo de después de la salida, luego la madrugada; el resto es lo que faltó.
+				$saca       = min( $despues, -$ajuste );
+				$despues   -= $saca;
+				$sacaM      = min( $madrugada, -$ajuste - $saca );
+				$madrugada -= $sacaM;
+				$faltan    += -$ajuste - $saca - $sacaM;
 			}
 
 			// Primero se completa el horario; lo que sobra es extra.
@@ -202,7 +206,12 @@ final class CalculoJornada {
 			$faltan  -= $cubre2;
 			$extra    = $despues + intdiv( $temprano - $cubre2, 60 ) * 60;
 		} else {
-			$libre = max( 0, $resto + $temprano + $enHorario + $despues + $ajuste );
+			$libre = $resto + $temprano + $enHorario + $despues + $ajuste;
+
+			if ( $libre < 0 ) {
+				$madrugada = max( 0, $madrugada + $libre ); // Un ajuste negativo que pasa lo trabajado quita madrugada.
+				$libre     = 0;
+			}
 			match ( $tipo ) {
 				self::DIA_SABADO  => $sabado = $libre,
 				self::DIA_DOMINGO => $domingo = $libre,
@@ -238,7 +247,8 @@ final class CalculoJornada {
 			$ausencia ?? $horario->descanso,
 			$madrugada,
 			$temprano,
-			$ajuste
+			$ajuste,
+			null !== $ausencia
 		);
 	}
 

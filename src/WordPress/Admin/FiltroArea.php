@@ -17,7 +17,13 @@ final class FiltroArea {
 	public static function actual(): string {
 		$area = isset( $_GET['area'] ) ? sanitize_text_field( wp_unslash( $_GET['area'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
-		return in_array( $area, Trabajadores::areasEnUso(), true ) ? $area : '';
+		foreach ( Trabajadores::areasEnUso() as $a ) {
+			if ( ValidacionTrabajador::claveArea( $a ) === ValidacionTrabajador::claveArea( $area ) ) {
+				return $a;
+			}
+		}
+
+		return '';
 	}
 
 	/**
@@ -29,7 +35,9 @@ final class FiltroArea {
 			return $personas;
 		}
 
-		return array_values( array_filter( $personas, static fn( array $t ): bool => in_array( $area, ValidacionTrabajador::areas( (string) $t['area'] ), true ) ) );
+		$clave = ValidacionTrabajador::claveArea( $area );
+
+		return array_values( array_filter( $personas, static fn( array $t ): bool => in_array( $clave, array_map( array( ValidacionTrabajador::class, 'claveArea' ), ValidacionTrabajador::areas( (string) $t['area'] ) ), true ) ) );
 	}
 
 	/** @return int[]|null Ids de quienes están en el área (null = todas). */
@@ -38,7 +46,8 @@ final class FiltroArea {
 			return null;
 		}
 
-		return array_map( static fn( array $t ): int => (int) $t['id'], self::aplicar( Trabajadores::listar(), $area ) );
+		// También quienes cesaron: el mes puede incluirlos.
+		return array_map( static fn( array $t ): int => (int) $t['id'], self::aplicar( array_merge( Trabajadores::listar(), Trabajadores::listar( Trabajadores::CESADO ) ), $area ) );
 	}
 
 	/** El selector (dentro de un formulario GET); no pinta nada si no hay áreas. */

@@ -169,6 +169,14 @@ final class CalculoJornadaTest extends TestCase {
 		$this->assertSame( 570, $sinMarcas->minutosTrabajados );
 		$this->assertSame( 0, $sinMarcas->minutosNoTrabajados );
 
+		$madruga = CalculoJornada::calcular( $this->diaNormal( '04:00' ), $this->horario(), self::DIA, $this->zona(), new ReglasPago(), array(), null, -300 );
+		$this->assertSame( 0, $madruga->minutosMadrugada, 'Un ajuste negativo también puede quitar madrugada (entrada mal marcada a las 4)' );
+		$this->assertSame( 0, $madruga->minutosNoTrabajados );
+
+		$domingo = CalculoJornada::calcular( array( Fabrica::entrada( $this->h( '04:00', self::DOMINGO ), 1 ), Fabrica::salida( $this->h( '08:00', self::DOMINGO ), 'fin_jornada', 2 ) ), HorarioDelDia::libre(), self::DOMINGO, $this->zona(), new ReglasPago(), array(), null, -180 );
+		$this->assertSame( 0, $domingo->minutosDomingo );
+		$this->assertSame( 60, $domingo->minutosMadrugada, '2 h de domingo y 1 h de madrugada quitadas' );
+
 		$sabado = CalculoJornada::calcular( array(), HorarioDelDia::libre(), self::SABADO, $this->zona(), new ReglasPago(), array(), null, 120 );
 		$this->assertSame( 120, $sabado->minutosSabado );
 	}

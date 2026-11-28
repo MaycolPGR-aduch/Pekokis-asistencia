@@ -27,6 +27,10 @@ final class Ausencias {
 			return new WP_Error( 'pka_ausencia', 'Revisa la ausencia.', array( 'errores' => array( 'trabajador_id' => 'Ese trabajador no existe.' ) ) );
 		}
 
+		if ( Trabajadores::esPropio( (int) $datos['trabajador_id'] ) ) {
+			return new WP_Error( 'pka_ausencia', 'Revisa la ausencia.', array( 'errores' => array( 'trabajador_id' => 'No puedes registrar tus propias ausencias: lo hace otra persona de gerencia.' ) ) );
+		}
+
 		$errores = ValidacionAusencia::errores( $datos, self::vigentesDe( $datos['trabajador_id'] ) );
 
 		if ( $errores ) {

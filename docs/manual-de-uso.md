@@ -163,7 +163,7 @@ Todo está en el menú **Asistencia**, agrupado en Control, Pagos, Personas y Si
 
 - El **conteo** de tardanzas que cuentan, las **amonestaciones** y el **historial** completo (fecha, hora de llegada y minutos tarde). Es tardanza si la entrada pasa la tolerancia de 5 min; los minutos se cuentan desde la hora de entrada.
 - En la 2.ª y la 3.ª tardanza se registra sola una amonestación. Desde la 4.ª, el Dashboard avisa que la persona debe conversar con gerencia. En **Asistencia de hoy** se ve, junto a la hora de llegada, qué número de tardanza es.
-- **Justificar** una tardanza (con motivo): deja de contar. **Reiniciar conteo** (con motivo, por ejemplo después de conversar): vuelve a cero, pero el historial se conserva. Las dos cosas son **solo de gerencia** y quedan en la Auditoría.
+- **Justificar** una tardanza (con motivo): deja de contar. **Reiniciar conteo** (con motivo, por ejemplo después de conversar): vuelve a cero, pero el historial se conserva. Las dos cosas son **solo de gerencia** y quedan en la Auditoría. Nadie puede justificar ni reiniciar sus propias tardanzas. Si después se cambia el horario de ese día o se marca como feriado, la tardanza se vuelve a revisar sola.
 - Los textos que ve el trabajador se cambian en Seguridad y reglas → Reglas de horas → *Avisos de tardanza*.
 
 ## Gerencia en el celular
@@ -244,7 +244,7 @@ Si cambia una tarifa o se corrige un registro, el cálculo se actualiza solo. El
 
 **Constancias de retención** (Recibos por honorarios → pestaña *Constancias de retención*)
 
-- Una fila por persona con su última constancia de 4.ª o 5.ª: el tipo, el número, el **PDF**, hasta cuándo vale (en verde, ámbar si vence en 30 días o menos, rojo si venció) y el estado.
+- Una fila por persona con su última constancia de 4.ª o 5.ª: el tipo, el número, el **PDF**, hasta cuándo vale (en verde, ámbar si vence en 30 días o menos, rojo si venció) y el estado. Si la persona sube una nueva y todavía no se recibe (o se observa), sigue valiendo la anterior ya recibida, y su vencimiento se sigue avisando.
 - **Recibida** la da por buena; **Observar** la devuelve con un comentario. El número sobre la pestaña dice cuántas esperan revisión.
 - El **Dashboard** avisa las constancias por revisar y las que están por vencer o vencidas, para pedir la nueva. En la ficha → *Pagos y recibos* se ve su estado.
 

@@ -199,6 +199,7 @@ final class Horarios {
 			$datos['motivo']
 		);
 		self::limpiarCache();
+		Tardanzas::resincronizar( array( $datos['trabajador_id'] ), $datos['desde'], $datos['hasta'] );
 
 		return $id;
 	}
@@ -236,6 +237,7 @@ final class Horarios {
 			$motivo
 		);
 		self::limpiarCache();
+		Tardanzas::resincronizar( array( (int) $fila['trabajador_id'] ), (string) $fila['desde'], (string) $fila['hasta'] );
 
 		return true;
 	}

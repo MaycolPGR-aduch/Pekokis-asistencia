@@ -93,6 +93,9 @@ final class PrePlanilla {
 
 	public bool $cambioDeSueldo = false;
 
+	/** Días del mes con sueldo fijo, si el mes mezcla sueldo fijo y por horas (null = no mezcla). @var array{0: int, 1: int}|null */
+	public ?array $diasFijo = null;
+
 	/**
 	 * @param array<string, CalculoJornada>                                         $jornadas   Día (Y-m-d) => cálculo.
 	 * @param Sueldo[]                                                              $historial  Honorarios y tarifas del trabajador.
@@ -169,6 +172,33 @@ final class PrePlanilla {
 
 		$fila->montos['sabado']     = $fila->montos['sabado_extra'] + $fila->montos['sabado_normal'];
 		$fila->montos['honorario']  = $fila->sueldoFinal && ! $fila->sueldoFinal->porHoras() ? $fila->sueldoFinal->honorarioCentimos : 0;
+
+		// Si en el mes cambió entre sueldo fijo y por horas, el honorario se cuenta
+		// solo por los días del mes con sueldo fijo (si no, se pagaría dos veces o nunca).
+		if ( $jornadas && $historial ) {
+			$primero = (string) array_key_first( $jornadas );
+			$inicio  = substr( $primero, 0, 7 ) . '-01';
+			$totalD  = (int) gmdate( 't', (int) strtotime( $inicio . ' 12:00 UTC' ) );
+			$fijos   = 0;
+			$porH    = 0;
+			$montoF  = 0;
+
+			for ( $d = 0; $d < $totalD; $d++ ) {
+				$s = Sueldo::vigenteEn( $historial, gmdate( 'Y-m-d', (int) strtotime( $inicio . ' 12:00 UTC' ) + $d * 86400 ) );
+
+				if ( $s && $s->porHoras() ) {
+					++$porH;
+				} elseif ( $s ) {
+					++$fijos;
+					$montoF += $s->honorarioCentimos / $totalD;
+				}
+			}
+
+			if ( $porH && $fijos ) {
+				$fila->diasFijo            = array( $fijos, $totalD );
+				$fila->montos['honorario'] = (int) round( $montoF );
+			}
+		}
 		$fila->montos['descuentos'] = max( 0, $descuentos );
 		$fila->montos['total']      = max( 0, $fila->montos['honorario'] + $fila->costoExtra() - $fila->montos['descuentos'] );
 
@@ -196,7 +226,7 @@ final class PrePlanilla {
 			$lunes             = self::lunes( (string) $dia );
 			$semanas[ $lunes ] ??= array( 'esperados' => 0, 'trabajados' => 0, 'completa' => true );
 
-			if ( ! $j->laborable || CalculoJornada::JUSTIFICADO === $j->estado ) {
+			if ( ! $j->laborable || CalculoJornada::JUSTIFICADO === $j->estado || $j->conAusencia ) {
 				continue;
 			}
 
@@ -356,6 +386,10 @@ final class PrePlanilla {
 		}
 
 		$lineas[] = 'Total: ' . Sueldo::soles( $this->montos['total'] ) . '.';
+
+		if ( $this->diasFijo ) {
+			$lineas[] = sprintf( 'Este mes cambió entre sueldo fijo y pago por horas: el honorario se cuenta solo por los %d de %d días con sueldo fijo (%s).', $this->diasFijo[0], $this->diasFijo[1], Sueldo::soles( $this->montos['honorario'] ) );
+		}
 
 		if ( $this->cambioDeSueldo ) {
 			$lineas[] = 'Las tarifas cambiaron en el mes: cada día se calculó con la que estaba vigente.';

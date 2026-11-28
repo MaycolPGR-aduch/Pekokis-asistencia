@@ -177,6 +177,29 @@ final class Constancias {
 		return $out;
 	}
 
+	/** La que está en vigor: la última recibida (aunque después haya otra por revisar u observada). */
+	public static function vigente( int $trabajadorId ): ?array {
+		global $wpdb;
+
+		$fila = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM ' . Tablas::nombre( 'constancias' ) . " WHERE trabajador_id = %d AND estado = 'recibido' ORDER BY id DESC LIMIT 1", $trabajadorId ), ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+
+		return $fila ? $fila : null;
+	}
+
+	/** @return array<int, array<string, mixed>> trabajador_id => la última recibida. */
+	public static function vigentes(): array {
+		global $wpdb;
+
+		$tabla = Tablas::nombre( 'constancias' );
+		$out   = array();
+
+		foreach ( (array) $wpdb->get_results( "SELECT * FROM {$tabla} WHERE estado = 'recibido' ORDER BY id", ARRAY_A ) as $f ) { // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$out[ (int) $f['trabajador_id'] ] = $f;
+		}
+
+		return $out;
+	}
+
 	/** @return array<int, array<string, mixed>> Todas las de una persona, de la más nueva a la más antigua. */
 	public static function historial( int $trabajadorId ): array {
 		global $wpdb;
@@ -194,10 +217,10 @@ final class Constancias {
 		$hoy = self::hoy();
 		$out = array();
 
-		foreach ( self::actuales() as $id => $c ) {
+		foreach ( self::vigentes() as $id => $c ) {
 			$t = Trabajadores::buscar( $id );
 
-			if ( ! $t || Trabajadores::ACTIVO !== $t['estado'] || ValidacionRecibo::RECIBIDO !== $c['estado'] ) {
+			if ( ! $t || Trabajadores::ACTIVO !== $t['estado'] ) {
 				continue;
 			}
 
@@ -223,21 +246,23 @@ final class Constancias {
 	 */
 	public static function paraApp( array $t ): array {
 		$hoy = self::hoy();
-		$c   = self::historial( (int) $t['id'] )[0] ?? null; // La última, aunque esté anulada.
-		$ok  = $c && ValidacionRecibo::ANULADO !== $c['estado'];
-		$vig = $ok ? ValidacionConstancia::vigencia( (string) $c['vigente_hasta'], $hoy ) : '';
+		$c   = self::actual( (int) $t['id'] );           // La última que cuenta (para el estado).
+		$v   = self::vigente( (int) $t['id'] ) ?? $c;     // La recibida en vigor (para la vigencia).
+		$ok  = null !== $c;
+		$vig = $v && ValidacionRecibo::RECIBIDO === $v['estado'] ? ValidacionConstancia::vigencia( (string) $v['vigente_hasta'], $hoy ) : '';
 
 		return array(
 			'tipos'          => ValidacionConstancia::TIPOS,
 			'id'             => $c ? (int) $c['id'] : 0,
 			'estado'         => $ok ? $c['estado'] : 'falta',
 			'texto'          => $ok ? ( ValidacionRecibo::RECIBIDO === $c['estado'] && ValidacionConstancia::VENCIDA === $vig ? 'Vencida' : ValidacionRecibo::ESTADOS[ $c['estado'] ] ) : 'Sin constancia',
+			'vigente_texto'  => $v && ValidacionRecibo::RECIBIDO === $v['estado'] && $v !== $c ? 'La anterior, ya recibida: ' . mb_strtolower( ValidacionConstancia::textoVigencia( (string) $v['vigente_hasta'], $hoy ) ) . '.' : '',
 			'tipo'           => $ok ? $c['tipo'] : '',
 			'tipo_texto'     => $ok ? ( ValidacionConstancia::TIPOS[ $c['tipo'] ] ?? $c['tipo'] ) : '',
 			'numero'         => $ok ? (string) $c['numero'] : '',
 			'vigente_hasta'  => $ok ? (string) $c['vigente_hasta'] : '',
 			'vigencia'       => $vig,
-			'vigencia_texto' => $ok ? ValidacionConstancia::textoVigencia( (string) $c['vigente_hasta'], $hoy ) : '',
+			'vigencia_texto' => $ok ? ValidacionConstancia::textoVigencia( (string) ( $v && ValidacionRecibo::RECIBIDO === $v['estado'] ? $v : $c )['vigente_hasta'], $hoy ) : '',
 			'comentario'     => $ok && ValidacionRecibo::OBSERVADO === $c['estado'] ? (string) $c['comentario'] : '',
 			'puede_enviar'   => ValidacionConstancia::puedeEnviar( $ok ? $c['estado'] : null ),
 			'puede_anular'   => $ok && ValidacionRecibo::puedeAnular( $c['estado'] ),

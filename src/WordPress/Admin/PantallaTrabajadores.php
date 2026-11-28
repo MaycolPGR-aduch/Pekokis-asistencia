@@ -257,6 +257,7 @@ final class PantallaTrabajadores {
 		?>
 		<h2 class="pk-mt" id="remuneracion">Honorario y tarifas</h2>
 		<p class="description">Se paga por recibos por honorarios: el honorario mensual incluye las horas normales y cada hora adicional va con su tarifa. El valor hora es el honorario ÷ <?php echo (int) \Pekokis\Asistencia\Nucleo\Sueldo::HORAS_MES; ?>. Solo lo ve gerencia; el trabajador nunca ve estos montos.</p>
+		<div class="pk-desplaza">
 		<table class="widefat striped pk-max">
 			<thead><tr><th>Honorario y tarifas por hora</th><th>Desde</th><th>Hasta</th><th>Nota</th><th>Registró</th><th></th></tr></thead>
 			<tbody>
@@ -288,6 +289,7 @@ final class PantallaTrabajadores {
 			<?php endforeach; ?>
 			</tbody>
 		</table>
+		</div>
 
 		<?php if ( $propio ) : ?>
 			<p><em>Es tu propio perfil: otra persona de gerencia o un administrador tiene que registrar tu honorario.</em></p>

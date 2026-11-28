@@ -199,6 +199,10 @@ final class Tardanzas {
 			return new WP_Error( 'pka_no_existe', 'Esa tardanza no existe o ya no cuenta.' );
 		}
 
+		if ( Trabajadores::esPropio( (int) $fila['trabajador_id'] ) ) {
+			return new WP_Error( 'pka_propio', 'No puedes justificar tus propias tardanzas: lo hace otra persona de gerencia.' );
+		}
+
 		if ( '' === trim( $motivo ) ) {
 			return new WP_Error( 'pka_motivo', 'Escribe el motivo de la justificación.' );
 		}
@@ -214,12 +218,39 @@ final class Tardanzas {
 		return true;
 	}
 
+	/**
+	 * Vuelve a revisar las tardanzas de un periodo (hasta hoy y como mucho 120
+	 * días atrás): cuando cambia el horario de una persona o el calendario.
+	 *
+	 * @param int[]|null $ids null = todas las personas activas.
+	 */
+	public static function resincronizar( ?array $ids, string $desde, string $hasta ): void {
+		$hoy   = wp_date( 'Y-m-d', null, Ajustes::zona() );
+		$desde = max( $desde, ( new \DateTimeImmutable( $hoy ) )->modify( '-120 days' )->format( 'Y-m-d' ) );
+		$hasta = min( $hasta, $hoy );
+		$ids ??= array_map( static fn( array $t ): int => (int) $t['id'], Trabajadores::listar() );
+
+		if ( $desde > $hasta ) {
+			return;
+		}
+
+		foreach ( $ids as $id ) {
+			for ( $d = new \DateTimeImmutable( $desde ); $d->format( 'Y-m-d' ) <= $hasta; $d = $d->modify( '+1 day' ) ) {
+				self::sincronizar( (int) $id, $d->format( 'Y-m-d' ) );
+			}
+		}
+	}
+
 	/** Vuelve el contador a cero. El historial se conserva. */
 	public static function reiniciar( int $trabajadorId, string $motivo ): true|WP_Error {
 		global $wpdb;
 
 		if ( ! current_user_can( Capacidades::JUSTIFICAR ) ) {
 			return new WP_Error( 'pka_permiso', 'Solo gerencia puede reiniciar el conteo.' );
+		}
+
+		if ( Trabajadores::esPropio( $trabajadorId ) ) {
+			return new WP_Error( 'pka_propio', 'No puedes reiniciar tu propio conteo: lo hace otra persona de gerencia.' );
 		}
 
 		if ( '' === trim( $motivo ) ) {

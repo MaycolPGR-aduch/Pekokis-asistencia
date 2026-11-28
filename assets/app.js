@@ -1875,6 +1875,7 @@
 			c.numero ? el( 'div', {}, [ el( 'span', { texto: 'Número' } ), el( 'b', { texto: c.numero } ) ] ) : null,
 			el( 'div', {}, [ el( 'span', { texto: 'Vigencia' } ), el( 'b', { texto: c.vigencia_texto } ) ] ),
 		] ) : null;
+		var anterior = c.vigente_texto ? el( 'p', { class: 'ayuda pk-mt-s', texto: c.vigente_texto } ) : null;
 
 		if ( ! c.puede_enviar ) {
 			var anular = c.puede_anular ? boton( 'secundario', 'Anular envío', function () {
@@ -1889,7 +1890,7 @@
 					vistaConstancia( estado, aviso( 'error', error.message ) );
 				} );
 			} ) : null;
-			pintar( titulo, mensaje || null, datos, c.puede_anular ? el( 'p', { class: 'ayuda', texto: 'Mientras gerencia no la revise, puedes anular el envío si te equivocaste.' } ) : null, anular, volver );
+			pintar( titulo, mensaje || null, datos, anterior, c.puede_anular ? el( 'p', { class: 'ayuda', texto: 'Mientras gerencia no la revise, puedes anular el envío si te equivocaste.' } ) : null, anular, volver );
 			return;
 		}
 
@@ -1932,7 +1933,7 @@
 				if ( errorRecibo( error ) ) {
 					return;
 				}
-				var porCampo = error.datos.errores || {};
+				var porCampo = ( error.datos && error.datos.errores ) || {};
 				Object.keys( errores ).forEach( function ( clave ) {
 					errores[ clave ].textContent = porCampo[ clave ] || '';
 				} );
@@ -1949,6 +1950,7 @@
 			mensaje || null,
 			'observado' === c.estado ? aviso( 'error', 'Gerencia observó tu constancia: ' + c.comentario ) : null,
 			datos,
+			anterior,
 			el( 'p', { class: 'ayuda pk-mt-s', texto: 'recibido' === c.estado ? 'Cuando tengas la nueva (por ejemplo, la del año siguiente), súbela aquí.' : 'Si tienes la constancia de suspensión de retenciones de 4.ª categoría (SUNAT) o el documento de 5.ª, súbela en PDF. Gerencia la revisa.' } ),
 			el( 'div', { class: 'formulario' }, [
 				el( 'div', {}, [ el( 'label', { for: 'const-tipo', texto: 'Qué constancia es' } ), tipo, errores.tipo ] ),
@@ -2019,7 +2021,7 @@
 				if ( errorRecibo( error ) ) {
 					return;
 				}
-				var porCampo = error.datos.errores || {};
+				var porCampo = ( error.datos && error.datos.errores ) || {};
 				Object.keys( errores ).forEach( function ( clave ) {
 					errores[ clave ].textContent = porCampo[ clave ] || '';
 				} );

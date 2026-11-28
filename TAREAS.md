@@ -273,6 +273,26 @@ Vienen de la sección 16 del plan; se resuelven con gerencia y el contador.
 
 ## Bitácora
 
+### 28-11-2026 — revisión general y versión 0.23.2
+- **Pruebas automáticas:** pasan 176 unitarias y las 354 comprobaciones de punta a punta (sección 26 nueva).
+- **Producción (0.23.1), solo lectura:** cargan sin errores 114 páginas del panel, 96 de la versión celular de gerencia, la app, `/activar/` y `/privacidad/`.
+- **Seguridad en producción:**
+  - Los PDF de recibos y constancias no se abren por dirección (403).
+  - La API sin sesión responde 401.
+  - Siguen pendientes: `readme.html` está visible (200) y `xmlrpc.php` sigue activo (405 por GET).
+- **Revisión independiente del código nuevo (0.21.0 a 0.23.1).** Lo corregido en la 0.23.2:
+  - **Cambio entre sueldo fijo y por horas en el mismo mes:** el honorario se cuenta solo por los días con sueldo fijo. Antes se pagaban dos veces las horas normales, o nunca.
+  - **Día con ausencia justificada y algunas marcas:** cuenta como cumplido para la semana. Antes dejaba el sábado a valor hora.
+  - **Gerencia sobre su propio registro:** no puede justificar ni reiniciar sus tardanzas, anular ajustes de sus horas ni registrar sus ausencias.
+  - **Las tardanzas se vuelven a revisar** al crear o anular un cambio de horario y al agregar, editar o quitar un feriado (hasta 120 días atrás).
+  - **Áreas sin distinguir mayúsculas ni tildes.** Una nueva que ya existe con otra forma usa la existente, y el filtro de la Calculadora incluye a quien cesó.
+  - **Constancias:** el vencimiento se mira en la última **recibida**, aunque haya otra nueva por revisar u observada. La app y el panel muestran las dos.
+  - **Ajustes negativos de horas:** pueden quitar madrugada (por ejemplo, una entrada mal marcada a las 4:00).
+  - **App:** un corte de internet al subir un recibo o una constancia ya no deja el botón trabado.
+  - **Auditoría:** etiquetas repetidas.
+- **Celular (panel a 375 px):** ninguna pantalla se desborda. Las tablas se desplazan dentro y las etiquetas ocultas ya no ensanchan la página.
+- **Comportamiento que se deja así (por decidir con gerencia):** el número de una tardanza (1.ª, 2.ª…) se fija al registrarla. Si una tardanza anterior se corrige, las siguientes no se renumeran, y la amonestación ya registrada queda.
+
 ### 28-11-2026 — 0.23.1 en producción
 - Maycol la subió. Verificado:
   - sw.js dice pka-0.23.1 y "Estado del sistema" está en orden.

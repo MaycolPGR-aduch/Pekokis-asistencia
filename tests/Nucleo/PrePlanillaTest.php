@@ -233,6 +233,43 @@ final class PrePlanillaTest extends TestCase {
 		$this->assertSame( 0, PrePlanilla::calcular( array(), array( $this->tarifa() ), null, null, 999999 )->montos['total'], 'El total nunca es negativo' );
 	}
 
+	public function test_cambio_de_por_horas_a_fijo_en_el_mes(): void {
+		$historial = array(
+			new Sueldo( 180000, 1200, 1200, 2000, 2400, '2026-01-01', '2026-11-15', 1, Sueldo::HORAS ),
+			new Sueldo( 180000, 1200, 1200, 2000, 2400, '2026-11-16', null, 2 ),
+		);
+		$fila = PrePlanilla::calcular( array( '2026-11-10' => $this->dia( '2026-11-10' ), '2026-11-17' => $this->dia( '2026-11-17' ) ), $historial );
+
+		$this->assertSame( 8911, $fila->montos['horas'], 'El 10 se paga por horas' );
+		$this->assertSame( 90000, $fila->montos['honorario'], 'El honorario, solo por los 15 de 30 días con sueldo fijo' );
+		$this->assertSame( 98911, $fila->montos['total'] );
+		$this->assertStringContainsString( 'solo por los 15 de 30 días', implode( "\n", $fila->explicacion() ) );
+
+		$alReves = array(
+			new Sueldo( 180000, 1200, 1200, 2000, 2400, '2026-01-01', '2026-11-15', 1 ),
+			new Sueldo( 180000, 1200, 1200, 2000, 2400, '2026-11-16', null, 2, Sueldo::HORAS ),
+		);
+		$fila2 = PrePlanilla::calcular( array( '2026-11-10' => $this->dia( '2026-11-10' ), '2026-11-17' => $this->dia( '2026-11-17' ) ), $alReves );
+		$this->assertSame( 90000, $fila2->montos['honorario'], 'De fijo a por horas: la primera mitad no queda sin pagar' );
+		$this->assertSame( 8911, $fila2->montos['horas'] );
+	}
+
+	public function test_dia_justificado_con_marcas_cuenta_como_cumplido(): void {
+		$semana = $this->semana();
+		$semana['2026-11-20'] = CalculoJornada::calcular(
+			array( Fabrica::entrada( '2026-11-20 09:00', 1 ), Fabrica::salida( '2026-11-20 11:00', 'fin_jornada', 2 ) ),
+			$this->laborable(),
+			'2026-11-20',
+			$this->zona(),
+			new ReglasPago(),
+			array(),
+			'Descanso médico'
+		);
+
+		$this->assertTrue( PrePlanilla::semanas( $semana )['2026-11-16']['completa'], 'Venir 2 horas un día de descanso médico no deja la semana incompleta' );
+		$this->assertSame( 4800, PrePlanilla::calcular( $semana, array( $this->tarifa() ) )->montos['sabado'] );
+	}
+
 	public function test_modo_por_horas(): void {
 		$dias = array( '2026-11-16' => $this->dia( '2026-11-16', '21:00' ) ); // 11 h: 9 h 30 + 1 h 30 extra.
 		$todo = new Sueldo( 180000, 1200, 1200, 2000, 2400, '2026-01-01', null, null, Sueldo::HORAS );

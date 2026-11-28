@@ -42,6 +42,7 @@ final class PantallaConstancias {
 	public static function pintar(): void {
 		$hoy      = wp_date( 'Y-m-d', null, Ajustes::zona() );
 		$actuales = Constancias::actuales();
+		$vigentes = Constancias::vigentes();
 		$personas = Trabajadores::listar();
 		?>
 		<h1>Constancias de retención</h1>
@@ -58,7 +59,8 @@ final class PantallaConstancias {
 					<?php
 					$id  = (int) $t['id'];
 					$c   = $actuales[ $id ] ?? null;
-					$vig = $c ? ValidacionConstancia::vigencia( (string) $c['vigente_hasta'], $hoy ) : '';
+					$v   = $vigentes[ $id ] ?? null; // La recibida en vigor: de ella depende el vencimiento.
+					$vig = $v ? ValidacionConstancia::vigencia( (string) $v['vigente_hasta'], $hoy ) : '';
 					?>
 					<tr>
 						<td><strong><?php echo esc_html( $t['apellidos'] . ', ' . $t['nombres'] ); ?></strong></td>
@@ -72,8 +74,11 @@ final class PantallaConstancias {
 							<?php endif; ?>
 						</td>
 						<td>
-							<?php if ( $c ) : ?>
-								<span class="pk-chip <?php echo esc_attr( ValidacionConstancia::VENCIDA === $vig ? 'error' : ( ValidacionConstancia::POR_VENCER === $vig ? 'aviso' : 'ok' ) ); ?>"><?php echo esc_html( ValidacionConstancia::textoVigencia( (string) $c['vigente_hasta'], $hoy ) ); ?></span>
+							<?php if ( $v ) : ?>
+								<span class="pk-chip <?php echo esc_attr( ValidacionConstancia::VENCIDA === $vig ? 'error' : ( ValidacionConstancia::POR_VENCER === $vig ? 'aviso' : 'ok' ) ); ?>"><?php echo esc_html( ValidacionConstancia::textoVigencia( (string) $v['vigente_hasta'], $hoy ) ); ?></span>
+								<?php echo $c && (int) $c['id'] !== (int) $v['id'] ? '<br><span class="description">La nueva: hasta el ' . esc_html( wp_date( 'd/m/Y', strtotime( $c['vigente_hasta'] . ' 12:00:00' ) ) ) . '</span>' : ''; ?>
+							<?php elseif ( $c ) : ?>
+								<span class="description"><?php echo esc_html( 'Hasta el ' . wp_date( 'd/m/Y', strtotime( $c['vigente_hasta'] . ' 12:00:00' ) ) . ' (falta recibirla)' ); ?></span>
 							<?php else : ?>
 								—
 							<?php endif; ?>
@@ -107,7 +112,7 @@ final class PantallaConstancias {
 
 	/** Para la ficha: la última constancia de la persona, en una línea. */
 	public static function resumen( int $trabajadorId ): string {
-		$c = Constancias::actual( $trabajadorId );
+		$c = Constancias::vigente( $trabajadorId ) ?? Constancias::actual( $trabajadorId );
 
 		if ( ! $c ) {
 			return 'Sin constancia de retención.';
