@@ -273,6 +273,14 @@ Vienen de la sección 16 del plan; se resuelven con gerencia y el contador.
 
 ## Bitácora
 
+### 28-11-2026 — 0.23.1 en producción
+- Maycol la subió. Verificado:
+  - sw.js dice pka-0.23.1 y "Estado del sistema" está en orden.
+  - La pantalla de Avisos tiene los 3 grupos y los 18 avisos, sin textos de jefes ni RR.HH.
+- El correo de gerencia ya está puesto: admin1@pekokis.com.
+- El celular de gerencia está vacío.
+- Los avisos siguen apagados: falta el SMTP.
+
 ### 28-11-2026 — versión 0.23.1: avisos a gerencia
 - **Cómo estaba en producción:**
   - Los 15 avisos estaban apagados y el webhook vacío.
