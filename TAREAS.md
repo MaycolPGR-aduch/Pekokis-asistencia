@@ -273,6 +273,17 @@ Vienen de la sección 16 del plan; se resuelven con gerencia y el contador.
 
 ## Bitácora
 
+### 28-11-2026 — 0.23.0 en producción
+- Maycol subió la 0.23.0, que trae la 0.21.0 y la 0.22.0.
+- Lo verificado:
+  - sw.js dice pka-0.23.0 y "Estado del sistema" está en orden.
+  - Sin errores en: Contabilidad de horas, Constancias de retención, Sueldos y tarifas (valor hora), Calculadora, Reglas (multiplicador de madrugada) y Dashboard.
+- Para corregir en los perfiles: hay dos áreas que son la misma, "Produccion" y "Producción". Dejar una sola.
+- Ya hay 3 redes del WiFi del taller. La pantalla del QR sigue sin conexión desde el 26/11.
+- Brigitte sigue sin honorario.
+- Siguen los datos de prueba (Julia, Ana, Beto, Carla y la red "Casa de Maycol"). Borrarlos antes del piloto.
+- Faltan las pruebas de las filas 37–42 de la guía de despliegue.
+
 ### 27-11-2026 — versión 0.23.0: áreas y constancias de retención (bloque 3 de los cambios de gerencia)
 - **Varias áreas por persona**, sin jefe:
   - `trabajadores.area` guarda la lista separada por coma (varchar 255, BD v14).
