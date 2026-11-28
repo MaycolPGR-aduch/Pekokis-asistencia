@@ -30,28 +30,39 @@ final class ReglasAvisos {
 	public const JORNADA_LARGA    = 'jornada_larga';
 	public const CELULAR          = 'celular';
 	public const CELULAR_RESUELTO = 'celular_resuelto';
+	// Desde la 0.23.1 (bloques 1 y 3 de gerencia).
+	public const TARDANZA_CONVERSAR = 'tardanza_conversar';
+	public const CONSTANCIA_VENCE   = 'constancia_vence';
+	public const CONSTANCIA_RENOVAR = 'constancia_renovar';
 
-	public const PARA_JEFE       = 'jefe';
+	// No hay jefes de área ni RR.HH.: lo que no es para el trabajador va a gerencia.
+	public const PARA_GERENCIA   = 'gerencia';
 	public const PARA_TRABAJADOR = 'trabajador';
-	public const PARA_ADMIN      = 'admin';
+	/** @deprecated Desde la 0.23.1 es gerencia. */
+	public const PARA_JEFE = self::PARA_GERENCIA;
+	/** @deprecated Desde la 0.23.1 es gerencia. */
+	public const PARA_ADMIN = self::PARA_GERENCIA;
 
 	/** tipo => [etiqueta para Ajustes, a quién, título del correo (uno), título (varios)]. */
 	public const TIPOS = array(
-		self::AUSENTE          => array( 'No llegó (pasada la tolerancia)', self::PARA_JEFE, 'No llegó a su hora', 'No llegaron a su hora' ),
-		self::REFRIGERIO_LARGO => array( 'Refrigerio que se pasa del tiempo', self::PARA_JEFE, 'Refrigerio que se alarga', 'Refrigerios que se alargan' ),
-		self::SALIDA_LARGA     => array( 'Salida temporal que se alarga', self::PARA_JEFE, 'Salida que se alarga', 'Salidas que se alargan' ),
-		self::REVISION         => array( 'Marca por revisar (emergencia, permiso, salud)', self::PARA_JEFE, 'Marca por revisar', 'Marcas por revisar' ),
-		self::SOLICITUD        => array( 'Solicitud nueva de "olvidé marcar"', self::PARA_JEFE, 'Solicitud por aprobar', 'Solicitudes por aprobar' ),
-		self::JORNADA_LARGA    => array( 'Jornada muy larga (pasó el límite de horas)', self::PARA_JEFE, 'Jornada muy larga por revisar', 'Jornadas muy largas por revisar' ),
+		self::AUSENTE          => array( 'No llegó (pasada la tolerancia)', self::PARA_GERENCIA, 'No llegó a su hora', 'No llegaron a su hora' ),
+		self::REFRIGERIO_LARGO => array( 'Refrigerio que se pasa del tiempo', self::PARA_GERENCIA, 'Refrigerio que se alarga', 'Refrigerios que se alargan' ),
+		self::SALIDA_LARGA     => array( 'Salida temporal que se alarga', self::PARA_GERENCIA, 'Salida que se alarga', 'Salidas que se alargan' ),
+		self::REVISION         => array( 'Marca por revisar (emergencia, permiso, salud)', self::PARA_GERENCIA, 'Marca por revisar', 'Marcas por revisar' ),
+		self::SOLICITUD        => array( 'Solicitud nueva de "olvidé marcar"', self::PARA_GERENCIA, 'Solicitud por aprobar', 'Solicitudes por aprobar' ),
+		self::JORNADA_LARGA    => array( 'Jornada muy larga (pasó el límite de horas)', self::PARA_GERENCIA, 'Jornada muy larga por revisar', 'Jornadas muy largas por revisar' ),
+		self::TARDANZA_CONVERSAR => array( 'Llegó a la 4.ª tardanza o más (debe conversar con gerencia)', self::PARA_GERENCIA, 'Tardanza para conversar', 'Tardanzas para conversar' ),
 		self::SIN_SALIDA       => array( 'Sigue sin marcar la salida a la hora límite', self::PARA_TRABAJADOR, 'No marcaste tu salida', 'No marcaste tu salida' ),
 		self::RESUELTA         => array( 'Su solicitud fue aprobada o rechazada', self::PARA_TRABAJADOR, 'Tu solicitud fue revisada', 'Tus solicitudes fueron revisadas' ),
-		self::PANTALLA         => array( 'Pantalla QR sin conexión', self::PARA_ADMIN, 'Pantalla QR sin conexión', 'Pantallas QR sin conexión' ),
-		self::CELULAR          => array( 'Registro, cambio o liberación de celular por aprobar', self::PARA_ADMIN, 'Celular por aprobar', 'Celulares por aprobar' ),
+		self::PANTALLA         => array( 'Pantalla QR sin conexión', self::PARA_GERENCIA, 'Pantalla QR sin conexión', 'Pantallas QR sin conexión' ),
+		self::CELULAR          => array( 'Registro, cambio o liberación de celular por aprobar', self::PARA_GERENCIA, 'Celular por aprobar', 'Celulares por aprobar' ),
 		self::CELULAR_RESUELTO => array( 'Su registro o cambio de celular fue aprobado o rechazado', self::PARA_TRABAJADOR, 'Tu celular fue revisado', 'Tus celulares fueron revisados' ),
-		self::RED_NUEVA        => array( 'Posible IP nueva del taller', self::PARA_ADMIN, 'Posible IP nueva del taller', 'Posibles IP nuevas del taller' ),
-		self::RECIBO_ENVIADO   => array( 'Llegó un recibo por honorarios', self::PARA_ADMIN, 'Recibo por honorarios nuevo', 'Recibos por honorarios nuevos' ),
-		self::RECIBO_OBSERVADO => array( 'Su recibo por honorarios fue observado', self::PARA_TRABAJADOR, 'Tu recibo tiene una observación', 'Tus recibos tienen observaciones' ),
+		self::RED_NUEVA        => array( 'Posible IP nueva del taller', self::PARA_GERENCIA, 'Posible IP nueva del taller', 'Posibles IP nuevas del taller' ),
+		self::RECIBO_ENVIADO   => array( 'Llegó un recibo por honorarios o una constancia de retención', self::PARA_GERENCIA, 'Recibo o constancia nueva', 'Recibos o constancias nuevas' ),
+		self::CONSTANCIA_VENCE => array( 'Constancia de retención por vencer (30 días) o vencida', self::PARA_GERENCIA, 'Constancia de retención por vencer', 'Constancias de retención por vencer' ),
+		self::RECIBO_OBSERVADO => array( 'Su recibo o su constancia fue observado', self::PARA_TRABAJADOR, 'Tu recibo o tu constancia tiene una observación', 'Tus recibos tienen observaciones' ),
 		self::RECIBO_PENDIENTE => array( 'Recordatorio de recibo pendiente (botón "Recordar")', self::PARA_TRABAJADOR, 'Falta tu recibo por honorarios', 'Faltan tus recibos por honorarios' ),
+		self::CONSTANCIA_RENOVAR => array( 'Su constancia de retención está por vencer o venció', self::PARA_TRABAJADOR, 'Tu constancia de retención vence pronto', 'Tu constancia de retención vence pronto' ),
 	);
 
 	public function __construct(
@@ -129,7 +140,7 @@ final class ReglasAvisos {
 	}
 
 	public static function destinatario( string $tipo ): string {
-		return self::TIPOS[ $tipo ][1] ?? self::PARA_ADMIN;
+		return self::TIPOS[ $tipo ][1] ?? self::PARA_GERENCIA;
 	}
 
 	public static function titulo( string $tipo, int $cuantos = 1 ): string {

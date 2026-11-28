@@ -89,7 +89,7 @@ final class Diagnostico {
 		$puntos[] = self::punto(
 			'' !== (string) Ajustes::todos()['correo_rrhh'],
 			'Correo del respaldo',
-			'El respaldo irá al correo del administrador. Configura el de RR.HH. en Asistencia → Exportar.',
+			'El respaldo y los avisos irán al correo del administrador. Configura el correo de gerencia en Seguridad y reglas → Avisos.',
 			self::AVISO
 		);
 

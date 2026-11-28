@@ -105,7 +105,13 @@ final class Tardanzas {
 			Auditoria::registrar( 'tardanza.amonestacion', 'trabajador', $trabajadorId, null, array( 'fecha' => $dia, 'numero' => $numero ), 'Amonestación automática por la ' . $numero . '.ª tardanza' );
 		}
 
-		return self::porId( $id );
+		$fila = self::porId( $id );
+
+		if ( $fila && $numero >= self::CONVERSAR ) {
+			Notificaciones::tardanza( $fila );
+		}
+
+		return $fila;
 	}
 
 	/** Tardanzas que cuentan hoy para la persona (desde el último reinicio). */

@@ -273,6 +273,27 @@ Vienen de la sección 16 del plan; se resuelven con gerencia y el contador.
 
 ## Bitácora
 
+### 28-11-2026 — versión 0.23.1: avisos a gerencia
+- **Cómo estaba en producción:**
+  - Los 15 avisos estaban apagados y el webhook vacío.
+  - WP Mail SMTP no tenía servidor ni usuario.
+  - Nunca se envió un aviso.
+- **Destinatarios:**
+  - Ya no hay jefes ni RR.HH.: todo lo que no es para el trabajador va a **gerencia**.
+  - El "jefe que aprueba" guardado ya no se usa.
+  - En Avisos hay campos nuevos: **Correo de gerencia** (es el mismo del respaldo, `correo_rrhh`) y **Celular de gerencia** para WhatsApp (`telefono_gerencia`).
+- **Avisos nuevos:**
+  - **4.ª tardanza o más**, a gerencia, al registrarse.
+  - **Constancia por vencer o vencida**, a gerencia y al trabajador. Uno por estado, de 8 a 20 h.
+  - Los recibos enviados u observados ahora también cubren las constancias.
+- **Pantalla de Avisos:** tres grupos ("A gerencia: el día a día", "A gerencia: celulares, taller, recibos y constancias", "Al trabajador"), sin textos de jefes ni RR.HH.
+- **Pruebas:** pasan 174 unitarias y las 347 comprobaciones de punta a punta (sección 25 nueva).
+- **Para que salgan los avisos:**
+  1. Configurar el SMTP (Maycol).
+  2. Probar con "Enviarme un correo de prueba".
+  3. Poner el correo de gerencia y prender los avisos.
+- **Para WhatsApp:** el flujo en el bot (n8n), el segundo número y una plantilla aprobada por Meta.
+
 ### 28-11-2026 — 0.23.0 en producción
 - Maycol subió la 0.23.0, que trae la 0.21.0 y la 0.22.0.
 - Lo verificado:

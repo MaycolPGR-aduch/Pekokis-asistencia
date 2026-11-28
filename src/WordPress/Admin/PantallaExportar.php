@@ -129,6 +129,7 @@ final class PantallaExportar {
 					<label for="pka-correo">Enviar a</label>
 					<input type="email" id="pka-correo" name="correo" class="regular-text" value="<?php echo esc_attr( (string) Ajustes::todos()['correo_rrhh'] ); ?>" placeholder="<?php echo esc_attr( (string) get_option( 'admin_email' ) ); ?>">
 					<button class="button">Guardar</button>
+					<span class="description">Es el mismo correo de gerencia que reciben los avisos.</span>
 				</form>
 			<?php endif; ?>
 

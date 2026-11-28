@@ -81,7 +81,10 @@ final class ReglasAvisosTest extends TestCase {
 		$this->assertSame( '20:00', $r->horaSinSalida, 'Una hora inválida vuelve a la de siempre' );
 		$this->assertSame( 15, $r->limiteSalidaMin, 'Mínimo 15 minutos' );
 		$this->assertSame( 20, $r->margenAusenciaMin );
-		$this->assertSame( ReglasAvisos::PARA_JEFE, ReglasAvisos::destinatario( ReglasAvisos::AUSENTE ) );
+		$this->assertSame( ReglasAvisos::PARA_GERENCIA, ReglasAvisos::destinatario( ReglasAvisos::AUSENTE ), 'No hay jefes: va a gerencia' );
+		$this->assertSame( ReglasAvisos::PARA_GERENCIA, ReglasAvisos::destinatario( ReglasAvisos::PANTALLA ) );
+		$this->assertSame( ReglasAvisos::PARA_GERENCIA, ReglasAvisos::destinatario( ReglasAvisos::TARDANZA_CONVERSAR ) );
+		$this->assertSame( ReglasAvisos::PARA_TRABAJADOR, ReglasAvisos::destinatario( ReglasAvisos::CONSTANCIA_RENOVAR ) );
 		$this->assertSame( ReglasAvisos::PARA_TRABAJADOR, ReglasAvisos::destinatario( ReglasAvisos::SIN_SALIDA ) );
 		$this->assertSame( 'No llegaron a su hora', ReglasAvisos::titulo( ReglasAvisos::AUSENTE, 3 ) );
 	}

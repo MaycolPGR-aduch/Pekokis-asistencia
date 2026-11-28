@@ -663,7 +663,7 @@ $wpdb->update( Tablas::nombre( 'trabajadores' ), array( 'correo' => 'luis@exampl
 
 $sol = \Pekokis\Asistencia\WordPress\Correcciones::solicitar( $id2, $ayer, '19:00', \Pekokis\Asistencia\Nucleo\Accion::FIN_JORNADA, 'fin_jornada', 'Me olvidé de marcar' );
 $avSol = $colaDe( $RA::SOLICITUD );
-$comprobar( 'una solicitud nueva avisa al jefe', is_int( $sol ) && 1 === count( $avSol ) && get_userdata( 1 )->user_email === $avSol[0]['destino'] && str_contains( $avSol[0]['linea'], 'Me olvidé de marcar' ), wp_json_encode( $avSol ) );
+$comprobar( 'una solicitud nueva avisa a gerencia (no hay jefes)', is_int( $sol ) && 1 === count( $avSol ) && \Pekokis\Asistencia\WordPress\Respaldo::destinatario() === $avSol[0]['destino'] && str_contains( $avSol[0]['linea'], 'Me olvidé de marcar' ), wp_json_encode( $avSol ) );
 \Pekokis\Asistencia\WordPress\Correcciones::rechazar( $sol, 'Ese día no viniste' );
 $avRes = $colaDe( $RA::RESUELTA );
 $comprobar( 'al rechazarla se avisa al trabajador, con la nota', 1 === count( $avRes ) && 'luis@example.test' === $avRes[0]['destino'] && str_contains( $avRes[0]['linea'], 'rechazada' ) && str_contains( $avRes[0]['linea'], 'Ese día no viniste' ) );
@@ -1446,6 +1446,70 @@ $acc24 = array_column( $hist24, 'accion' );
 $comprobar( 'Constancias en la Auditoría', in_array( 'constancia.enviar', $acc24, true ) && in_array( 'constancia.anular', $acc24, true ) && in_array( 'constancia.observar', $acc24, true ) && in_array( 'constancia.recibir', $acc24, true ) );
 Trabajadores::cesar( (int) $a24, gmdate( 'Y-m-d' ), 'Prueba' );
 Trabajadores::cesar( (int) $b24, gmdate( 'Y-m-d' ), 'Prueba' );
+
+// ---- 25. Avisos a gerencia (0.23.1): sin jefes, la 4.ª tardanza y las constancias por vencer.
+WP_CLI::line( '25. Avisos a gerencia, tardanzas y constancias' );
+wp_set_current_user( 1 );
+$N25  = \Pekokis\Asistencia\WordPress\Notificaciones::class;
+$RA25 = \Pekokis\Asistencia\Nucleo\ReglasAvisos::class;
+$aj25 = \Pekokis\Asistencia\WordPress\Ajustes::todos();
+update_option( \Pekokis\Asistencia\WordPress\Ajustes::OPCION, array( 'avisos_activos' => array_keys( $RA25::TIPOS ), 'webhook_avisos' => 'https://avisos.example.test/hook', 'correo_rrhh' => 'gerencia@example.test', 'telefono_gerencia' => '+51 900 111 222' ) + $aj25 );
+$cola25 = static fn( string $tipo ): array => $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM ' . Tablas::nombre( 'avisos' ) . ' WHERE tipo = %s ORDER BY id', $tipo ), ARRAY_A ); // phpcs:ignore
+$wpdb->query( 'TRUNCATE TABLE ' . Tablas::nombre( 'avisos' ) ); // phpcs:ignore
+
+// Alguien con un "jefe que aprueba" guardado de antes: el aviso igual va a gerencia.
+$t25 = Trabajadores::guardar( array( 'dni' => '77000027', 'nombres' => 'Tere', 'apellidos' => 'Tarde', 'horario_id' => (int) array_keys( Trabajadores::horarios() )[0], 'cumpleanos_dia' => '1', 'cumpleanos_mes' => '1' ) );
+$wpdb->update( Tablas::nombre( 'trabajadores' ), array( 'jefe_user_id' => 1, 'creado_en' => '2026-01-05 12:00:00' ), array( 'id' => (int) $t25 ) );
+$N25::encolar( $RA25::AUSENTE, 'ausente|prueba25', Trabajadores::buscar( (int) $t25 ), 'Tere Tarde entra a las 09:00 y todavía no marca.' );
+$aus25 = $cola25( $RA25::AUSENTE );
+$comprobar( 'Avisos: lo de gerencia va al correo y al celular de gerencia, aunque tenga un jefe guardado', 2 === count( $aus25 ) && 'gerencia@example.test' === $aus25[0]['destino'] && 'Gerencia' === $aus25[0]['nombre'] && '+51900111222' === $aus25[1]['telefono'], wp_json_encode( $aus25 ) );
+$comprobar( 'Avisos: el correo a gerencia saluda "Hola:" (sin nombre)', str_starts_with( $N25::texto( array( $aus25[0] ) ), "Hola:\n" ) );
+
+// La 4.ª tardanza avisa a gerencia (la 1.ª a la 3.ª no).
+$diasT25 = array();
+for ( $d = ( new DateTimeImmutable( $hoy ) )->modify( '-1 day' ); count( $diasT25 ) < 4; $d = $d->modify( '-1 day' ) ) {
+	if ( (int) $d->format( 'N' ) <= 5 && '' === \Pekokis\Asistencia\WordPress\Calendario::descripcion( $d->format( 'Y-m-d' ) ) ) {
+		$diasT25[] = $d->format( 'Y-m-d' );
+	}
+}
+foreach ( array_reverse( $diasT25 ) as $k => $dT ) {
+	$CM::marcaManual( (int) $t25, $dT, '09:2' . $k, $A::ENTRADA, null, 'Prueba 25' );
+	if ( 2 === $k ) {
+		$comprobar( 'Avisos: hasta la 3.ª tardanza no hay aviso', 0 === count( $cola25( $RA25::TARDANZA_CONVERSAR ) ) );
+	}
+}
+$tar25 = $cola25( $RA25::TARDANZA_CONVERSAR );
+$comprobar( 'Avisos: la 4.ª tardanza avisa a gerencia que tiene que conversar', 2 === count( $tar25 ) && str_contains( $tar25[0]['linea'], '4.ª tardanza' ) && str_contains( $tar25[0]['linea'], 'Tere Tarde' ) && 'gerencia@example.test' === $tar25[0]['destino'], wp_json_encode( $tar25 ) );
+
+// Constancia por vencer: a gerencia y al trabajador, una vez por estado.
+$wpdb->update( Tablas::nombre( 'trabajadores' ), array( 'correo' => 'tere@example.test' ), array( 'id' => (int) $t25 ) );
+$tmp25 = wp_tempnam( 'constancia25.pdf' );
+file_put_contents( $tmp25, "%PDF-1.4\nconstancia 25" ); // phpcs:ignore
+$c25 = \Pekokis\Asistencia\WordPress\Constancias::enviar( (int) $t25, array( 'tipo' => 'cuarta', 'vigente_hasta' => ( new DateTimeImmutable( $hoy ) )->modify( '+5 days' )->format( 'Y-m-d' ) ), array( 'tmp_name' => $tmp25 ) );
+wp_delete_file( $tmp25 );
+\Pekokis\Asistencia\WordPress\Constancias::recibir( (int) $c25 );
+$a10 = ( new DateTimeImmutable( 'today 10:00', $zonaLima ) )->setTimezone( new DateTimeZone( 'UTC' ) );
+$N25::revisar( $a10 );
+$N25::revisar( $a10 );
+$cv25 = $cola25( $RA25::CONSTANCIA_VENCE );
+$cr25 = $cola25( $RA25::CONSTANCIA_RENOVAR );
+$comprobar( 'Avisos: constancia por vencer a gerencia y al trabajador, una sola vez', is_int( $c25 ) && 2 === count( $cv25 ) && str_contains( $cv25[0]['linea'], 'vence en 5 días' ) && 1 <= count( $cr25 ) && 'tere@example.test' === $cr25[0]['destino'] && str_contains( $cr25[0]['linea'], 'Sube la nueva' ), wp_json_encode( array( $cv25, $cr25 ) ) );
+$wpdb->update( Tablas::nombre( 'constancias' ), array( 'vigente_hasta' => ( new DateTimeImmutable( $hoy ) )->modify( '-1 day' )->format( 'Y-m-d' ) ), array( 'id' => (int) $c25 ) );
+$N25::revisar( $a10 );
+$comprobar( 'Avisos: cuando vence, avisa otra vez ("venció")', 4 === count( $cola25( $RA25::CONSTANCIA_VENCE ) ) && str_contains( $cola25( $RA25::CONSTANCIA_VENCE )[2]['linea'], 'venció' ) );
+$a22 = ( new DateTimeImmutable( 'today 22:00', $zonaLima ) )->setTimezone( new DateTimeZone( 'UTC' ) );
+$wpdb->query( $wpdb->prepare( 'DELETE FROM ' . Tablas::nombre( 'avisos' ) . ' WHERE tipo IN (%s, %s)', $RA25::CONSTANCIA_VENCE, $RA25::CONSTANCIA_RENOVAR ) ); // phpcs:ignore
+$N25::revisar( $a22 );
+$comprobar( 'Avisos: de noche no se avisa de constancias', 0 === count( $cola25( $RA25::CONSTANCIA_VENCE ) ) );
+
+// La pantalla de Avisos: grupos de gerencia, correo y celular de gerencia.
+$_GET     = array( 'page' => 'pka-ajustes', 'pestana' => 'avisos' );
+$htmlAv25 = $dibujar( array( \Pekokis\Asistencia\WordPress\Admin\PantallaAjustes::class, 'pintar' ) );
+$_GET     = array();
+$comprobar( 'Avisos: la pantalla habla de gerencia (sin jefes ni RR.HH.) y tiene los avisos nuevos', str_contains( $htmlAv25, 'Correo de gerencia' ) && str_contains( $htmlAv25, 'Celular de gerencia' ) && str_contains( $htmlAv25, 'A gerencia: el día a día' ) && str_contains( $htmlAv25, '4.ª tardanza' ) && str_contains( $htmlAv25, 'Constancia de retención por vencer' ) && ! str_contains( $htmlAv25, 'Al jefe' ) && ! str_contains( $htmlAv25, 'A RR.HH.' ) );
+update_option( \Pekokis\Asistencia\WordPress\Ajustes::OPCION, $aj25 );
+$wpdb->query( 'TRUNCATE TABLE ' . Tablas::nombre( 'avisos' ) ); // phpcs:ignore
+Trabajadores::cesar( (int) $t25, gmdate( 'Y-m-d' ), 'Prueba' );
 
 $comprobar( 'presencia por IP del taller', ( $_SERVER['REMOTE_ADDR'] = '203.0.113.10' ) && Presencia::enRedDelTaller() );
 

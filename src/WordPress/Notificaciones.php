@@ -120,8 +120,48 @@ final class Notificaciones {
 		}
 
 		self::revisarTaller( $ahora, $zona, $dia );
+		self::revisarConstancias( $ahora, $zona );
 
 		return self::contar() - $antes;
+	}
+
+	/**
+	 * Constancias de retención por vencer (30 días) o vencidas: a gerencia y al
+	 * trabajador, una vez por estado ("por vencer" y luego "vencida"), de 8 a 20 h.
+	 */
+	private static function revisarConstancias( DateTimeImmutable $ahora, DateTimeZone $zona ): void {
+		$hora = (int) $ahora->setTimezone( $zona )->format( 'G' );
+
+		if ( $hora < 8 || $hora >= 20 || ( ! self::activo( ReglasAvisos::CONSTANCIA_VENCE ) && ! self::activo( ReglasAvisos::CONSTANCIA_RENOVAR ) ) ) {
+			return;
+		}
+
+		foreach ( Constancias::porVencer() as $v ) {
+			$clave = 'constancia|' . (int) $v['c']['id'] . '|' . $v['vigencia'];
+			$texto = mb_strtolower( mb_substr( $v['texto'], 0, 1 ) ) . mb_substr( $v['texto'], 1 );
+
+			self::encolar( ReglasAvisos::CONSTANCIA_VENCE, $clave, $v['t'], sprintf( 'La constancia de retención de %s %s. Pídele la nueva.', Trabajadores::nombreCompleto( $v['t'] ), $texto ), admin_url( 'admin.php?page=pka-recibos&vista=constancias' ) );
+			self::encolar( ReglasAvisos::CONSTANCIA_RENOVAR, $clave . '|t', $v['t'], sprintf( 'Hola, %s: tu constancia de retención %s. Sube la nueva en la app, en "Mi recibo".', $v['t']['nombres'], $texto ), home_url( '/' ) );
+		}
+	}
+
+	/** Llegó a la 4.ª tardanza (o más) desde el último reinicio: gerencia tiene que conversar con la persona. */
+	public static function tardanza( array $fila ): void {
+		self::seguro(
+			static function () use ( $fila ): void {
+				$t = Trabajadores::buscar( (int) $fila['trabajador_id'] );
+
+				if ( $t ) {
+					self::encolar(
+						ReglasAvisos::TARDANZA_CONVERSAR,
+						'tardanza|' . (int) $fila['id'],
+						$t,
+						sprintf( '%s llegó %d min tarde el %s: es su %s tardanza. Tiene que conversar con gerencia (después se reinicia el conteo en su ficha).', Trabajadores::nombreCompleto( $t ), (int) $fila['minutos'], wp_date( 'd/m', strtotime( $fila['dia'] . ' 12:00:00' ) ), Tardanzas::ordinal( (int) $fila['numero'] ) ),
+						admin_url( 'admin.php?page=pka-trabajadores&vista=ficha&pestana=tardanzas&id=' . (int) $t['id'] )
+					);
+				}
+			}
+		);
 	}
 
 	/** Pantallas sin conexión e IP nueva, solo en horario de taller (lunes a sábado, 7 a 20 h, sin feriado). */
@@ -156,7 +196,7 @@ final class Notificaciones {
 			ReglasAvisos::REFRIGERIO_LARGO => sprintf( '%s salió a refrigerio a las %s y lleva %d min (le tocan %d).', $nombre, $desde, $r->minutosEnEstado, $h->refrigerioMin ),
 			ReglasAvisos::SALIDA_LARGA     => sprintf( '%s salió (%s) a las %s y lleva %d min fuera.', $nombre, $r->motivoActual ? $r->motivoActual->nombre : 'salida temporal', $desde, $r->minutosEnEstado ),
 			ReglasAvisos::SIN_SALIDA       => sprintf(
-				'Hola, %s: no has marcado tu salida de hoy (figuras %s). Si ya te fuiste, entra a la app y usa "Olvidé marcar" para que tu jefe lo corrija.',
+				'Hola, %s: no has marcado tu salida de hoy (figuras %s). Si ya te fuiste, entra a la app y usa "Olvidé marcar" para que gerencia lo corrija.',
 				$t['nombres'],
 				Estado::REFRIGERIO === $r->estado ? 'en refrigerio' : ( Estado::FUERA_TEMPORAL === $r->estado ? 'en una salida temporal' : 'trabajando' )
 			),
@@ -190,7 +230,7 @@ final class Notificaciones {
 		);
 	}
 
-	/** El jefe aprobó o rechazó la corrección: se avisa al trabajador. */
+	/** Gerencia aprobó o rechazó la corrección: se avisa al trabajador. */
 	public static function resuelta( int $correccionId ): void {
 		self::seguro(
 			static function () use ( $correccionId ): void {
@@ -215,7 +255,7 @@ final class Notificaciones {
 		);
 	}
 
-	/** Una marca que el jefe tiene que revisar (emergencia, permiso, salud). */
+	/** Una marca que gerencia tiene que revisar (emergencia, permiso, salud). */
 	public static function revision( int $marcaId ): void {
 		self::seguro(
 			static function () use ( $marcaId ): void {
@@ -414,8 +454,9 @@ final class Notificaciones {
 	}
 
 	/**
-	 * A quién y por dónde: el jefe del trabajador (o RR.HH. si no tiene), el
-	 * propio trabajador, o RR.HH. para los avisos del sistema.
+	 * A quién y por dónde: al propio trabajador, o a gerencia (el correo y el
+	 * celular de gerencia de Seguridad y reglas → Avisos). Desde la 0.23.1 no
+	 * hay jefes de área ni RR.HH.: el "jefe que aprueba" guardado ya no se usa.
 	 *
 	 * @return array<int, array{canal: string, destino: string, nombre: string, telefono: string}>
 	 */
@@ -434,16 +475,9 @@ final class Notificaciones {
 			$nombre   = Trabajadores::nombreCompleto( $t );
 			$telefono = preg_replace( '/[^\d+]/', '', (string) $t['telefono'] );
 		} else {
-			$jefe = ReglasAvisos::PARA_JEFE === $para && $t && (int) $t['jefe_user_id'] ? get_userdata( (int) $t['jefe_user_id'] ) : false;
-
-			if ( $jefe && is_email( $jefe->user_email ) ) {
-				$correo   = $jefe->user_email;
-				$nombre   = $jefe->display_name;
-				$telefono = self::telefonoDeUsuario( (int) $jefe->ID );
-			} else {
-				$correo = Respaldo::destinatario();
-				$nombre = 'RR.HH.';
-			}
+			$correo   = Respaldo::destinatario();
+			$nombre   = 'Gerencia';
+			$telefono = (string) preg_replace( '/[^\d+]/', '', (string) Ajustes::todos()['telefono_gerencia'] );
 		}
 
 		$destinos = array();
@@ -548,7 +582,7 @@ final class Notificaciones {
 	/** Texto del aviso (o de varios juntos). */
 	public static function texto( array $grupo ): string {
 		$p      = $grupo[0];
-		$saludo = ReglasAvisos::PARA_TRABAJADOR === ReglasAvisos::destinatario( $p['tipo'] ) ? '' : 'Hola' . ( 'RR.HH.' !== $p['nombre'] && '' !== $p['nombre'] ? ', ' . $p['nombre'] : '' ) . ":\n\n";
+		$saludo = ReglasAvisos::PARA_TRABAJADOR === ReglasAvisos::destinatario( $p['tipo'] ) ? '' : 'Hola' . ( ! in_array( $p['nombre'], array( 'RR.HH.', 'Gerencia', '' ), true ) ? ', ' . $p['nombre'] : '' ) . ":\n\n";
 		$lineas = count( $grupo ) > 1
 			? implode( "\n", array_map( static fn( $f ) => '- ' . $f['linea'], $grupo ) )
 			: $grupo[0]['linea'];
@@ -625,14 +659,6 @@ final class Notificaciones {
 		$motivo = Motivos::porClave( $c['motivo_clave'] );
 
 		return 'una salida' . ( $motivo ? ' (' . $motivo->nombre . ')' : '' );
-	}
-
-	private static function telefonoDeUsuario( int $userId ): string {
-		global $wpdb;
-
-		$tel = (string) $wpdb->get_var( $wpdb->prepare( 'SELECT telefono FROM ' . Tablas::nombre( 'trabajadores' ) . ' WHERE user_id = %d LIMIT 1', $userId ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-
-		return (string) preg_replace( '/[^\d+]/', '', $tel );
 	}
 
 	private static function buscarEn( array $personas, int $id ): array {

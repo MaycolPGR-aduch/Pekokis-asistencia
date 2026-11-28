@@ -33,7 +33,8 @@ final class Ajustes {
 			'ruc'             => '20523257146',
 			'direccion_empleador' => 'Calle José Domingo Choquehuanca 284, San Miguel, Lima',
 			// Destino del respaldo mensual; vacío = correo del administrador.
-			'correo_rrhh'     => '',
+			'correo_rrhh'     => '', // Correo de gerencia: avisos y respaldo (se llamaba "de RR.HH.").
+			'telefono_gerencia' => '',
 			// Webhook (Make, n8n…) que recibe el Excel del respaldo para guardarlo en la nube.
 			'webhook_respaldo' => '',
 			// Aviso de datos personales: vacío = borrador por defecto (Aviso::borrador()).

@@ -295,6 +295,18 @@ Decidido el 14-11-2026, siguiendo las maquetas entregadas por Pekokis (`CONTEXTO
 - **Mis horas (T5/T6):** horas, extra y días completos (sin dinero), "Te falta marcar", calendario con cada día tocable y el detalle con sus pasos, otras salidas y correcciones pedidas. "Pedir corrección" manda la hora, qué pasó y un comentario a `POST /correcciones`.
 - **Perfil (T7):** DNI oculto; "Ver" lo trae con `POST /yo/dni` y queda en el historial.
 
+### 6.17 Avisos a gerencia (versión 0.23.1)
+
+- `ReglasAvisos`:
+  - `PARA_GERENCIA` reemplaza a `PARA_JEFE` y `PARA_ADMIN`, que quedan como alias.
+  - Tipos nuevos: `TARDANZA_CONVERSAR`, `CONSTANCIA_VENCE` y `CONSTANCIA_RENOVAR`.
+- `Notificaciones::destinos()`:
+  - Para gerencia usa `Respaldo::destinatario()` (ajuste `correo_rrhh`) y el ajuste `telefono_gerencia`.
+  - Ya no mira `trabajadores.jefe_user_id`.
+- Disparadores de los avisos nuevos:
+  - `Tardanzas::sincronizar()` llama a `Notificaciones::tardanza()` desde la 4.ª.
+  - El cron (`revisar()`) llama a `revisarConstancias()`, con la clave por constancia y estado.
+
 ### 6.16 Áreas y constancias de retención (versión 0.23.0)
 
 - Áreas:

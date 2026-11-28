@@ -157,26 +157,38 @@ final class PantallaAjustes {
 		$a       = Ajustes::todos();
 		$activos = Notificaciones::activos();
 		$grupos  = array(
-			ReglasAvisos::PARA_JEFE       => 'Al jefe del trabajador (o a RR.HH. si no tiene jefe)',
-			ReglasAvisos::PARA_TRABAJADOR => 'Al trabajador (a su correo, si lo tiene, y al webhook con su teléfono)',
-			ReglasAvisos::PARA_ADMIN      => 'A RR.HH. (el correo de Exportar)',
+			'A gerencia: el día a día'                                       => array( ReglasAvisos::AUSENTE, ReglasAvisos::REFRIGERIO_LARGO, ReglasAvisos::SALIDA_LARGA, ReglasAvisos::REVISION, ReglasAvisos::SOLICITUD, ReglasAvisos::JORNADA_LARGA, ReglasAvisos::TARDANZA_CONVERSAR ),
+			'A gerencia: celulares, taller, recibos y constancias'           => array( ReglasAvisos::CELULAR, ReglasAvisos::PANTALLA, ReglasAvisos::RED_NUEVA, ReglasAvisos::RECIBO_ENVIADO, ReglasAvisos::CONSTANCIA_VENCE ),
+			'Al trabajador (a su correo, si lo tiene, y por WhatsApp con su celular)' => array( ReglasAvisos::SIN_SALIDA, ReglasAvisos::RESUELTA, ReglasAvisos::CELULAR_RESUELTO, ReglasAvisos::RECIBO_OBSERVADO, ReglasAvisos::RECIBO_PENDIENTE, ReglasAvisos::CONSTANCIA_RENOVAR ),
 		);
 		$ultimos = Notificaciones::ultimos( 25 );
 		?>
 		<h2 class="pk-mt" id="avisos">Avisos por correo y WhatsApp</h2>
-		<p>El sistema revisa cada 5 minutos y agrupa: si a las 9:15 faltan tres personas del mismo jefe, le llega un solo correo con las tres. Cada aviso sale una sola vez. Todos empiezan apagados.</p>
+		<p>El sistema revisa cada 5 minutos y agrupa: si a las 9:15 faltan tres personas, a gerencia le llega un solo correo con las tres. Cada aviso sale una sola vez. Todos empiezan apagados. No hay jefes de área: lo que no es para el trabajador le llega a gerencia.</p>
 		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="pk-sigue">
 			<input type="hidden" name="action" value="pka_guardar_avisos">
 			<?php wp_nonce_field( 'pka_guardar_avisos' ); ?>
 			<table class="form-table" role="presentation">
-				<?php foreach ( $grupos as $para => $titulo ) : ?>
+				<tr>
+					<th scope="row"><label for="pka-av-correo">Correo de gerencia</label></th>
+					<td>
+						<input type="email" id="pka-av-correo" name="correo_gerencia" class="regular-text" value="<?php echo esc_attr( (string) $a['correo_rrhh'] ); ?>" placeholder="<?php echo esc_attr( (string) get_option( 'admin_email' ) ); ?>">
+						<p class="description">Recibe los avisos de gerencia y el respaldo del mes. Vacío: el correo del administrador de WordPress.</p>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="pka-av-telefono">Celular de gerencia (WhatsApp)</label></th>
+					<td>
+						<input type="tel" id="pka-av-telefono" name="telefono_gerencia" class="regular-text" value="<?php echo esc_attr( (string) $a['telefono_gerencia'] ); ?>" placeholder="+51 9…">
+						<p class="description">Solo sirve con el webhook de WhatsApp (abajo). Con código de país.</p>
+					</td>
+				</tr>
+				<?php foreach ( $grupos as $titulo => $tipos ) : ?>
 					<tr>
 						<th scope="row"><?php echo esc_html( $titulo ); ?></th>
 						<td>
-							<?php foreach ( ReglasAvisos::TIPOS as $tipo => $info ) : ?>
-								<?php if ( $info[1] === $para ) : ?>
-									<label class="pk-bloque"><input type="checkbox" name="avisos_activos[]" value="<?php echo esc_attr( $tipo ); ?>" <?php checked( in_array( $tipo, $activos, true ) ); ?>> <?php echo esc_html( $info[0] ); ?></label>
-								<?php endif; ?>
+							<?php foreach ( $tipos as $tipo ) : ?>
+								<label class="pk-bloque"><input type="checkbox" name="avisos_activos[]" value="<?php echo esc_attr( $tipo ); ?>" <?php checked( in_array( $tipo, $activos, true ) ); ?>> <?php echo esc_html( ReglasAvisos::TIPOS[ $tipo ][0] ); ?></label>
 							<?php endforeach; ?>
 						</td>
 					</tr>
@@ -249,6 +261,17 @@ final class PantallaAjustes {
 			self::volver( 'avisos' );
 		}
 
+		$correo   = isset( $_POST['correo_gerencia'] ) ? sanitize_email( wp_unslash( $_POST['correo_gerencia'] ) ) : (string) $antes['correo_rrhh'];
+		$telefono = isset( $_POST['telefono_gerencia'] ) ? (string) preg_replace( '/[^\d+]/', '', sanitize_text_field( wp_unslash( $_POST['telefono_gerencia'] ) ) ) : (string) $antes['telefono_gerencia'];
+
+		if ( '' !== $telefono && ! preg_match( '/^\+?\d{9,15}$/', $telefono ) ) {
+			Avisos::agregar( 'error', 'El celular de gerencia no es válido: escribe 9 a 15 números, con el código de país (por ejemplo +51 987 654 321).' );
+			self::volver( 'avisos' );
+		}
+
+		$ajustes['correo_rrhh']       = $correo;
+		$ajustes['telefono_gerencia'] = $telefono;
+
 		$ajustes['avisos_activos']          = array_values( array_intersect( array_keys( ReglasAvisos::TIPOS ), $pedidos ) );
 		$ajustes['aviso_hora_sin_salida']   = preg_match( '/^([01]\d|2[0-3]):[0-5]\d$/', $hora ) ? $hora : '20:00';
 		$ajustes['aviso_margen_ausencia']   = isset( $_POST['aviso_margen_ausencia'] ) ? max( 0, min( 240, (int) $_POST['aviso_margen_ausencia'] ) ) : 10;
@@ -262,6 +285,7 @@ final class PantallaAjustes {
 			'avisos'  => implode( ', ', array_map( array( ReglasAvisos::class, 'etiqueta' ), (array) $x['avisos_activos'] ) ),
 			'horario' => $x['aviso_hora_sin_salida'] . ' · ' . $x['aviso_margen_ausencia'] . '/' . $x['aviso_margen_refrigerio'] . '/' . $x['aviso_limite_salida'] . ' min',
 			'webhook' => '' === $x['webhook_avisos'] ? '—' : (string) wp_parse_url( $x['webhook_avisos'], PHP_URL_HOST ),
+			'gerencia' => trim( (string) ( $x['correo_rrhh'] ?? '' ) . ' · ' . (string) ( $x['telefono_gerencia'] ?? '' ), ' ·' ),
 		);
 		[ $a, $d ] = Auditoria::diferencias( $resumen( $antes ), $resumen( $ajustes ) );
 
